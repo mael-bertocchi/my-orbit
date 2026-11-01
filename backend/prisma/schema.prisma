@@ -124,13 +124,19 @@ model WatchlistEntry {
   collectionNameFr String?            @map("collection_name_fr")
   runtime          Int?
   seasons          Int?
+  episodeCounts    Int[]              @default([]) @map("episode_counts")
   addedAt          DateTime           @default(now()) @map("added_at")
+  startedAt        DateTime?          @map("started_at")
+  season           Int?
+  episode          Int?
+  position         Int?
   watchedAt        DateTime?          @map("watched_at")
   rating           Int?
   comment          String?
   updatedAt        DateTime           @updatedAt @map("updated_at")
 
   @@unique([mediaType, tmdbId])
+  @@index([startedAt])
   @@index([watchedAt])
   @@map("watchlist_entries")
 }

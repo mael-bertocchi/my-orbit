@@ -177,6 +177,21 @@ function byRelease(first: CatalogTitle, second: CatalogTitle): number {
 }
 
 /**
+ * @function episodeCountsOf
+ * @description How many episodes each season of a series has, from the first season on: the specials, which the
+ * catalog files as season 0, are left out.
+ *
+ * @param {z.infer<typeof TmdbShowSchema>} show The series, as the catalog describes it.
+ *
+ * @returns {number[]} The episodes of season 1, then season 2, and so on.
+ */
+function episodeCountsOf(show: z.infer<typeof TmdbShowSchema>): number[] {
+    const seasons = show.seasons.filter((season) => season.season_number >= 1).sort((first, second) => first.season_number - second.season_number);
+
+    return seasons.map((season) => season.episode_count ?? 0);
+}
+
+/**
  * @function searchCatalog
  * @description Finds the films and series matching a query, most relevant first.
  *
@@ -272,6 +287,7 @@ export async function titleDetails(variables: Variables, logger: FastifyBaseLogg
             genres: movie.genres,
             runtime: movie.runtime ?? null,
             seasons: null,
+            episodeCounts: [],
             collection: movie.belongs_to_collection ?? null,
             offers: movieOffers
         };
@@ -289,6 +305,7 @@ export async function titleDetails(variables: Variables, logger: FastifyBaseLogg
             genres: show.genres,
             runtime: null,
             seasons: show.number_of_seasons ?? null,
+            episodeCounts: episodeCountsOf(show),
             collection: null,
             offers: showOffers
         };

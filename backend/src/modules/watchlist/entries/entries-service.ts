@@ -2,8 +2,9 @@ import type { FastifyBaseLogger } from 'fastify';
 import { StatusCodes } from 'http-status-codes';
 import type { PrismaClient, WatchlistEntry } from 'prisma/generated/prisma/client';
 import { titleDetails } from 'src/modules/watchlist/catalog/catalog-service';
-import type { Entry, EntryCreate, EntryUpdate } from 'src/modules/watchlist/entries/entries-models';
+import type { Entry, EntryCreate, EntryUpdate, Progress } from 'src/modules/watchlist/entries/entries-models';
 import type { Variables } from 'src/plugins/environment';
+import type { Maybe } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
 
 /**
@@ -28,7 +29,11 @@ function toEntry(row: WatchlistEntry): Entry {
         collectionName: row.collectionNameEn === null || row.collectionNameFr === null ? null : { en: row.collectionNameEn, fr: row.collectionNameFr },
         runtime: row.runtime,
         seasons: row.seasons,
+        episodeCounts: row.episodeCounts,
         addedAt: row.addedAt,
+        startedAt: row.startedAt,
+        progress: row.season === null || row.episode === null ? null : { season: row.season, episode: row.episode },
+        position: row.position,
         watchedAt: row.watchedAt,
         rating: row.rating,
         comment: row.comment
@@ -86,7 +91,8 @@ export async function addEntry(prisma: PrismaClient, variables: Variables, logge
             collectionNameEn: english.collection?.name ?? null,
             collectionNameFr: french.collection?.name ?? null,
             runtime: french.runtime,
-            seasons: french.seasons
+            seasons: french.seasons,
+            episodeCounts: french.episodeCounts
         }
     });
 
@@ -94,18 +100,113 @@ export async function addEntry(prisma: PrismaClient, variables: Variables, logge
 }
 
 /**
+ * @interface CatalogAccess
+ * @description What it takes to ask the catalog during a change.
+ */
+export interface CatalogAccess {
+    variables: Variables; /*!< The environment */
+    logger: FastifyBaseLogger; /*!< The request logger */
+}
+
+/**
+ * @function episodeCountsFor
+ * @description How many episodes each season of a series has, read again from the catalog when a series is started, so
+ * the progress follows the seasons that came out since it was added. Without the catalog, or when it fails, the counts
+ * stored stay.
+ *
+ * @param {WatchlistEntry} row The stored title.
+ * @param {boolean} isStarting Whether the change starts it.
+ * @param {Perhaps<CatalogAccess>} catalog How to ask the catalog, if it may be asked.
+ *
+ * @returns {Promise<number[]>} The episodes of each season.
+ */
+async function episodeCountsFor(row: WatchlistEntry, isStarting: boolean, catalog?: CatalogAccess): Promise<number[]> {
+    if (row.mediaType !== 'tv' || !isStarting || catalog === undefined) {
+        return row.episodeCounts;
+    }
+
+    try {
+        const details = await titleDetails(catalog.variables, catalog.logger, 'tv', row.tmdbId, 'fr');
+
+        return details.episodeCounts;
+    } catch (error: unknown) {
+        catalog.logger.warn({ err: error }, 'Could not read the seasons of a series being started');
+
+        return row.episodeCounts;
+    }
+}
+
+/**
+ * @function checkProgress
+ * @description Refuses a progress that doesn't fit the title: a film, or an episode past what the catalog knows of the
+ * series. A series of unknown seasons takes any progress.
+ *
+ * @param {WatchlistEntry} row The stored title.
+ * @param {Maybe<Progress>} progress The progress asked for.
+ * @param {number[]} episodeCounts The episodes of each season.
+ *
+ * @returns {void} Returns when the progress fits. Throws a 400 otherwise.
+ */
+function checkProgress(row: WatchlistEntry, progress: Maybe<Progress>, episodeCounts: number[]): void {
+    if (progress === null) {
+        return;
+    }
+
+    if (row.mediaType !== 'tv') {
+        throw new RequestError(StatusCodes.BAD_REQUEST, 'Only a series has episodes');
+    }
+
+    if (episodeCounts.length === 0) {
+        return;
+    }
+
+    const episodes = episodeCounts.at(progress.season - 1);
+
+    if (episodes === undefined || (episodes > 0 && progress.episode > episodes)) {
+        throw new RequestError(StatusCodes.BAD_REQUEST, 'This episode is not in the series');
+    }
+}
+
+/**
+ * @function checkPosition
+ * @description Refuses a position that doesn't fit the title: a series, or a moment past the end of a film whose
+ * runtime the catalog gives.
+ *
+ * @param {WatchlistEntry} row The stored title.
+ * @param {Maybe<number>} position Where the film stopped, in seconds.
+ *
+ * @returns {void} Returns when the position fits. Throws a 400 otherwise.
+ */
+function checkPosition(row: WatchlistEntry, position: Maybe<number>): void {
+    if (position === null) {
+        return;
+    }
+
+    if (row.mediaType !== 'movie') {
+        throw new RequestError(StatusCodes.BAD_REQUEST, 'Only a film stops at a moment');
+    }
+
+    if (row.runtime !== null && row.runtime > 0 && position > row.runtime * 60) {
+        throw new RequestError(StatusCodes.BAD_REQUEST, 'This moment is past the end of the film');
+    }
+}
+
+/**
  * @function updateEntry
- * @description Marks a title watched or not, rates it and comments on it. Only a watched title has a rating and a
- * comment: marking it unwatched forgets them.
+ * @description Moves a title between its three states and says what was thought of it. A title is to watch while it is
+ * neither started nor watched, being watched once started, and watched once marked so. Only a title being watched has a
+ * progress, and only a series. Only a watched title can be rated and commented on; going back to being watched keeps
+ * its rating and its comment, going back to watch forgets them with the progress.
  *
  * @param {PrismaClient} prisma The database client.
  * @param {string} id The title's identifier on the watchlist.
  * @param {EntryUpdate} update What changes.
+ * @param {Perhaps<CatalogAccess>} catalog How to ask the catalog for a series' seasons when it is started.
  *
  * @returns {Promise<Entry>} The title, as now stored. Rejects with 404 when there is no such title, and 400 when rating
- * or commenting on a title still to watch.
+ * or commenting on a title not watched, or giving a progress that doesn't fit.
  */
-export async function updateEntry(prisma: PrismaClient, id: string, update: EntryUpdate): Promise<Entry> {
+export async function updateEntry(prisma: PrismaClient, id: string, update: EntryUpdate, catalog?: CatalogAccess): Promise<Entry> {
     const row = await prisma.watchlistEntry.findUnique({ where: { id } });
 
     if (row === null) {
@@ -113,21 +214,52 @@ export async function updateEntry(prisma: PrismaClient, id: string, update: Entr
     }
 
     const watchedAt = update.watchedAt === undefined ? row.watchedAt : update.watchedAt;
+    const startedAt = update.startedAt === undefined ? row.startedAt : update.startedAt;
+    const isReviewing = (update.rating ?? null) !== null || (update.comment ?? null) !== null;
+    const progress = update.progress ?? null;
+    const position = update.position ?? null;
+
+    if (watchedAt === null && startedAt === null) {
+        if (isReviewing || progress !== null || position !== null) {
+            throw new RequestError(StatusCodes.BAD_REQUEST, 'A title still to watch has no rating, comment or progress');
+        }
+
+        const reset = await prisma.watchlistEntry.update({ where: { id }, data: { startedAt: null, season: null, episode: null, position: null, watchedAt: null, rating: null, comment: null } });
+
+        return toEntry(reset);
+    }
 
     if (watchedAt === null) {
-        if ((update.rating ?? null) !== null || (update.comment ?? null) !== null) {
+        if (isReviewing) {
             throw new RequestError(StatusCodes.BAD_REQUEST, 'Only a watched title can be rated or commented on');
         }
 
-        const unwatched = await prisma.watchlistEntry.update({ where: { id }, data: { watchedAt: null, rating: null, comment: null } });
+        const episodeCounts = await episodeCountsFor(row, row.startedAt === null || row.watchedAt !== null, catalog);
+        const kept: Maybe<Progress> = row.season === null || row.episode === null || row.watchedAt !== null ? null : { season: row.season, episode: row.episode };
+        const next = update.progress === undefined ? kept : progress;
+        const keptPosition = row.watchedAt === null ? row.position : null;
+        const nextPosition = update.position === undefined ? keptPosition : position;
 
-        return toEntry(unwatched);
+        checkProgress(row, next, episodeCounts);
+        checkPosition(row, nextPosition);
+
+        const watching = await prisma.watchlistEntry.update({ where: { id }, data: { startedAt, watchedAt: null, season: next?.season ?? null, episode: next?.episode ?? null, position: nextPosition, episodeCounts } });
+
+        return toEntry(watching);
+    }
+
+    if (progress !== null || position !== null) {
+        throw new RequestError(StatusCodes.BAD_REQUEST, 'Only a title being watched has a progress');
     }
 
     const updated = await prisma.watchlistEntry.update({
         where: { id },
         data: {
+            startedAt,
             watchedAt,
+            season: null,
+            episode: null,
+            position: null,
             rating: update.rating === undefined ? row.rating : update.rating,
             comment: update.comment === undefined ? row.comment : update.comment
         }

@@ -29,12 +29,12 @@ async function add(request: FastifyRequest<EntryCreateRequest>, reply: FastifyRe
 
 /**
  * @function update
- * @description Marks a title watched or not, rates it, comments on it.
+ * @description Starts a title, says where a series is, marks a title watched or not, rates it, comments on it.
  *
  * @returns {Promise<void>} Resolves when the stored title is sent.
  */
 async function update(request: FastifyRequest<EntryUpdateRequest>, reply: FastifyReply): Promise<void> {
-    const entry = await updateEntry(request.server.prisma, request.params.entryId, request.body);
+    const entry = await updateEntry(request.server.prisma, request.params.entryId, request.body, { variables: request.server.variables, logger: request.log });
 
     reply.status(StatusCodes.OK).send({ data: entry });
 }

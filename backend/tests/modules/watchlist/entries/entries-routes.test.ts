@@ -39,7 +39,12 @@ interface Row {
     collectionNameFr: Maybe<string>; /*!< Its saga's name in French */
     runtime: Maybe<number>; /*!< How long a film lasts */
     seasons: Maybe<number>; /*!< How many seasons a series has */
+    episodeCounts: number[]; /*!< How many episodes each season has */
     addedAt: Date; /*!< When it was added */
+    startedAt: Maybe<Date>; /*!< When it was started */
+    season: Maybe<number>; /*!< The season of the last episode seen */
+    episode: Maybe<number>; /*!< The last episode seen */
+    position: Maybe<number>; /*!< Where a film stopped, in seconds */
     watchedAt: Maybe<Date>; /*!< When it was watched */
     rating: Maybe<number>; /*!< Its rating, in half stars */
     comment: Maybe<string>; /*!< What was said about it */
@@ -65,7 +70,12 @@ function seriesRow(): Row {
         collectionNameFr: null,
         runtime: null,
         seasons: 8,
+        episodeCounts: [],
         addedAt: new Date('2026-10-01T10:00:00Z'),
+        startedAt: null,
+        season: null,
+        episode: null,
+        position: null,
         watchedAt: null,
         rating: null,
         comment: null
@@ -88,8 +98,8 @@ class EntriesTable {
         return Promise.resolve(found ?? null);
     });
 
-    create = vi.fn(({ data }: { data: Omit<Row, 'id' | 'addedAt' | 'watchedAt' | 'rating' | 'comment'> }) => {
-        const row: Row = { ...data, id: '9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d', addedAt: new Date(), watchedAt: null, rating: null, comment: null };
+    create = vi.fn(({ data }: { data: Omit<Row, 'id' | 'addedAt' | 'startedAt' | 'season' | 'episode' | 'position' | 'watchedAt' | 'rating' | 'comment'> }) => {
+        const row: Row = { ...data, id: '9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d', addedAt: new Date(), startedAt: null, season: null, episode: null, position: null, watchedAt: null, rating: null, comment: null };
 
         this.rows.push(row);
 
@@ -159,7 +169,7 @@ async function buildApp(authenticate: () => Promise<void> = () => Promise.resolv
  * @description What the routes answer about a title
  */
 interface EntryBody {
-    data: { id: string; title: { en: string; fr: string }; genreIds: number[]; collectionId: Maybe<number>; collectionName: Maybe<{ en: string; fr: string }>; runtime: Maybe<number>; watchedAt: Maybe<string>; rating: Maybe<number>; comment: Maybe<string> }; /*!< The title */
+    data: { id: string; title: { en: string; fr: string }; genreIds: number[]; collectionId: Maybe<number>; collectionName: Maybe<{ en: string; fr: string }>; runtime: Maybe<number>; episodeCounts: number[]; startedAt: Maybe<string>; progress: Maybe<{ season: number; episode: number }>; position: Maybe<number>; watchedAt: Maybe<string>; rating: Maybe<number>; comment: Maybe<string> }; /*!< The title */
 }
 
 beforeEach(() => {
@@ -268,6 +278,123 @@ describe('PATCH /v1/watchlist/entries/:entryId', () => {
         const response = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { watchedAt: null } });
 
         expect(response.json<EntryBody>().data).toMatchObject({ watchedAt: null, rating: null, comment: null });
+
+        await app.close();
+    });
+
+    it('starts a series, reading its seasons from the catalog, and says where it is', async () => {
+        const { app, table } = await buildApp();
+
+        stubCatalog(testVariables().WATCHLIST_TMDB_URL);
+
+        const response = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { startedAt: '2026-10-12T20:30:00.000Z', progress: { season: 7, episode: 7 } } });
+
+        expect(response.statusCode).toBe(StatusCodes.OK);
+        expect(response.json<EntryBody>().data).toMatchObject({ startedAt: '2026-10-12T20:30:00.000Z', progress: { season: 7, episode: 7 }, watchedAt: null, episodeCounts: [10, 10, 10, 10, 10, 10, 7, 6] });
+        expect(table.rows[0]).toMatchObject({ season: 7, episode: 7 });
+
+        await app.close();
+    });
+
+    it('refuses an episode the series does not have', async () => {
+        const { app, table } = await buildApp();
+
+        table.rows[0] = { ...table.rows[0], startedAt: new Date('2026-10-12T20:30:00Z'), episodeCounts: [10, 10, 10, 10, 10, 10, 7, 6] };
+
+        const pastSeason = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { progress: { season: 9, episode: 1 } } });
+        const pastEpisode = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { progress: { season: 8, episode: 7 } } });
+
+        expect(pastSeason.statusCode).toBe(StatusCodes.BAD_REQUEST);
+        expect(pastEpisode.statusCode).toBe(StatusCodes.BAD_REQUEST);
+        expect(table.update).not.toHaveBeenCalled();
+
+        await app.close();
+    });
+
+    it('keeps the seasons it knows when the catalog fails while starting a series', async () => {
+        const { app, table } = await buildApp();
+
+        stubCatalog(testVariables().WATCHLIST_TMDB_URL, { '/tv/1399': 500 });
+        table.rows[0] = { ...table.rows[0], episodeCounts: [3] };
+
+        const response = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { startedAt: '2026-10-12T20:30:00.000Z' } });
+
+        expect(response.statusCode).toBe(StatusCodes.OK);
+        expect(response.json<EntryBody>().data).toMatchObject({ episodeCounts: [3], progress: null });
+
+        await app.close();
+    });
+
+    it('drops the progress once the title is watched, and keeps the review when it is watched again', async () => {
+        const { app, table } = await buildApp();
+
+        stubCatalog(testVariables().WATCHLIST_TMDB_URL);
+        table.rows[0] = { ...table.rows[0], startedAt: new Date('2026-10-01T20:30:00Z'), season: 3, episode: 2 };
+
+        const watched = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { watchedAt: '2026-10-12T20:30:00.000Z', rating: 8 } });
+
+        expect(watched.json<EntryBody>().data).toMatchObject({ startedAt: '2026-10-01T20:30:00.000Z', progress: null, rating: 8 });
+
+        const again = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { watchedAt: null, startedAt: '2026-10-20T20:30:00.000Z' } });
+
+        expect(again.json<EntryBody>().data).toMatchObject({ startedAt: '2026-10-20T20:30:00.000Z', watchedAt: null, progress: null, rating: 8 });
+
+        await app.close();
+    });
+
+    it('forgets the start and the progress of a title put back to watch', async () => {
+        const { app, table } = await buildApp();
+
+        table.rows[0] = { ...table.rows[0], startedAt: new Date('2026-10-01T20:30:00Z'), season: 3, episode: 2 };
+
+        const response = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { startedAt: null } });
+
+        expect(response.json<EntryBody>().data).toMatchObject({ startedAt: null, progress: null, watchedAt: null });
+
+        await app.close();
+    });
+
+    it('remembers where a film being watched stopped, within its runtime', async () => {
+        const { app, table } = await buildApp();
+
+        table.rows[0] = { ...table.rows[0], mediaType: 'movie', tmdbId: 120, seasons: null, runtime: 179, startedAt: new Date('2026-10-01T20:30:00Z') };
+
+        const stopped = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { position: 5025 } });
+        const past = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { position: 179 * 60 + 1 } });
+        const episode = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { progress: { season: 1, episode: 1 } } });
+
+        expect(stopped.json<EntryBody>().data).toMatchObject({ position: 5025, progress: null });
+        expect(past.statusCode).toBe(StatusCodes.BAD_REQUEST);
+        expect(episode.statusCode).toBe(StatusCodes.BAD_REQUEST);
+
+        const watched = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { watchedAt: '2026-10-12T20:30:00.000Z' } });
+
+        expect(watched.json<EntryBody>().data).toMatchObject({ position: null });
+
+        await app.close();
+    });
+
+    it('refuses a moment for a series', async () => {
+        const { app, table } = await buildApp();
+
+        table.rows[0] = { ...table.rows[0], startedAt: new Date('2026-10-01T20:30:00Z') };
+
+        const response = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { position: 600 } });
+
+        expect(response.statusCode).toBe(StatusCodes.BAD_REQUEST);
+
+        await app.close();
+    });
+
+    it('refuses to rate a title being watched', async () => {
+        const { app, table } = await buildApp();
+
+        table.rows[0] = { ...table.rows[0], startedAt: new Date('2026-10-01T20:30:00Z') };
+
+        const response = await app.inject({ method: 'PATCH', url: `/v1/watchlist/entries/${ENTRY_ID}`, payload: { rating: 6 } });
+
+        expect(response.statusCode).toBe(StatusCodes.BAD_REQUEST);
+        expect(table.update).not.toHaveBeenCalled();
 
         await app.close();
     });

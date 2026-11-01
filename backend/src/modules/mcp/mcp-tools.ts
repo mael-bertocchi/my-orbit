@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { FastifyBaseLogger } from 'fastify';
-import type { BudgetOperation, PrismaClient } from 'prisma/generated/prisma/client';
+import type { BudgetOperation, Prisma, PrismaClient, WatchlistEntry } from 'prisma/generated/prisma/client';
 import { createOperation, deleteOperation, updateOperation } from 'src/modules/budget/operations/operations-service';
 import { CurrencyCodeSchema } from 'src/modules/budget/rates/rates-models';
 import { pullRatesForDay } from 'src/modules/budget/rates/rates-service';
@@ -323,9 +323,36 @@ export const monthSummary: ServerTool = {
  */
 const SearchWatchlistSchema = z.object({
     query: z.string().trim().min(1).max(100).optional(),
-    status: z.enum(['toWatch', 'watched', 'all']).default('all'),
+    status: z.enum(['toWatch', 'watching', 'watched', 'all']).default('all'),
     limit: z.number().int().min(1).max(50).default(20)
 });
+
+/**
+ * @constant WATCHLIST_STATUS_FILTERS
+ * @description Which stored titles each status of `watchlist_search` keeps.
+ */
+const WATCHLIST_STATUS_FILTERS: Record<z.infer<typeof SearchWatchlistSchema>['status'], Prisma.WatchlistEntryWhereInput> = {
+    toWatch: { startedAt: null, watchedAt: null },
+    watching: { startedAt: { not: null }, watchedAt: null },
+    watched: { watchedAt: { not: null } },
+    all: {}
+};
+
+/**
+ * @function statusOf
+ * @description Where a stored title stands: to watch, being watched, or watched.
+ *
+ * @param {WatchlistEntry} row The stored title.
+ *
+ * @returns {'toWatch' | 'watching' | 'watched'} Its status.
+ */
+function statusOf(row: WatchlistEntry): 'toWatch' | 'watching' | 'watched' {
+    if (row.watchedAt !== null) {
+        return 'watched';
+    }
+
+    return row.startedAt === null ? 'toWatch' : 'watching';
+}
 
 /**
  * @constant searchWatchlist
@@ -336,12 +363,12 @@ export const searchWatchlist: ServerTool = {
     isDestructive: false,
     declaration: {
         name: 'watchlist_search',
-        description: 'Finds films and series on the watchlist, the latest added first: their id, title, kind, runtime in minutes or seasons, and once watched, the day, the rating (in half stars, 1 to 10) and the comment.',
+        description: 'Finds films and series on the watchlist, the latest added first: their id, title, kind, runtime in minutes or seasons, their status, once started the day and for a series the last episode seen or for a film the minute it stopped at, and once watched, the day, the rating (in half stars, 1 to 10) and the comment.',
         parameters: {
             type: 'object',
             properties: {
                 query: { type: 'string', description: 'Words to look for in the title, case-insensitive' },
-                status: { type: 'string', enum: ['toWatch', 'watched', 'all'], description: 'Still to watch, already watched, or both (the default)' },
+                status: { type: 'string', enum: ['toWatch', 'watching', 'watched', 'all'], description: 'Still to watch, being watched, already watched, or all of them (the default)' },
                 limit: { type: 'integer', description: 'How many titles to list, 1 to 50, 20 by default' }
             }
         }
@@ -355,7 +382,7 @@ export const searchWatchlist: ServerTool = {
 
         const { query, status, limit } = parsed.data;
         const rows = await context.prisma.watchlistEntry.findMany({
-            where: status === 'all' ? {} : { watchedAt: status === 'watched' ? { not: null } : null },
+            where: WATCHLIST_STATUS_FILTERS[status],
             orderBy: { addedAt: 'desc' }
         });
         const needle = query?.toLocaleLowerCase();
@@ -371,6 +398,10 @@ export const searchWatchlist: ServerTool = {
                     releaseDate: row.releaseDate,
                     runtime: row.runtime,
                     seasons: row.seasons,
+                    status: statusOf(row),
+                    startedAt: row.startedAt,
+                    lastEpisode: row.season === null || row.episode === null ? null : { season: row.season, episode: row.episode },
+                    stoppedAtMinute: row.position === null ? null : Math.floor(row.position / 60),
                     watchedAt: row.watchedAt,
                     rating: row.rating,
                     comment: row.comment
