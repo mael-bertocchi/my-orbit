@@ -1,7 +1,7 @@
 {
   "name": "@obole/backend",
   "description": "The Fastify backend for Obole, a personal portal: its passkey identity and the data of its apps.",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "private": true,
   "type": "module",
   "main": "src/index.ts",
