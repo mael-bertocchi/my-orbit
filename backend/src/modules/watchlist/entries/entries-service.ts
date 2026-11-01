@@ -33,7 +33,6 @@ function toEntry(row: WatchlistEntry): Entry {
         addedAt: row.addedAt,
         startedAt: row.startedAt,
         progress: row.season === null || row.episode === null ? null : { season: row.season, episode: row.episode },
-        position: row.position,
         watchedAt: row.watchedAt,
         rating: row.rating,
         comment: row.comment
@@ -168,30 +167,6 @@ function checkProgress(row: WatchlistEntry, progress: Maybe<Progress>, episodeCo
 }
 
 /**
- * @function checkPosition
- * @description Refuses a position that doesn't fit the title: a series, or a moment past the end of a film whose
- * runtime the catalog gives.
- *
- * @param {WatchlistEntry} row The stored title.
- * @param {Maybe<number>} position Where the film stopped, in seconds.
- *
- * @returns {void} Returns when the position fits. Throws a 400 otherwise.
- */
-function checkPosition(row: WatchlistEntry, position: Maybe<number>): void {
-    if (position === null) {
-        return;
-    }
-
-    if (row.mediaType !== 'movie') {
-        throw new RequestError(StatusCodes.BAD_REQUEST, 'Only a film stops at a moment');
-    }
-
-    if (row.runtime !== null && row.runtime > 0 && position > row.runtime * 60) {
-        throw new RequestError(StatusCodes.BAD_REQUEST, 'This moment is past the end of the film');
-    }
-}
-
-/**
  * @function updateEntry
  * @description Moves a title between its three states and says what was thought of it. A title is to watch while it is
  * neither started nor watched, being watched once started, and watched once marked so. Only a title being watched has a
@@ -217,14 +192,13 @@ export async function updateEntry(prisma: PrismaClient, id: string, update: Entr
     const startedAt = update.startedAt === undefined ? row.startedAt : update.startedAt;
     const isReviewing = (update.rating ?? null) !== null || (update.comment ?? null) !== null;
     const progress = update.progress ?? null;
-    const position = update.position ?? null;
 
     if (watchedAt === null && startedAt === null) {
-        if (isReviewing || progress !== null || position !== null) {
+        if (isReviewing || progress !== null) {
             throw new RequestError(StatusCodes.BAD_REQUEST, 'A title still to watch has no rating, comment or progress');
         }
 
-        const reset = await prisma.watchlistEntry.update({ where: { id }, data: { startedAt: null, season: null, episode: null, position: null, watchedAt: null, rating: null, comment: null } });
+        const reset = await prisma.watchlistEntry.update({ where: { id }, data: { startedAt: null, season: null, episode: null, watchedAt: null, rating: null, comment: null } });
 
         return toEntry(reset);
     }
@@ -237,18 +211,15 @@ export async function updateEntry(prisma: PrismaClient, id: string, update: Entr
         const episodeCounts = await episodeCountsFor(row, row.startedAt === null || row.watchedAt !== null, catalog);
         const kept: Maybe<Progress> = row.season === null || row.episode === null || row.watchedAt !== null ? null : { season: row.season, episode: row.episode };
         const next = update.progress === undefined ? kept : progress;
-        const keptPosition = row.watchedAt === null ? row.position : null;
-        const nextPosition = update.position === undefined ? keptPosition : position;
 
         checkProgress(row, next, episodeCounts);
-        checkPosition(row, nextPosition);
 
-        const watching = await prisma.watchlistEntry.update({ where: { id }, data: { startedAt, watchedAt: null, season: next?.season ?? null, episode: next?.episode ?? null, position: nextPosition, episodeCounts } });
+        const watching = await prisma.watchlistEntry.update({ where: { id }, data: { startedAt, watchedAt: null, season: next?.season ?? null, episode: next?.episode ?? null, episodeCounts } });
 
         return toEntry(watching);
     }
 
-    if (progress !== null || position !== null) {
+    if (progress !== null) {
         throw new RequestError(StatusCodes.BAD_REQUEST, 'Only a title being watched has a progress');
     }
 
@@ -259,7 +230,6 @@ export async function updateEntry(prisma: PrismaClient, id: string, update: Entr
             watchedAt,
             season: null,
             episode: null,
-            position: null,
             rating: update.rating === undefined ? row.rating : update.rating,
             comment: update.comment === undefined ? row.comment : update.comment
         }

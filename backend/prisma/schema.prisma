@@ -129,7 +129,6 @@ model WatchlistEntry {
   startedAt        DateTime?          @map("started_at")
   season           Int?
   episode          Int?
-  position         Int?
   watchedAt        DateTime?          @map("watched_at")
   rating           Int?
   comment          String?

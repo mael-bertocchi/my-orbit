@@ -15,12 +15,6 @@ export const RATING_MAX = 10;
 export const COMMENT_MAX = 2000;
 
 /**
- * @constant POSITION_MAX
- * @description The furthest a film can be stopped at, in seconds: a day.
- */
-export const POSITION_MAX = 86400;
-
-/**
  * @constant LocalizedTextSchema
  * @description Zod schema for a text the catalog writes in each of the portal's languages, such as a title.
  */
@@ -42,9 +36,8 @@ export const ProgressSchema = z.object({
  * @constant EntrySchema
  * @description Zod schema for a title on the watchlist: to watch while `startedAt` and `watchedAt` are null, being
  * watched once `startedAt` is set, watched once `watchedAt` is, with a rating in half stars (1 to 10) and a comment. A
- * series being watched may say which episode it is at, and keeps how many episodes each of its seasons has; a film being
- * watched may say where it stopped, in seconds. Its title and its saga's name are kept in both of the portal's
- * languages.
+ * series being watched may say which episode it is at, and keeps how many episodes each of its seasons has. Its title
+ * and its saga's name are kept in both of the portal's languages.
  */
 export const EntrySchema = z.object({
     id: z.string(),
@@ -63,7 +56,6 @@ export const EntrySchema = z.object({
     addedAt: z.date(),
     startedAt: z.date().nullable(),
     progress: ProgressSchema.nullable(),
-    position: z.number().int().nullable(),
     watchedAt: z.date().nullable(),
     rating: z.number().int().nullable(),
     comment: z.string().nullable()
@@ -80,13 +72,12 @@ export const EntryCreateSchema = z.object({
 
 /**
  * @constant EntryUpdateSchema
- * @description Zod schema for changing a title: starting it, saying where a series or a film is, marking it watched (or not),
+ * @description Zod schema for changing a title: starting it, saying where a series is, marking it watched (or not),
  * rating it, commenting on it. A field left out stays as it is; an empty comment is no comment.
  */
 export const EntryUpdateSchema = z.object({
     startedAt: z.coerce.date().nullable().optional(),
     progress: ProgressSchema.nullable().optional(),
-    position: z.number().int().min(0).max(POSITION_MAX).nullable().optional(),
     watchedAt: z.coerce.date().nullable().optional(),
     rating: z.number().int().min(1).max(RATING_MAX).nullable().optional(),
     comment: z.string().trim().max(COMMENT_MAX).nullable().optional().transform((value) => (value === '' ? null : value))

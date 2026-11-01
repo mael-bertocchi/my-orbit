@@ -363,7 +363,7 @@ export const searchWatchlist: ServerTool = {
     isDestructive: false,
     declaration: {
         name: 'watchlist_search',
-        description: 'Finds films and series on the watchlist, the latest added first: their id, title, kind, runtime in minutes or seasons, their status, once started the day and for a series the last episode seen or for a film the minute it stopped at, and once watched, the day, the rating (in half stars, 1 to 10) and the comment.',
+        description: 'Finds films and series on the watchlist, the latest added first: their id, title, kind, runtime in minutes or seasons, their status, once started the day and for a series the last episode seen, and once watched, the day, the rating (in half stars, 1 to 10) and the comment.',
         parameters: {
             type: 'object',
             properties: {
@@ -401,7 +401,6 @@ export const searchWatchlist: ServerTool = {
                     status: statusOf(row),
                     startedAt: row.startedAt,
                     lastEpisode: row.season === null || row.episode === null ? null : { season: row.season, episode: row.episode },
-                    stoppedAtMinute: row.position === null ? null : Math.floor(row.position / 60),
                     watchedAt: row.watchedAt,
                     rating: row.rating,
                     comment: row.comment
