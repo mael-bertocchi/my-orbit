@@ -1,3 +1,4 @@
+import FilterChipsComponent from 'components/filter-chips/filter-chips';
 import PosterComponent from 'components/poster/poster';
 import SearchFieldComponent from 'components/search-field/search-field';
 import { Plus } from 'lucide-react';
@@ -5,11 +6,12 @@ import type { MessageKey } from 'modules/language/language-en';
 import { t } from 'modules/language/language-service';
 import { localized, releaseYear, titlesText } from 'modules/watchlist/watchlist-formatting';
 import { useWatchlist, useWatchlistSheetContext } from 'modules/watchlist/watchlist-hooks';
-import type { Entry, WatchlistSheetContextProps } from 'modules/watchlist/watchlist-models';
-import type { KindFilter, ShelfOrder } from 'modules/watchlist/watchlist-shelves';
-import { isKindFilter, isShelfOrder, KIND_FILTERS, matches, ofKind, SHELF_ORDERS, shelves, toWatch } from 'modules/watchlist/watchlist-shelves';
+import type { Entry, MediaType, WatchlistSheetContextProps } from 'modules/watchlist/watchlist-models';
+import type { ShelfOrder } from 'modules/watchlist/watchlist-shelves';
+import { isMediaType, isShelfOrder, matches, MEDIA_TYPES, ofKinds, SHELF_ORDERS, shelves, toWatch } from 'modules/watchlist/watchlist-shelves';
 import { useMemo, type JSX } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { readList, writeList } from 'utils/filters';
 
 /**
  * @constant ORDER_NAMES
@@ -25,8 +27,7 @@ const ORDER_NAMES: Record<ShelfOrder, MessageKey> = {
  * @constant KIND_NAMES
  * @description What each kind filter is called
  */
-const KIND_NAMES: Record<KindFilter, MessageKey> = {
-    all: 'watchlist.all',
+const KIND_NAMES: Record<MediaType, MessageKey> = {
     movie: 'watchlist.movies',
     tv: 'watchlist.seriesPlural'
 };
@@ -63,8 +64,8 @@ function PosterCardComponent(props: PosterCardComponentProps): JSX.Element {
 /**
  * @function WatchlistQueueComponent
  * @description The "To watch" tab: the titles still to watch, shelved by genre, by saga (each saga's films in the order
- * they came out) or as one shelf, filtered by kind and by a search. The shelving, the filter and the search live in the
- * address.
+ * they came out) or as one shelf, filtered by kind and by a search. The shelving, the kinds picked and the search live in
+ * the address.
  *
  * @returns {JSX.Element} The titles to watch
  */
@@ -73,12 +74,12 @@ function WatchlistQueueComponent(): JSX.Element {
     const { openSearch, openTitle }: WatchlistSheetContextProps = useWatchlistSheetContext();
     const [params, setParams] = useSearchParams();
     const orderParam = params.get('by');
-    const kindParam = params.get('kind');
     const order: ShelfOrder = isShelfOrder(orderParam) ? orderParam : 'genre';
-    const kind: KindFilter = isKindFilter(kindParam) ? kindParam : 'all';
+    const kinds = useMemo(() => readList(params, 'kind').filter(isMediaType), [params]);
     const query = params.get('q') ?? '';
+    const kindOptions = MEDIA_TYPES.map((option) => ({ value: option, label: t(KIND_NAMES[option]) }));
 
-    const pending = useMemo(() => ofKind(toWatch(entries ?? []), kind).filter((entry) => matches(entry, query)), [entries, kind, query]);
+    const pending = useMemo(() => ofKinds(toWatch(entries ?? []), kinds).filter((entry) => matches(entry, query)), [entries, kinds, query]);
     const groups = useMemo(() => shelves(pending, order, genres), [pending, order, genres]);
     const total = toWatch(entries ?? []).length;
 
@@ -86,7 +87,7 @@ function WatchlistQueueComponent(): JSX.Element {
      * @function update
      * @description Changes the shelving, the filter or the search in the address, dropping the defaults
      */
-    const update = (key: 'by' | 'kind' | 'q', value: string, fallback: string): void => {
+    const update = (key: 'by' | 'q', value: string, fallback: string): void => {
         const next = new URLSearchParams(params);
 
         if (value === fallback) {
@@ -96,6 +97,14 @@ function WatchlistQueueComponent(): JSX.Element {
         }
 
         setParams(next, { replace: true });
+    };
+
+    /**
+     * @function filterKinds
+     * @description Puts the kinds picked in the address, or takes them out when every kind shows
+     */
+    const filterKinds = (picked: string[]): void => {
+        setParams(writeList(params, 'kind', picked), { replace: true });
     };
 
     let emptyMessage = t('watchlist.noneOfKind');
@@ -116,22 +125,15 @@ function WatchlistQueueComponent(): JSX.Element {
 
             <SearchFieldComponent value={query} onChange={(next) => update('q', next, '')} placeholder={t('watchlist.filter')} clearLabel={t('watchlist.clearSearch')} className='mt-6' />
 
-            <div className='mt-4 flex flex-wrap items-center gap-3'>
-                <div className='flex rounded-full bg-fill-strong/80 p-1' role='group' aria-label={t('watchlist.shelving')}>
-                    {SHELF_ORDERS.map((option) => (
-                        <button key={option} type='button' aria-pressed={option === order} onClick={() => update('by', option, 'genre')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option === order ? 'bg-white text-ink shadow-control' : 'text-ink-secondary hover:text-ink'}`}>
-                            {t(ORDER_NAMES[option])}
-                        </button>
-                    ))}
-                </div>
-                <div className='flex gap-2' role='group' aria-label={t('watchlist.kind')}>
-                    {KIND_FILTERS.map((option) => (
-                        <button key={option} type='button' aria-pressed={option === kind} onClick={() => update('kind', option, 'all')} className={`h-8 shrink-0 rounded-full px-3.5 text-[14px] font-medium transition ${option === kind ? 'bg-ink text-white' : 'bg-white text-ink shadow-control hover:bg-fill'}`}>
-                            {t(KIND_NAMES[option])}
-                        </button>
-                    ))}
-                </div>
+            <div className='mt-4 inline-flex rounded-full bg-fill-strong/80 p-1' role='group' aria-label={t('watchlist.shelving')}>
+                {SHELF_ORDERS.map((option) => (
+                    <button key={option} type='button' aria-pressed={option === order} onClick={() => update('by', option, 'genre')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option === order ? 'bg-white text-ink shadow-control' : 'text-ink-secondary hover:text-ink'}`}>
+                        {t(ORDER_NAMES[option])}
+                    </button>
+                ))}
             </div>
+
+            <FilterChipsComponent label={t('watchlist.kind')} allLabel={t('watchlist.all')} options={kindOptions} selected={kinds} onChange={filterKinds} className='mt-2' />
 
             {groups.length === 0 ? (
                 <div className='mt-8 flex flex-col items-center rounded-2xl bg-fill px-6 py-10 text-center'>

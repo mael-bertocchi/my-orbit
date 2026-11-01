@@ -1,17 +1,18 @@
 import EmptyStateComponent from 'components/empty-state/empty-state';
+import FilterChipsComponent from 'components/filter-chips/filter-chips';
 import PosterComponent from 'components/poster/poster';
 import SearchFieldComponent from 'components/search-field/search-field';
 import { Star } from 'lucide-react';
-import type { Maybe } from 'models';
 import type { MessageKey } from 'modules/language/language-en';
 import { t } from 'modules/language/language-service';
 import { localized, ratingText, starsText, watchedText } from 'modules/watchlist/watchlist-formatting';
 import { useProgressive, useWatchlist, useWatchlistSheetContext } from 'modules/watchlist/watchlist-hooks';
-import type { Entry, WatchlistSheetContextProps } from 'modules/watchlist/watchlist-models';
-import type { KindFilter, WatchedOrder } from 'modules/watchlist/watchlist-shelves';
-import { isKindFilter, isWatchedOrder, KIND_FILTERS, matches, ofKind, watchedEntries, watchedIn, watchedShelves, watchedYears } from 'modules/watchlist/watchlist-shelves';
+import type { Entry, MediaType, WatchlistSheetContextProps } from 'modules/watchlist/watchlist-models';
+import type { WatchedOrder } from 'modules/watchlist/watchlist-shelves';
+import { isMediaType, isWatchedOrder, matches, MEDIA_TYPES, ofKinds, watchedEntries, watchedIn, watchedShelves, watchedYears } from 'modules/watchlist/watchlist-shelves';
 import { useMemo, type JSX } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { readList, writeList } from 'utils/filters';
 
 /**
  * @constant ORDERS
@@ -26,8 +27,7 @@ const ORDERS: readonly { order: WatchedOrder; name: MessageKey }[] = [
  * @constant KIND_NAMES
  * @description What each kind filter is called
  */
-const KIND_NAMES: Record<KindFilter, MessageKey> = {
-    all: 'watchlist.all',
+const KIND_NAMES: Record<MediaType, MessageKey> = {
     movie: 'watchlist.movies',
     tv: 'watchlist.seriesPlural'
 };
@@ -59,14 +59,20 @@ function ratingShelfTitle(rating: number): string {
 }
 
 /**
- * @function yearChip
- * @description How a year's button looks: filled when it is the year shown
- *
- * @param {boolean} isCurrent Whether it is the year shown
- * @returns {string} Its classes
+ * @constant YEAR_PATTERN
+ * @description What a year looks like among the filters picked
  */
-function yearChip(isCurrent: boolean): string {
-    return `h-8 shrink-0 rounded-full px-3.5 text-[14px] font-medium tabular-nums transition ${isCurrent ? 'bg-accent text-white' : 'bg-white text-ink shadow-control hover:bg-fill'}`;
+const YEAR_PATTERN = /^\d{4}$/;
+
+/**
+ * @function isYear
+ * @description Whether a filter picked is a year
+ *
+ * @param {string} value The filter
+ * @returns {boolean} Whether it is a year
+ */
+function isYear(value: string): boolean {
+    return YEAR_PATTERN.test(value);
 }
 
 /**
@@ -95,10 +101,10 @@ function WatchedPosterComponent(props: WatchedPosterComponentProps): JSX.Element
 /**
  * @function WatchlistWatchedComponent
  * @description The "Watched" tab, as a wall of posters: shelved by the year they were watched, the latest first, or by
- * rating, the best first, filtered by the year they were watched in, by kind and by a search through their titles, sagas
- * and comments. The wall draws a batch of posters at a time as the page scrolls, so it stays quick with hundreds of
- * titles. The order, the year, the filter and the search live in the address; a year no title was watched in shows
- * every year.
+ * rating, the best first. One row of filters narrows it by kind and by the year they were watched in: several years or
+ * kinds add up, a year and a kind narrow together (the series watched in 2025). A search looks through their titles,
+ * sagas and comments. The wall draws a batch of posters at a time as the page scrolls, so it stays quick with hundreds
+ * of titles. The order, the filters and the search live in the address.
  *
  * @returns {JSX.Element} The watched titles
  */
@@ -107,24 +113,24 @@ function WatchlistWatchedComponent(): JSX.Element {
     const { openTitle }: WatchlistSheetContextProps = useWatchlistSheetContext();
     const [params, setParams] = useSearchParams();
     const orderParam = params.get('by');
-    const kindParam = params.get('kind');
     const order: WatchedOrder = isWatchedOrder(orderParam) ? orderParam : 'recent';
-    const kind: KindFilter = isKindFilter(kindParam) ? kindParam : 'all';
     const query = params.get('q') ?? '';
     const watched = useMemo(() => watchedEntries(entries ?? [], order), [entries, order]);
     const years = useMemo(() => watchedYears(watched), [watched]);
-    const yearParam = Number(params.get('year'));
-    const year: Maybe<number> = years.includes(yearParam) ? yearParam : null;
-    const shown = useMemo(() => ofKind(watchedIn(watched, year), kind).filter((entry) => matches(entry, query)), [watched, year, kind, query]);
-    const { shown: count, sentinel } = useProgressive(BATCH, `${order}|${year ?? ''}|${kind}|${query}`);
+    const kinds = useMemo(() => readList(params, 'kind').filter(isMediaType), [params]);
+    const pickedYears = useMemo(() => readList(params, 'year').map(Number).filter((year) => years.includes(year)), [params, years]);
+    const selected = [...kinds, ...pickedYears.map(String)];
+    const options = [...MEDIA_TYPES.map((kind) => ({ value: kind, label: t(KIND_NAMES[kind]) })), ...years.map((year) => ({ value: String(year), label: String(year) }))];
+    const shown = useMemo(() => ofKinds(watchedIn(watched, pickedYears), kinds).filter((entry) => matches(entry, query)), [watched, pickedYears, kinds, query]);
+    const { shown: count, sentinel } = useProgressive(BATCH, `${order}|${selected.join(',')}|${query}`);
     const shelves = useMemo(() => watchedShelves(shown.slice(0, count), order, ratingShelfTitle), [shown, count, order]);
     const totals = useMemo(() => new Map(watchedShelves(shown, order, ratingShelfTitle).map((shelf) => [shelf.key, shelf.entries.length])), [shown, order]);
 
     /**
      * @function update
-     * @description Changes the order, the filter or the search in the address, dropping the defaults
+     * @description Changes the order or the search in the address, dropping the defaults
      */
-    const update = (key: 'by' | 'year' | 'kind' | 'q', value: string, fallback: string): void => {
+    const update = (key: 'by' | 'q', value: string, fallback: string): void => {
         const next = new URLSearchParams(params);
 
         if (value === fallback) {
@@ -134,6 +140,16 @@ function WatchlistWatchedComponent(): JSX.Element {
         }
 
         setParams(next, { replace: true });
+    };
+
+    /**
+     * @function filter
+     * @description Puts the kinds and the years picked in the address, or takes them out when everything shows
+     */
+    const filter = (picked: string[]): void => {
+        const withKinds = writeList(params, 'kind', picked.filter(isMediaType));
+
+        setParams(writeList(withKinds, 'year', picked.filter(isYear)), { replace: true });
     };
 
     return (
@@ -146,35 +162,15 @@ function WatchlistWatchedComponent(): JSX.Element {
 
             <SearchFieldComponent value={query} onChange={(next) => update('q', next, '')} placeholder={t('watchlist.filter')} clearLabel={t('watchlist.clearSearch')} className='mt-6' />
 
-            <div className='mt-4 flex flex-wrap items-center gap-3'>
-                <div className='flex rounded-full bg-fill-strong/80 p-1' role='group' aria-label={t('watchlist.order')}>
-                    {ORDERS.map((option) => (
-                        <button key={option.order} type='button' aria-pressed={option.order === order} onClick={() => update('by', option.order, 'recent')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option.order === order ? 'bg-white text-ink shadow-control' : 'text-ink-secondary hover:text-ink'}`}>
-                            {t(option.name)}
-                        </button>
-                    ))}
-                </div>
-                <div className='flex gap-2' role='group' aria-label={t('watchlist.kind')}>
-                    {KIND_FILTERS.map((option) => (
-                        <button key={option} type='button' aria-pressed={option === kind} onClick={() => update('kind', option, 'all')} className={`h-8 shrink-0 rounded-full px-3.5 text-[14px] font-medium transition ${option === kind ? 'bg-ink text-white' : 'bg-white text-ink shadow-control hover:bg-fill'}`}>
-                            {t(KIND_NAMES[option])}
-                        </button>
-                    ))}
-                </div>
+            <div className='mt-4 inline-flex rounded-full bg-fill-strong/80 p-1' role='group' aria-label={t('watchlist.order')}>
+                {ORDERS.map((option) => (
+                    <button key={option.order} type='button' aria-pressed={option.order === order} onClick={() => update('by', option.order, 'recent')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option.order === order ? 'bg-white text-ink shadow-control' : 'text-ink-secondary hover:text-ink'}`}>
+                        {t(option.name)}
+                    </button>
+                ))}
             </div>
 
-            {years.length > 1 && (
-                <div className='-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:flex-wrap sm:px-0' role='group' aria-label={t('watchlist.year')}>
-                    <button type='button' aria-pressed={year === null} onClick={() => update('year', '', '')} className={yearChip(year === null)}>
-                        {t('watchlist.allYears')}
-                    </button>
-                    {years.map((option) => (
-                        <button key={option} type='button' aria-pressed={option === year} onClick={() => update('year', String(option), '')} className={yearChip(option === year)}>
-                            {option}
-                        </button>
-                    ))}
-                </div>
-            )}
+            <FilterChipsComponent label={t('watchlist.filters')} allLabel={t('watchlist.all')} options={options} selected={selected} onChange={filter} className='mt-2' />
 
             {shelves.length === 0 ? (
                 <div className='mt-6'>

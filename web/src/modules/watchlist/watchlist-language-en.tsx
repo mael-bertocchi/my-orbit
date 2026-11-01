@@ -121,8 +121,7 @@ export const watchlistEn = {
     'watchlist.finished': 'Finished',
     'watchlist.ratingShelf': '{stars} ★',
 
-    'watchlist.allYears': 'All years',
-    'watchlist.year': 'Year',
+    'watchlist.filters': 'Filters',
 
     'watchlist.creditsSource': 'Film and series data and images come from'
 };

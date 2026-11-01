@@ -123,8 +123,7 @@ export const watchlistFr: WatchlistMessages = {
     'watchlist.finished': 'Terminé',
     'watchlist.ratingShelf': '{stars} ★',
 
-    'watchlist.allYears': 'Toutes les années',
-    'watchlist.year': 'Année',
+    'watchlist.filters': 'Filtres',
 
     'watchlist.creditsSource': 'Les données et images des films et séries viennent de'
 };

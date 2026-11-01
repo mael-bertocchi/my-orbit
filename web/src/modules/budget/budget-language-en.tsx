@@ -84,6 +84,7 @@ export const budgetEn = {
     'history.title': 'Operations',
     'history.search': 'Search operations',
     'history.clearSearch': 'Clear search',
+    'history.filters': 'Filters',
     'history.all': 'All',
     'history.date': 'Date',
     'history.dateFilter': 'Filter by date',

@@ -1,5 +1,6 @@
 import CategoryIconComponent from 'components/category-icon/category-icon';
 import EmptyStateComponent from 'components/empty-state/empty-state';
+import FilterChipsComponent from 'components/filter-chips/filter-chips';
 import SearchFieldComponent from 'components/search-field/search-field';
 import { AlignLeft, CalendarDays, Globe, MapPin, Repeat } from 'lucide-react';
 import type { Maybe } from 'models';
@@ -16,6 +17,7 @@ import { t } from 'modules/language/language-service';
 import BudgetDatesComponent from 'pages/budget/budget-dates/budget-dates';
 import { useMemo, useState, type JSX } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { readList, writeList } from 'utils/filters';
 
 /**
  * @function matches
@@ -31,6 +33,18 @@ function matches(document: BudgetDocument, operation: Operation, query: string):
     const haystack = [operation.name, operation.description, operation.location, categoryName(categoryOrFallback(document.categories, operation.categoryId))];
 
     return haystack.some((text) => (text ?? '').toLowerCase().includes(needle));
+}
+
+/**
+ * @function isListed
+ * @description Whether an operation shows under the filters: in one of the categories picked (any category when none
+ * is), within the dates picked, and matching the search.
+ */
+function isListed(document: BudgetDocument, operation: Operation, categoryIds: readonly string[], range: Maybe<DayRange>, query: string): boolean {
+    const isInCategories = categoryIds.length === 0 || categoryIds.includes(operation.categoryId);
+    const isInDates = range === null || isInRange(operation.date, range);
+
+    return isInCategories && isInDates && matches(document, operation, query);
 }
 
 /**
@@ -116,23 +130,23 @@ function OperationRowComponent(props: OperationRowComponentProps): JSX.Element {
 
 /**
  * @function BudgetHistoryComponent
- * @description The History tab: every operation grouped by day with each day's total, a search, a date filter on one
- * day or a period, and one filter chip per category. Under a date filter, the total of what is listed comes first. The
- * filters live in the address, so a category opened from Budget survives a reload.
+ * @description The History tab: every operation grouped by day with each day's total, a search, and one row of filters:
+ * a date filter on one day or a period, then one chip per category, several of which can be picked at once (All shows
+ * every category). Under a date filter, the total of what is listed comes first. The filters live in the address, so a
+ * category opened from Budget survives a reload.
  */
 function BudgetHistoryComponent(): JSX.Element {
     const document = useDocument();
     const { openEdit } = useBudgetEditorContext();
     const [params, setParams] = useSearchParams();
     const query = params.get('q') ?? '';
-    const categoryId = params.get('category');
+    const categoryIds = useMemo(() => readList(params, 'category'), [params]);
     const from = params.get('from');
     const to = params.get('to');
     const range = useMemo(() => rangeOf(from, to), [from, to]);
     const [isPickingDates, setIsPickingDates] = useState(false);
 
-    const groups = useMemo(() => dayGroups(document.operations.filter((operation) =>
-        (categoryId === null || operation.categoryId === categoryId) && (range === null || isInRange(operation.date, range)) && matches(document, operation, query))), [document, categoryId, range, query]);
+    const groups = useMemo(() => dayGroups(document.operations.filter((operation) => isListed(document, operation, categoryIds, range, query))), [document, categoryIds, range, query]);
 
     /**
      * @function update
@@ -161,8 +175,25 @@ function BudgetHistoryComponent(): JSX.Element {
         setIsPickingDates(false);
     };
 
-    const isFiltered = query !== '' || categoryId !== null || range !== null;
-    const chips = [{ id: null, name: t('history.all') }, ...categoriesOf(document.categories).map((category) => ({ id: category.id, name: categoryName(category) }))];
+    /**
+     * @function filterCategories
+     * @description Puts the categories picked in the address, or takes them out when every category shows.
+     */
+    const filterCategories = (picked: string[]): void => {
+        setParams(writeList(params, 'category', picked), { replace: true });
+    };
+
+    const isFiltered = query !== '' || categoryIds.length > 0 || range !== null;
+    const options = categoriesOf(document.categories).map((category) => ({ value: category.id, label: categoryName(category) }));
+    const dateChip = (
+        <>
+            <button type='button' aria-haspopup='dialog' onClick={() => setIsPickingDates(true)} className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-medium transition ${range !== null ? 'bg-ink text-white' : 'bg-white text-ink shadow-control hover:bg-fill'}`}>
+                <CalendarDays size={15} />
+                {range === null ? t('history.date') : rangeTitle(range)}
+            </button>
+            <span aria-hidden='true' className='my-1.5 w-px shrink-0 bg-hairline' />
+        </>
+    );
 
     return (
         <div className='animate-rise'>
@@ -171,22 +202,7 @@ function BudgetHistoryComponent(): JSX.Element {
 
             <SearchFieldComponent value={query} onChange={(next) => update({ q: next })} placeholder={t('history.search')} clearLabel={t('history.clearSearch')} className='mt-6' />
 
-            <div className='no-scrollbar -mx-5 -mb-2 mt-2 flex gap-2 overflow-x-auto px-5 py-2 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0'>
-                <button type='button' aria-haspopup='dialog' onClick={() => setIsPickingDates(true)} className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-medium transition ${range !== null ? 'bg-ink text-white' : 'bg-white text-ink shadow-control hover:bg-fill'}`}>
-                    <CalendarDays size={15} />
-                    {range === null ? t('history.date') : rangeTitle(range)}
-                </button>
-                <span aria-hidden='true' className='my-1.5 w-px shrink-0 bg-hairline' />
-                {chips.map((chip) => {
-                    const isActive = chip.id === categoryId;
-
-                    return (
-                        <button key={chip.id ?? 'all'} type='button' onClick={() => update({ category: isActive ? null : chip.id })} className={`h-8 shrink-0 rounded-full px-3.5 text-[14px] font-medium transition ${isActive ? 'bg-ink text-white' : 'bg-white text-ink shadow-control hover:bg-fill'}`}>
-                            {chip.name}
-                        </button>
-                    );
-                })}
-            </div>
+            <FilterChipsComponent label={t('history.filters')} allLabel={t('history.all')} options={options} selected={categoryIds} onChange={filterCategories} leading={dateChip} className='mt-2' />
 
             <div className='mt-2'>
                 {groups.length === 0 && (

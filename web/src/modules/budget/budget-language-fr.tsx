@@ -86,6 +86,7 @@ export const budgetFr: BudgetMessages = {
     'history.title': 'Opérations',
     'history.search': 'Rechercher des opérations',
     'history.clearSearch': 'Effacer la recherche',
+    'history.filters': 'Filtres',
     'history.all': 'Toutes',
     'history.date': 'Date',
     'history.dateFilter': 'Filtrer par date',

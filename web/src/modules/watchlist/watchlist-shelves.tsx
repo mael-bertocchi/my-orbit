@@ -16,12 +16,6 @@ export type ShelfOrder = 'genre' | 'saga' | 'recent';
 export type WatchedOrder = 'recent' | 'best';
 
 /**
- * @type KindFilter
- * @description Which titles show: all of them, the films, or the series.
- */
-export type KindFilter = 'all' | MediaType;
-
-/**
  * @interface Shelf
  * @description A titled group of titles.
  */
@@ -38,10 +32,10 @@ export interface Shelf {
 export const SHELF_ORDERS: readonly ShelfOrder[] = ['genre', 'saga', 'recent'];
 
 /**
- * @constant KIND_FILTERS
- * @description Every kind filter, in the order the page offers them.
+ * @constant MEDIA_TYPES
+ * @description Every kind of title, in the order the filters offer them.
  */
-export const KIND_FILTERS: readonly KindFilter[] = ['all', 'movie', 'tv'];
+export const MEDIA_TYPES: readonly MediaType[] = ['movie', 'tv'];
 
 /**
  * @function isShelfOrder
@@ -60,11 +54,11 @@ export function isWatchedOrder(value: Maybe<string>): value is WatchedOrder {
 }
 
 /**
- * @function isKindFilter
- * @description Whether a value from the address is a kind filter.
+ * @function isMediaType
+ * @description Whether a value from the address is a kind of title.
  */
-export function isKindFilter(value: Maybe<string>): value is KindFilter {
-    return KIND_FILTERS.some((kind) => kind === value);
+export function isMediaType(value: string): value is MediaType {
+    return MEDIA_TYPES.some((kind) => kind === value);
 }
 
 /**
@@ -224,15 +218,15 @@ export function seasonShare(entry: Entry): Maybe<number> {
 }
 
 /**
- * @function ofKind
- * @description The titles of one kind, or all of them.
+ * @function ofKinds
+ * @description The titles of the kinds picked, or all of them when none is.
  *
  * @param {Entry[]} entries The titles
- * @param {KindFilter} kind The kind to keep
+ * @param {readonly MediaType[]} kinds The kinds to keep
  * @returns {Entry[]} The titles kept
  */
-export function ofKind(entries: Entry[], kind: KindFilter): Entry[] {
-    return kind === 'all' ? entries : entries.filter((entry) => entry.mediaType === kind);
+export function ofKinds(entries: Entry[], kinds: readonly MediaType[]): Entry[] {
+    return kinds.length === 0 ? entries : entries.filter((entry) => kinds.includes(entry.mediaType));
 }
 
 /**
@@ -321,14 +315,14 @@ export function watchedYears(entries: Entry[]): number[] {
 
 /**
  * @function watchedIn
- * @description The titles watched in one year, or all of them when no year is given.
+ * @description The titles watched in any of the years picked, or all of them when none is.
  *
  * @param {Entry[]} entries The watched titles
- * @param {Maybe<number>} year The year to keep, or null for every year
+ * @param {readonly number[]} years The years to keep
  * @returns {Entry[]} The titles kept, in the same order
  */
-export function watchedIn(entries: Entry[], year: Maybe<number>): Entry[] {
-    return year === null ? entries : entries.filter((entry) => entry.watchedAt?.getFullYear() === year);
+export function watchedIn(entries: Entry[], years: readonly number[]): Entry[] {
+    return years.length === 0 ? entries : entries.filter((entry) => years.includes(entry.watchedAt?.getFullYear() ?? 0));
 }
 
 /**

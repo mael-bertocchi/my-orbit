@@ -1,6 +1,6 @@
 import { chooseLanguage } from 'modules/language/language-service';
 import type { Entry } from 'modules/watchlist/watchlist-models';
-import { isKindFilter, isShelfOrder, matches, nextEpisode, ofKind, seasonShare, shelves, statusOf, toWatch, watchedEntries, watchedIn, watchedShelves, watchedYears, watching } from 'modules/watchlist/watchlist-shelves';
+import { isMediaType, isShelfOrder, matches, nextEpisode, ofKinds, seasonShare, shelves, statusOf, toWatch, watchedEntries, watchedIn, watchedShelves, watchedYears, watching } from 'modules/watchlist/watchlist-shelves';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -56,11 +56,12 @@ const ENTRIES: Entry[] = [
     entry({ tmdbId: 27205, title: { en: 'Inception', fr: 'Inception' }, genreIds: [878], watchedAt: new Date('2026-10-06T20:00:00Z'), rating: 9 })
 ];
 
-describe('toWatch and ofKind', () => {
-    it('keeps the titles still to watch, of one kind or all', () => {
+describe('toWatch and ofKinds', () => {
+    it('keeps the titles still to watch, of the kinds picked or all', () => {
         expect(toWatch(ENTRIES).map((found) => found.tmdbId)).toEqual([122, 120, 550, 1399]);
-        expect(ofKind(toWatch(ENTRIES), 'tv').map((found) => found.tmdbId)).toEqual([1399]);
-        expect(ofKind(toWatch(ENTRIES), 'all')).toHaveLength(4);
+        expect(ofKinds(toWatch(ENTRIES), ['tv']).map((found) => found.tmdbId)).toEqual([1399]);
+        expect(ofKinds(toWatch(ENTRIES), ['movie', 'tv'])).toHaveLength(4);
+        expect(ofKinds(toWatch(ENTRIES), [])).toHaveLength(4);
     });
 });
 
@@ -131,8 +132,9 @@ describe('address values', () => {
         expect(isShelfOrder('saga')).toBe(true);
         expect(isShelfOrder('rating')).toBe(false);
         expect(isShelfOrder(null)).toBe(false);
-        expect(isKindFilter('tv')).toBe(true);
-        expect(isKindFilter('person')).toBe(false);
+        expect(isMediaType('tv')).toBe(true);
+        expect(isMediaType('all')).toBe(false);
+        expect(isMediaType('person')).toBe(false);
     });
 });
 
@@ -183,12 +185,13 @@ describe('watchedShelves', () => {
         expect(found.map((shelf) => [shelf.title, shelf.entries.map((one) => one.tmdbId)])).toEqual([['2026', [1, 2]], ['2025', [3]]]);
     });
 
-    it('lists the years titles were watched in, and keeps one year', () => {
+    it('lists the years titles were watched in, and keeps the years picked', () => {
         const ordered = watchedEntries(seen, 'recent');
 
         expect(watchedYears(ordered)).toEqual([2026, 2025]);
-        expect(watchedIn(ordered, 2026).map((one) => one.tmdbId)).toEqual([1, 2]);
-        expect(watchedIn(ordered, null)).toHaveLength(3);
+        expect(watchedIn(ordered, [2026]).map((one) => one.tmdbId)).toEqual([1, 2]);
+        expect(watchedIn(ordered, [2026, 2025])).toHaveLength(3);
+        expect(watchedIn(ordered, [])).toHaveLength(3);
     });
 
     it('shelves them by rating, the unrated last', () => {
