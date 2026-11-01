@@ -1,12 +1,54 @@
 import SwiftUI
 
 /**
- * @type HistoryFilter
- * @description Which operations History shows
+ * @class HistoryFilter
+ * @description Which operations History shows: every operation while no category is picked, otherwise those of any of
+ * the categories picked
  */
-enum HistoryFilter: Hashable {
-    case all /*!< Every operation */
-    case category(String) /*!< One category's */
+struct HistoryFilter: Hashable {
+    var categoryIds: Set<String> = [] /*!< The categories picked, none for every operation */
+
+    /**
+     * @constant all
+     * @description Every operation
+     */
+    static let all = HistoryFilter()
+
+    /**
+     * @method category
+     * @description One category's operations
+     *
+     * @param id The category
+     * @returns The filter
+     */
+    static func category(_ id: String) -> HistoryFilter {
+        HistoryFilter(categoryIds: [id])
+    }
+
+    /**
+     * @method isAll
+     * @description Whether every operation shows
+     */
+    var isAll: Bool {
+        categoryIds.isEmpty
+    }
+
+    /**
+     * @method toggling
+     * @description The filter with a category picked, or put back when it already was
+     *
+     * @param id The category
+     * @returns The new filter
+     */
+    func toggling(_ id: String) -> HistoryFilter {
+        var next = categoryIds
+        if next.contains(id) {
+            next.remove(id)
+        } else {
+            next.insert(id)
+        }
+        return HistoryFilter(categoryIds: next)
+    }
 }
 
 /**
@@ -77,8 +119,8 @@ struct DayRange: Hashable {
 
 /**
  * @class HistoryView
- * @description The History tab: operations grouped by day with day totals, a search, a date filter and a filter chip
- * per category
+ * @description The History tab: operations grouped by day with day totals, a search, a date filter and one row of
+ * filter chips. Several categories can be picked at once; All shows every category and is lit while none is picked.
  */
 struct HistoryView: View {
     @Binding var filter: HistoryFilter /*!< The category filter, which the Budget tab can set */
@@ -138,12 +180,12 @@ struct HistoryView: View {
                     Rectangle()
                         .fill(Theme.divider)
                         .frame(width: 1, height: 18)
-                    FilterChip(title: String(appLocalized: "All"), isActive: filter == .all) {
+                    FilterChip(title: String(appLocalized: "All"), isActive: filter.isAll) {
                         select(.all)
                     }
                     ForEach(store.categories) { category in
-                        FilterChip(title: category.title, isActive: filter == .category(category.id)) {
-                            select(.category(category.id))
+                        FilterChip(title: category.title, isActive: filter.categoryIds.contains(category.id)) {
+                            select(filter.toggling(category.id))
                         }
                     }
                 }
@@ -222,7 +264,7 @@ struct HistoryView: View {
      * @description Why there is no operation to show
      */
     private var emptyMessage: String {
-        if !query.isEmpty || filter != .all || dateRange != nil {
+        if !query.isEmpty || !filter.isAll || dateRange != nil {
             return String(appLocalized: "No operations match this search.")
         }
         return String(appLocalized: "No operations yet. Tap ＋ to log your first expense.")
@@ -242,18 +284,14 @@ struct HistoryView: View {
 
     /**
      * @method matchesFilter
-     * @description Whether an operation passes the category filter
+     * @description Whether an operation passes the category filter: any operation while no category is picked, otherwise
+     * one of a category picked
      *
      * @param operation The operation
      * @returns Whether it passes
      */
     private func matchesFilter(_ operation: Operation) -> Bool {
-        switch filter {
-        case .all:
-            return true
-        case .category(let categoryId):
-            return operation.categoryId == categoryId
-        }
+        filter.isAll || filter.categoryIds.contains(operation.categoryId)
     }
 
     /**
@@ -275,14 +313,14 @@ struct HistoryView: View {
 
     /**
      * @method select
-     * @description Applies a category filter, or removes it when tapped again
+     * @description Applies a filter: All drops every category picked, a category is added or taken off
      *
-     * @param value The filter
+     * @param value The new filter
      */
     private func select(_ value: HistoryFilter) {
         preferences.tap()
         withAnimation(.easeOut(duration: 0.18)) {
-            filter = filter == value ? .all : value
+            filter = value
         }
     }
 }
