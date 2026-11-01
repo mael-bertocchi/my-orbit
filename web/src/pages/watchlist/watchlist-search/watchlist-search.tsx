@@ -3,13 +3,15 @@ import SearchFieldComponent from 'components/search-field/search-field';
 import SpinnerComponent from 'components/spinner/spinner';
 import { Check, Plus } from 'lucide-react';
 import type { Maybe } from 'models';
+import type { MessageKey } from 'modules/language/language-en';
 import { t } from 'modules/language/language-service';
 import { useToastContext } from 'modules/toast/toast-hooks';
 import type { ToastContextProps } from 'modules/toast/toast-models';
 import { titleFacts } from 'modules/watchlist/watchlist-formatting';
 import { useWatchlist, useWatchlistContext } from 'modules/watchlist/watchlist-hooks';
-import type { CatalogTitle, Entry, TitleReference } from 'modules/watchlist/watchlist-models';
+import type { CatalogTitle, Entry, EntryStatus, TitleReference } from 'modules/watchlist/watchlist-models';
 import watchlistService from 'modules/watchlist/watchlist-service';
+import { statusOf } from 'modules/watchlist/watchlist-shelves';
 import { useEffect, useState, type JSX } from 'react';
 import { messageOf } from 'utils/errors';
 
@@ -18,6 +20,16 @@ import { messageOf } from 'utils/errors';
  * @description How long typing must pause before the search runs, in milliseconds
  */
 const SEARCH_DELAY = 350;
+
+/**
+ * @constant SEARCH_BADGES
+ * @description What a result already on the watchlist says, by where it stands
+ */
+const SEARCH_BADGES: Record<EntryStatus, MessageKey> = {
+    toWatch: 'watchlist.onList',
+    watching: 'watchlist.statusWatching',
+    watched: 'watchlist.seen'
+};
 
 /**
  * @constant MIN_QUERY
@@ -91,7 +103,7 @@ function ResultRowComponent(props: ResultRowComponentProps): JSX.Element {
         status = (
             <span className='flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-[12px] font-semibold text-accent'>
                 <Check size={13} strokeWidth={3} />
-                {props.entry.watchedAt === null ? t('watchlist.onList') : t('watchlist.seen')}
+                {t(SEARCH_BADGES[statusOf(props.entry)])}
             </span>
         );
     } else {

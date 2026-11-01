@@ -1,7 +1,7 @@
 import type { Maybe } from 'models';
 import { currentLanguage, t } from 'modules/language/language-service';
 import { localized } from 'modules/watchlist/watchlist-formatting';
-import type { Entry, MediaType } from 'modules/watchlist/watchlist-models';
+import type { Entry, EntryStatus, MediaType, Progress } from 'modules/watchlist/watchlist-models';
 
 /**
  * @type ShelfOrder
@@ -143,14 +143,84 @@ export function matches(entry: Entry, query: string): boolean {
 }
 
 /**
+ * @function statusOf
+ * @description Where a title stands: watched once marked so, being watched once started, to watch otherwise.
+ *
+ * @param {Entry} entry The title
+ * @returns {EntryStatus} Its status
+ */
+export function statusOf(entry: Entry): EntryStatus {
+    if (entry.watchedAt !== null) {
+        return 'watched';
+    }
+
+    return entry.startedAt === null ? 'toWatch' : 'watching';
+}
+
+/**
  * @function toWatch
- * @description The titles still to watch.
+ * @description The titles still to watch: neither started nor watched.
  *
  * @param {Entry[]} entries The watchlist
  * @returns {Entry[]} The titles to watch
  */
 export function toWatch(entries: Entry[]): Entry[] {
-    return entries.filter((entry) => entry.watchedAt === null);
+    return entries.filter((entry) => statusOf(entry) === 'toWatch');
+}
+
+/**
+ * @function watching
+ * @description The titles being watched, the latest started first.
+ *
+ * @param {Entry[]} entries The watchlist
+ * @returns {Entry[]} The titles being watched
+ */
+export function watching(entries: Entry[]): Entry[] {
+    const started = (entry: Entry): number => entry.startedAt?.getTime() ?? 0;
+
+    return entries.filter((entry) => statusOf(entry) === 'watching').sort((first, second) => started(second) - started(first));
+}
+
+/**
+ * @function nextEpisode
+ * @description The episode after the last one seen of a series: the first one when none was seen, the next season's
+ * first once a season is over, and none past the last episode the catalog knows. A series of unknown seasons just goes
+ * one episode further.
+ *
+ * @param {Entry} entry The series
+ * @returns {Maybe<Progress>} The next episode, or null when the series is over
+ */
+export function nextEpisode(entry: Entry): Maybe<Progress> {
+    if (entry.progress === null) {
+        return { season: 1, episode: 1 };
+    }
+
+    const { season, episode } = entry.progress;
+    const episodes = entry.episodeCounts.at(season - 1);
+
+    if (entry.episodeCounts.length === 0 || episodes === undefined || episodes === 0 || episode < episodes) {
+        return { season, episode: episode + 1 };
+    }
+
+    return season < entry.episodeCounts.length ? { season: season + 1, episode: 1 } : null;
+}
+
+/**
+ * @function seasonShare
+ * @description How far into its season a series being watched is, from 0 to 1, or null when the season's length is
+ * unknown.
+ *
+ * @param {Entry} entry The series
+ * @returns {Maybe<number>} The share of the season seen
+ */
+export function seasonShare(entry: Entry): Maybe<number> {
+    if (entry.progress === null) {
+        return null;
+    }
+
+    const episodes = entry.episodeCounts.at(entry.progress.season - 1);
+
+    return episodes === undefined || episodes === 0 ? null : Math.min(1, entry.progress.episode / episodes);
 }
 
 /**
@@ -212,6 +282,53 @@ export function shelves(entries: Entry[], order: ShelfOrder, genres: ReadonlyMap
     return group(entries, (entry) => (entry.collectionId === null ? ['saga:none', t('watchlist.noSaga')] : [`saga:${entry.collectionId}`, entry.collectionName === null ? '' : localized(entry.collectionName)]))
         .map((shelf) => ({ ...shelf, entries: shelf.entries.sort(shelf.key === 'saga:none' ? byAdded : byRelease) }))
         .sort(byTitle('saga:none'));
+}
+
+/**
+ * @function watchedShelves
+ * @description Shelves the watched titles: by the year they were watched, the latest first, or by rating, the best
+ * first, the unrated last. Each shelf keeps the order it is given.
+ *
+ * @param {Entry[]} entries The watched titles, already in order
+ * @param {WatchedOrder} order How they are ordered
+ * @param {(rating: number) => string} ratingTitle How a rating's shelf is called
+ * @returns {Shelf[]} The shelves, in order
+ */
+export function watchedShelves(entries: Entry[], order: WatchedOrder, ratingTitle: (rating: number) => string): Shelf[] {
+    if (order === 'best') {
+        return group(entries, (entry) => (entry.rating === null ? ['rating:none', t('watchlist.notRated')] : [`rating:${entry.rating}`, ratingTitle(entry.rating)]));
+    }
+
+    return group(entries, (entry) => {
+        const year = String(entry.watchedAt?.getFullYear() ?? '');
+
+        return [`year:${year}`, year];
+    });
+}
+
+/**
+ * @function watchedYears
+ * @description Every year a title was watched in, the latest first.
+ *
+ * @param {Entry[]} entries The watchlist
+ * @returns {number[]} The years
+ */
+export function watchedYears(entries: Entry[]): number[] {
+    const years = new Set(entries.filter((entry) => entry.watchedAt !== null).map((entry) => entry.watchedAt?.getFullYear() ?? 0));
+
+    return [...years].sort((first, second) => second - first);
+}
+
+/**
+ * @function watchedIn
+ * @description The titles watched in one year, or all of them when no year is given.
+ *
+ * @param {Entry[]} entries The watched titles
+ * @param {Maybe<number>} year The year to keep, or null for every year
+ * @returns {Entry[]} The titles kept, in the same order
+ */
+export function watchedIn(entries: Entry[], year: Maybe<number>): Entry[] {
+    return year === null ? entries : entries.filter((entry) => entry.watchedAt?.getFullYear() === year);
 }
 
 /**

@@ -3,7 +3,7 @@ import type { FrameTab } from 'components/frame/frame';
 import FrameComponent from 'components/frame/frame';
 import LoadingScreenComponent from 'components/loading-screen/loading-screen';
 import SheetComponent from 'components/sheet/sheet';
-import { Bookmark, CircleCheckBig } from 'lucide-react';
+import { Bookmark, CircleCheckBig, CirclePlay } from 'lucide-react';
 import { t } from 'modules/language/language-service';
 import { useCatchUp, useWatchlist, useWatchlistContext, useWatchlistSheetContext } from 'modules/watchlist/watchlist-hooks';
 import { watchlist } from 'modules/watchlist/watchlist-manifest';
@@ -13,15 +13,17 @@ import WatchlistQueueComponent from 'pages/watchlist/watchlist-queue/watchlist-q
 import WatchlistSearchComponent from 'pages/watchlist/watchlist-search/watchlist-search';
 import WatchlistTitleComponent from 'pages/watchlist/watchlist-title/watchlist-title';
 import WatchlistWatchedComponent from 'pages/watchlist/watchlist-watched/watchlist-watched';
+import WatchlistWatchingComponent from 'pages/watchlist/watchlist-watching/watchlist-watching';
 import { useState, type JSX } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 /**
  * @constant TABS
- * @description To watch, and watched
+ * @description To watch, being watched, and watched
  */
 const TABS: readonly FrameTab[] = [
     { to: '/watchlist', label: 'watchlist.toWatch', icon: Bookmark, end: true },
+    { to: '/watchlist/watching', label: 'watchlist.watching', icon: CirclePlay },
     { to: '/watchlist/watched', label: 'watchlist.watched', icon: CircleCheckBig }
 ];
 
@@ -132,6 +134,7 @@ function WatchlistShellComponent(): JSX.Element {
             <FrameComponent app={watchlist} tabs={TABS} action={<AddButtonComponent />}>
                 <Routes>
                     <Route index element={<WatchlistQueueComponent />} />
+                    <Route path='watching' element={<WatchlistWatchingComponent />} />
                     <Route path='watched' element={<WatchlistWatchedComponent />} />
                     <Route path='*' element={<Navigate to='/watchlist' replace />} />
                 </Routes>

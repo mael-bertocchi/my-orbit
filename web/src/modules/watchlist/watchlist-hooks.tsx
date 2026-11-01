@@ -1,8 +1,11 @@
 import type { Maybe } from 'models';
 import { WatchlistContext, WatchlistSheetContext } from 'modules/watchlist/watchlist-context';
-import type { WatchlistSheetContextProps, WatchlistSnapshot } from 'modules/watchlist/watchlist-models';
+import { useToastContext } from 'modules/toast/toast-hooks';
+import type { ToastContextProps } from 'modules/toast/toast-models';
+import type { Entry, EntryChanges, SaveHandle, WatchlistSheetContextProps, WatchlistSnapshot } from 'modules/watchlist/watchlist-models';
 import type { WatchlistStore } from 'modules/watchlist/watchlist-store';
-import { useContext, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type RefCallback } from 'react';
+import { messageOf } from 'utils/errors';
 
 /**
  * @constant CATCH_UP_EVERY
@@ -85,4 +88,86 @@ export function useCatchUp(store: WatchlistStore): void {
             window.clearInterval(timer);
         };
     }, [store]);
+}
+
+/**
+ * @interface Progressive
+ * @description How much of a long list shows, and where the page asks for more.
+ */
+export interface Progressive {
+    shown: number; /*!< How many items show */
+    sentinel: RefCallback<HTMLElement>; /*!< Attach to an element after the items: reaching it shows the next batch */
+}
+
+/**
+ * @function useProgressive
+ * @description Shows a long list a batch at a time: the first batch, then the next one each time the page scrolls near
+ * the element after the items, so a list of a thousand titles stays quick to draw. A new list (a new key) starts again
+ * from the first batch.
+ *
+ * @param {number} step How many items each batch adds
+ * @param {string} key What the list is, such as its filters
+ * @returns {Progressive} How many items to show, and the element to watch
+ */
+export function useProgressive(step: number, key: string): Progressive {
+    const [state, setState] = useState({ key, shown: step });
+    const observer = useRef<Maybe<IntersectionObserver>>(null);
+    const shown = state.key === key ? state.shown : step;
+
+    if (state.key !== key) {
+        setState({ key, shown: step });
+    }
+
+    const sentinel = useCallback((element: Maybe<HTMLElement>): void => {
+        observer.current?.disconnect();
+        observer.current = null;
+
+        if (element === null) {
+            return;
+        }
+
+        observer.current = new IntersectionObserver((seen) => {
+            if (seen.some((entry) => entry.isIntersecting)) {
+                setState((current) => ({ ...current, shown: current.shown + step }));
+            }
+        }, { rootMargin: '600px 0px' });
+        observer.current.observe(element);
+    }, [step]);
+
+    return { shown, sentinel };
+}
+
+/**
+ * @function useSave
+ * @description Stores a change to a title, showing why it failed if it did
+ *
+ * @param {Entry} entry The title
+ * @returns {SaveHandle} How to store a change, and whether one is on its way
+ */
+export function useSave(entry: Entry): SaveHandle {
+    const store = useWatchlistContext();
+    const { showToast }: ToastContextProps = useToastContext();
+    const [isSaving, setIsSaving] = useState(false);
+
+    /**
+     * @function save
+     * @description Stores the change
+     */
+    const save = async (changes: EntryChanges): Promise<boolean> => {
+        setIsSaving(true);
+
+        try {
+            await store.update(entry.id, changes);
+
+            return true;
+        } catch (failure: unknown) {
+            showToast(messageOf(failure));
+
+            return false;
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return { save, isSaving };
 }

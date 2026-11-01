@@ -22,7 +22,11 @@ function entry(id: string, tmdbId: number): Entry {
         collectionName: null,
         runtime: null,
         seasons: null,
+        episodeCounts: [],
         addedAt: new Date('2026-10-01T10:00:00Z'),
+        startedAt: null,
+        progress: null,
+        position: null,
         watchedAt: null,
         rating: null,
         comment: null

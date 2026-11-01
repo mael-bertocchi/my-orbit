@@ -1,6 +1,6 @@
 import { chooseLanguage } from 'modules/language/language-service';
 import type { Entry } from 'modules/watchlist/watchlist-models';
-import { isKindFilter, isShelfOrder, matches, ofKind, shelves, toWatch, watchedEntries } from 'modules/watchlist/watchlist-shelves';
+import { isKindFilter, isShelfOrder, matches, nextEpisode, ofKind, seasonShare, shelves, statusOf, toWatch, watchedEntries, watchedIn, watchedShelves, watchedYears, watching } from 'modules/watchlist/watchlist-shelves';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -21,7 +21,11 @@ function entry(overrides: Partial<Entry>): Entry {
         collectionName: null,
         runtime: null,
         seasons: null,
+        episodeCounts: [],
         addedAt: new Date('2026-10-01T10:00:00Z'),
+        startedAt: null,
+        progress: null,
+        position: null,
         watchedAt: null,
         rating: null,
         comment: null,
@@ -129,5 +133,69 @@ describe('address values', () => {
         expect(isShelfOrder(null)).toBe(false);
         expect(isKindFilter('tv')).toBe(true);
         expect(isKindFilter('person')).toBe(false);
+    });
+});
+
+describe('the three statuses', () => {
+    it('tells a title to watch, being watched and watched apart, and lists the ones being watched latest started first', () => {
+        const started = entry({ tmdbId: 2, startedAt: new Date('2026-10-02T10:00:00Z') });
+        const later = entry({ tmdbId: 3, mediaType: 'tv', startedAt: new Date('2026-10-05T10:00:00Z') });
+        const rewatched = entry({ tmdbId: 4, startedAt: new Date('2026-10-01T10:00:00Z'), watchedAt: new Date('2026-10-03T10:00:00Z') });
+        const list = [entry({ tmdbId: 1 }), started, later, rewatched];
+
+        expect(list.map(statusOf)).toEqual(['toWatch', 'watching', 'watching', 'watched']);
+        expect(toWatch(list).map((found) => found.tmdbId)).toEqual([1]);
+        expect(watching(list).map((found) => found.tmdbId)).toEqual([3, 2]);
+    });
+});
+
+describe('nextEpisode and seasonShare', () => {
+    const series = (progress: Entry['progress'], episodeCounts: number[]): Entry => entry({ mediaType: 'tv', startedAt: new Date('2026-10-01T10:00:00Z'), progress, episodeCounts });
+
+    it('starts at the first episode, goes on within a season, then to the next season, and stops at the last', () => {
+        expect(nextEpisode(series(null, [10, 8]))).toEqual({ season: 1, episode: 1 });
+        expect(nextEpisode(series({ season: 1, episode: 4 }, [10, 8]))).toEqual({ season: 1, episode: 5 });
+        expect(nextEpisode(series({ season: 1, episode: 10 }, [10, 8]))).toEqual({ season: 2, episode: 1 });
+        expect(nextEpisode(series({ season: 2, episode: 8 }, [10, 8]))).toBeNull();
+    });
+
+    it('just goes one episode further when the seasons are unknown', () => {
+        expect(nextEpisode(series({ season: 3, episode: 12 }, []))).toEqual({ season: 3, episode: 13 });
+        expect(seasonShare(series({ season: 3, episode: 12 }, []))).toBeNull();
+    });
+
+    it('tells how far into its season a series is', () => {
+        expect(seasonShare(series({ season: 1, episode: 4 }, [10, 8]))).toBe(0.4);
+        expect(seasonShare(series(null, [10, 8]))).toBeNull();
+    });
+});
+
+describe('watchedShelves', () => {
+    const seen = [
+        entry({ tmdbId: 1, watchedAt: new Date('2026-10-06T20:00:00Z'), rating: 9 }),
+        entry({ tmdbId: 2, watchedAt: new Date('2026-03-06T20:00:00Z'), rating: null }),
+        entry({ tmdbId: 3, watchedAt: new Date('2025-12-06T20:00:00Z'), rating: 9 })
+    ];
+
+    it('shelves the watched titles by year, keeping their order', () => {
+        const found = watchedShelves(watchedEntries(seen, 'recent'), 'recent', String);
+
+        expect(found.map((shelf) => [shelf.title, shelf.entries.map((one) => one.tmdbId)])).toEqual([['2026', [1, 2]], ['2025', [3]]]);
+    });
+
+    it('lists the years titles were watched in, and keeps one year', () => {
+        const ordered = watchedEntries(seen, 'recent');
+
+        expect(watchedYears(ordered)).toEqual([2026, 2025]);
+        expect(watchedIn(ordered, 2026).map((one) => one.tmdbId)).toEqual([1, 2]);
+        expect(watchedIn(ordered, null)).toHaveLength(3);
+    });
+
+    it('shelves them by rating, the unrated last', () => {
+        chooseLanguage('fr');
+
+        const found = watchedShelves(watchedEntries(seen, 'best'), 'best', (rating) => `${rating / 2} ★`);
+
+        expect(found.map((shelf) => [shelf.title, shelf.entries.map((one) => one.tmdbId)])).toEqual([['4.5 ★', [1, 3]], ['Pas noté', [2]]]);
     });
 });

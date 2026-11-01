@@ -95,6 +95,35 @@ export const watchlistEn = {
     'watchlist.saga': 'Saga',
     'watchlist.thisFilm': 'This film',
 
+    'watchlist.watching': 'Watching',
+    'watchlist.watchingTitle': 'Watching',
+    'watchlist.emptyWatching': 'Nothing being watched. Open a title and set it to “Watching”.',
+    'watchlist.nowWatching': 'Watching: {title}',
+    'watchlist.status': 'Status',
+    'watchlist.statusToWatch': 'To watch',
+    'watchlist.statusWatching': 'Watching',
+    'watchlist.statusWatched': 'Watched',
+    'watchlist.startedOn': 'Started on {date}',
+    'watchlist.started': '“{title}” is being watched.',
+    'watchlist.episode': 'S{season} · E{episode}',
+    'watchlist.noEpisode': 'No episode noted yet',
+    'watchlist.nextEpisode': '+1 episode',
+    'watchlist.firstEpisode': 'Seen episode 1',
+    'watchlist.seriesOver': 'Last episode seen',
+    'watchlist.changeEpisode': 'Change',
+    'watchlist.season': 'Season',
+    'watchlist.episodeNumber': 'Episode',
+    'watchlist.position': 'Where you stopped',
+    'watchlist.positionPlaceholder': 'E.g. 1:23:45',
+    'watchlist.positionInvalid': 'Give a moment within the film, like 1:23:45.',
+    'watchlist.stoppedAt': 'Stopped at {time}',
+    'watchlist.clear': 'Clear',
+    'watchlist.finished': 'Finished',
+    'watchlist.ratingShelf': '{stars} ★',
+
+    'watchlist.allYears': 'All years',
+    'watchlist.year': 'Year',
+
     'watchlist.creditsSource': 'Film and series data and images come from'
 };
 

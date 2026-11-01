@@ -2,7 +2,7 @@ import AlertComponent from 'components/alert/alert';
 import PosterComponent from 'components/poster/poster';
 import RatingComponent from 'components/rating/rating';
 import SpinnerComponent from 'components/spinner/spinner';
-import { Bookmark, Check, ChevronLeft, CircleCheckBig, ExternalLink, Plus, RotateCcw, SquarePen, Trash2 } from 'lucide-react';
+import { Bookmark, Check, ChevronLeft, CircleCheckBig, CirclePlay, ExternalLink, Plus, SquarePen, Trash2 } from 'lucide-react';
 import type { Maybe } from 'models';
 import type { MessageKey } from 'modules/language/language-en';
 import { t } from 'modules/language/language-service';
@@ -10,8 +10,10 @@ import { useToastContext } from 'modules/toast/toast-hooks';
 import type { ToastContextProps } from 'modules/toast/toast-models';
 import { dayText, imageUrl, ratingText, releaseYear, titleFacts } from 'modules/watchlist/watchlist-formatting';
 import { useWatchlist, useWatchlistContext } from 'modules/watchlist/watchlist-hooks';
-import type { CatalogTitle, Collection, Entry, Offers, Provider, TitleDetails, TitleReference } from 'modules/watchlist/watchlist-models';
+import type { CatalogTitle, Collection, Entry, EntryStatus, Offers, Provider, TitleDetails, TitleReference } from 'modules/watchlist/watchlist-models';
 import watchlistService from 'modules/watchlist/watchlist-service';
+import { statusOf } from 'modules/watchlist/watchlist-shelves';
+import ProgressPanelComponent from 'pages/watchlist/watchlist-progress/watchlist-progress';
 import { useEffect, useState, type FormEvent, type JSX } from 'react';
 import { messageOf } from 'utils/errors';
 
@@ -25,6 +27,26 @@ const OFFER_KINDS: readonly { kind: Exclude<keyof Offers, 'link'>; name: Message
     { kind: 'rent', name: 'watchlist.rent' },
     { kind: 'buy', name: 'watchlist.buy' }
 ];
+
+/**
+ * @constant STATUSES
+ * @description The three places a title can stand, in order, and what each is called
+ */
+const STATUSES: readonly { status: EntryStatus; name: MessageKey }[] = [
+    { status: 'toWatch', name: 'watchlist.statusToWatch' },
+    { status: 'watching', name: 'watchlist.statusWatching' },
+    { status: 'watched', name: 'watchlist.statusWatched' }
+];
+
+/**
+ * @interface StatusControlComponentProps
+ * @description Where a title stands, and what picking another place does
+ */
+interface StatusControlComponentProps {
+    status: EntryStatus; /*!< Where it stands, or where it is going while its review is written */
+    disabled: boolean; /*!< Whether a change is on its way */
+    onChange: (status: EntryStatus) => void; /*!< Called with the place picked */
+}
 
 /**
  * @interface WatchlistTitleComponentProps
@@ -169,6 +191,24 @@ function ReviewFormComponent(props: ReviewFormComponentProps): JSX.Element {
 }
 
 /**
+ * @function StatusControlComponent
+ * @description A segmented control moving a title between to watch, being watched and watched
+ *
+ * @param {StatusControlComponentProps} props The properties of the component
+ */
+function StatusControlComponent(props: StatusControlComponentProps): JSX.Element {
+    return (
+        <div className='mt-5 flex rounded-full bg-fill-strong/80 p-1' role='group' aria-label={t('watchlist.status')}>
+            {STATUSES.map((option) => (
+                <button key={option.status} type='button' disabled={props.disabled} aria-pressed={option.status === props.status} onClick={() => props.onChange(option.status)} className={`flex-1 rounded-full px-3 py-1.5 text-[14px] font-medium transition disabled:opacity-60 ${option.status === props.status ? 'bg-white text-accent-strong shadow-control' : 'text-ink-secondary hover:text-ink'}`}>
+                    {t(option.name)}
+                </button>
+            ))}
+        </div>
+    );
+}
+
+/**
  * @function ProviderComponent
  * @description A service offering a title: its logo and name
  *
@@ -290,8 +330,10 @@ function SagaComponent(props: SagaComponentProps): JSX.Element {
 
                     if (isCurrent) {
                         mark = <span className='text-[12px] font-semibold text-ink-tertiary'>{t('watchlist.thisFilm')}</span>;
-                    } else if (entry !== null && entry.watchedAt !== null) {
+                    } else if (entry !== null && statusOf(entry) === 'watched') {
                         mark = <CircleCheckBig size={18} className='text-positive' aria-label={t('watchlist.seen')} />;
+                    } else if (entry !== null && statusOf(entry) === 'watching') {
+                        mark = <CirclePlay size={18} className='text-accent' aria-label={t('watchlist.statusWatching')} />;
                     } else if (entry !== null) {
                         mark = <Bookmark size={18} className='text-accent' aria-label={t('watchlist.onList')} />;
                     } else {
@@ -419,6 +461,38 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
         }
     };
 
+    /**
+     * @function changeStatus
+     * @description Moves the title to the place picked. Watched asks for a review first; being watched starts it now;
+     * to watch forgets its start, its progress and its review.
+     *
+     * @param {Entry} current The title's entry
+     * @param {EntryStatus} next The place picked
+     */
+    const changeStatus = (current: Entry, next: EntryStatus): void => {
+        if (next === statusOf(current)) {
+            setIsReviewing(false);
+
+            return;
+        }
+
+        if (next === 'watched') {
+            setIsReviewing(true);
+
+            return;
+        }
+
+        setIsReviewing(false);
+
+        if (next === 'watching') {
+            void run(() => store.update(current.id, { startedAt: new Date(), watchedAt: null }), t('watchlist.started', { title: details.title }));
+
+            return;
+        }
+
+        void run(() => store.update(current.id, { startedAt: null, watchedAt: null }), t('watchlist.backOnList', { title: details.title }));
+    };
+
     const secondary = 'inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-2xl bg-fill px-4 text-[15px] font-semibold text-ink transition hover:bg-fill-strong disabled:opacity-60';
     const primary = 'inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-2xl bg-accent px-4 text-[15px] font-semibold text-white transition hover:bg-accent-strong disabled:opacity-60';
     let actions: JSX.Element;
@@ -436,42 +510,50 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
                 </button>
             </div>
         );
-    } else if (entry.watchedAt === null) {
-        actions = (
-            <div className='mt-5 grid grid-cols-[1fr_auto] gap-3'>
-                <button type='button' onClick={() => setIsReviewing(true)} className={primary}>
-                    <Check size={18} strokeWidth={2.6} />
-                    {t('watchlist.markWatched')}
-                </button>
-                <button type='button' disabled={isBusy} onClick={() => setIsConfirmingRemoval(true)} className={`${secondary} text-negative-text`}>
-                    <Trash2 size={17} />
-                    {t('watchlist.remove')}
-                </button>
-            </div>
-        );
     } else {
+        const removeButton = (
+            <button type='button' disabled={isBusy} onClick={() => setIsConfirmingRemoval(true)} className={`${secondary} h-9 bg-white px-3 text-[14px] text-negative-text shadow-control`}>
+                <Trash2 size={15} />
+                {t('watchlist.remove')}
+            </button>
+        );
+        let body: JSX.Element;
+
+        if (isReviewing) {
+            body = <ReviewFormComponent entry={entry} title={props.title} onDone={() => setIsReviewing(false)} />;
+        } else if (statusOf(entry) === 'toWatch') {
+            body = <div className='mt-3 flex justify-end'>{removeButton}</div>;
+        } else if (statusOf(entry) === 'watching') {
+            body = (
+                <>
+                    <ProgressPanelComponent entry={entry} onFinish={() => setIsReviewing(true)} />
+                    <div className='mt-3 flex justify-end'>{removeButton}</div>
+                </>
+            );
+        } else {
+            body = (
+                <div className='mt-3 rounded-2xl bg-fill p-4'>
+                    <div className='flex flex-wrap items-center justify-between gap-2'>
+                        <RatingComponent value={entry.rating} label={ratingText(entry.rating)} size={22} />
+                        {entry.watchedAt !== null && <span className='text-[13px] text-ink-tertiary'>{t('watchlist.watchedOn', { date: dayText(entry.watchedAt) })}</span>}
+                    </div>
+                    {entry.comment !== null && <p className='mt-3 whitespace-pre-line text-[15px] leading-relaxed'>{entry.comment}</p>}
+                    <div className='mt-4 flex flex-wrap gap-2'>
+                        <button type='button' onClick={() => setIsReviewing(true)} className={`${secondary} h-9 bg-white px-3 text-[14px] shadow-control`}>
+                            <SquarePen size={15} />
+                            {t('watchlist.editReview')}
+                        </button>
+                        {removeButton}
+                    </div>
+                </div>
+            );
+        }
+
         actions = (
-            <div className='mt-5 rounded-2xl bg-fill p-4'>
-                <div className='flex flex-wrap items-center justify-between gap-2'>
-                    <RatingComponent value={entry.rating} label={ratingText(entry.rating)} size={22} />
-                    <span className='text-[13px] text-ink-tertiary'>{t('watchlist.watchedOn', { date: dayText(entry.watchedAt) })}</span>
-                </div>
-                {entry.comment !== null && <p className='mt-3 whitespace-pre-line text-[15px] leading-relaxed'>{entry.comment}</p>}
-                <div className='mt-4 flex flex-wrap gap-2'>
-                    <button type='button' onClick={() => setIsReviewing(true)} className={`${secondary} h-9 bg-white px-3 text-[14px] shadow-control`}>
-                        <SquarePen size={15} />
-                        {t('watchlist.editReview')}
-                    </button>
-                    <button type='button' disabled={isBusy} onClick={() => void run(() => store.update(entry.id, { watchedAt: null }), t('watchlist.backOnList', { title: details.title }))} className={`${secondary} h-9 bg-white px-3 text-[14px] shadow-control`}>
-                        <RotateCcw size={15} />
-                        {t('watchlist.watchAgain')}
-                    </button>
-                    <button type='button' disabled={isBusy} onClick={() => setIsConfirmingRemoval(true)} className={`${secondary} h-9 bg-white px-3 text-[14px] text-negative-text shadow-control`}>
-                        <Trash2 size={15} />
-                        {t('watchlist.remove')}
-                    </button>
-                </div>
-            </div>
+            <>
+                <StatusControlComponent status={isReviewing ? 'watched' : statusOf(entry)} disabled={isBusy} onChange={(next) => changeStatus(entry, next)} />
+                {body}
+            </>
         );
     }
 
@@ -498,9 +580,7 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
                 </div>
             </div>
 
-            {isReviewing ? (
-                <ReviewFormComponent entry={entry} title={props.title} onDone={() => setIsReviewing(false)} />
-            ) : actions}
+            {entry === null && isReviewing ? <ReviewFormComponent entry={entry} title={props.title} onDone={() => setIsReviewing(false)} /> : actions}
 
             {details.overview !== '' && <p className='mt-6 text-[15px] leading-relaxed text-ink'>{details.overview}</p>}
 
