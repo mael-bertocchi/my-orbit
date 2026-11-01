@@ -1,5 +1,5 @@
 import { chooseLanguage } from 'modules/language/language-service';
-import { episodeText, imageUrl, parsePosition, positionText, ratingText, releaseYear, runtimeText, titleFacts, titlesText, watchedText } from 'modules/watchlist/watchlist-formatting';
+import { episodeText, imageUrl, ratingText, releaseYear, runtimeText, titleFacts, titlesText, watchedText } from 'modules/watchlist/watchlist-formatting';
 import { describe, expect, it } from 'vitest';
 
 describe('watchlist formatting', () => {
@@ -39,22 +39,6 @@ describe('watchlist formatting', () => {
         expect(ratingText(null)).toBe('Not rated');
         chooseLanguage('fr');
         expect(ratingText(7)).toBe('3,5 étoiles sur 5');
-    });
-
-    it('writes a moment of a film as a time code', () => {
-        expect(positionText(5025)).toBe('1:23:45');
-        expect(positionText(605)).toBe('10:05');
-        expect(positionText(0)).toBe('0:00');
-    });
-
-    it('reads a time code as typed, two numbers being hours and minutes', () => {
-        expect(parsePosition('1:23:45')).toBe(5025);
-        expect(parsePosition(' 1:23 ')).toBe(4980);
-        expect(parsePosition('1h23')).toBe(4980);
-        expect(parsePosition('83')).toBe(4980);
-        expect(parsePosition('83 min')).toBe(4980);
-        expect(parsePosition('1:75')).toBeNull();
-        expect(parsePosition('soon')).toBeNull();
     });
 
     it('names an episode in the page\'s language', () => {

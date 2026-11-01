@@ -98,8 +98,8 @@ export const ProgressSchema = z.object({
  * @constant EntrySchema
  * @description A title on the watchlist: to watch while it is neither started nor watched, being watched once
  * `startedAt` is set, watched once `watchedAt` is, then rated in half stars (1 to 10) and maybe commented on. A series
- * being watched may say which episode it is at, and keeps how many episodes each of its seasons has; a film being watched
- * may say where it stopped, in seconds. Its title and its saga's name are kept in both of the portal's languages.
+ * being watched may say which episode it is at, and keeps how many episodes each of its seasons has. Its title and its
+ * saga's name are kept in both of the portal's languages.
  */
 export const EntrySchema = z.object({
     id: z.string(),
@@ -118,7 +118,6 @@ export const EntrySchema = z.object({
     addedAt: z.coerce.date(),
     startedAt: z.coerce.date().nullable().default(null),
     progress: ProgressSchema.nullable().default(null),
-    position: z.number().int().nullable().default(null),
     watchedAt: z.coerce.date().nullable(),
     rating: z.number().int().nullable(),
     comment: z.string().nullable()
@@ -206,7 +205,6 @@ export interface TitleReference {
 export interface EntryChanges {
     startedAt?: Maybe<Date>; /*!< When it was started, or null to put it back to watch */
     progress?: Maybe<Progress>; /*!< The last episode seen of a series being watched */
-    position?: Maybe<number>; /*!< Where a film being watched stopped, in seconds */
     watchedAt?: Maybe<Date>; /*!< When it was watched, or null to watch it again */
     rating?: Maybe<number>; /*!< Its rating in half stars, 1 to 10 */
     comment?: Maybe<string>; /*!< What to say about it */

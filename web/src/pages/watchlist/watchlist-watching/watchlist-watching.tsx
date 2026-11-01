@@ -1,8 +1,7 @@
 import PosterComponent from 'components/poster/poster';
 import { ChevronsRight } from 'lucide-react';
-import type { Maybe } from 'models';
 import { t } from 'modules/language/language-service';
-import { dayText, episodeText, kindName, localized, positionText, titlesText } from 'modules/watchlist/watchlist-formatting';
+import { dayText, episodeText, kindName, localized, titlesText } from 'modules/watchlist/watchlist-formatting';
 import { useSave, useWatchlist, useWatchlistSheetContext } from 'modules/watchlist/watchlist-hooks';
 import type { Entry, WatchlistSheetContextProps } from 'modules/watchlist/watchlist-models';
 import { nextEpisode, seasonShare, watching } from 'modules/watchlist/watchlist-shelves';
@@ -19,52 +18,16 @@ interface WatchingCardComponentProps {
 }
 
 /**
- * @function progressLine
- * @description Where a title being watched is, in a few words: the last episode seen of a series, the moment a film
- * stopped at, or nothing when none was noted
- *
- * @param {Entry} entry The title
- * @returns {string} Where it is, or an empty text
- */
-function progressLine(entry: Entry): string {
-    if (entry.progress !== null) {
-        return episodeText(entry.progress);
-    }
-
-    return entry.position === null ? '' : t('watchlist.stoppedAt', { time: positionText(entry.position) });
-}
-
-/**
- * @function progressShare
- * @description How far into its season a series is, or into its runtime a film, or null when it can't be told
- *
- * @param {Entry} entry The title
- * @returns {Maybe<number>} The share seen, from 0 to 1
- */
-function progressShare(entry: Entry): Maybe<number> {
-    if (entry.mediaType === 'tv') {
-        return seasonShare(entry);
-    }
-
-    if (entry.position === null || entry.runtime === null || entry.runtime === 0) {
-        return null;
-    }
-
-    return Math.min(1, entry.position / (entry.runtime * 60));
-}
-
-/**
  * @function WatchingCardComponent
- * @description One title being watched: its poster, its name, since when, where it is, and for a series a button that
- * counts one more episode seen
+ * @description One title being watched: its poster, its name, since when, and for a series the episode it is at and a
+ * button that counts one more episode seen
  *
  * @param {WatchingCardComponentProps} props The properties of the component
  */
 function WatchingCardComponent(props: WatchingCardComponentProps): JSX.Element {
     const { save, isSaving } = useSave(props.entry);
     const next = props.entry.mediaType === 'tv' ? nextEpisode(props.entry) : null;
-    const share = progressShare(props.entry);
-    const line = progressLine(props.entry);
+    const share = props.entry.mediaType === 'tv' ? seasonShare(props.entry) : null;
     const facts = [kindName(props.entry.mediaType), props.entry.startedAt === null ? null : t('watchlist.startedOn', { date: dayText(props.entry.startedAt) })];
 
     return (
@@ -77,7 +40,7 @@ function WatchingCardComponent(props: WatchingCardComponentProps): JSX.Element {
                     <span className='block truncate text-[17px] font-semibold tracking-tight'>{localized(props.entry.title)}</span>
                     <span className='block text-[13px] text-ink-tertiary'>{facts.filter((fact) => fact !== null).join(' • ')}</span>
                 </button>
-                {line !== '' && <p className='mt-2 text-[14px] font-semibold tabular-nums'>{line}</p>}
+                {props.entry.progress !== null && <p className='mt-2 text-[14px] font-semibold tabular-nums'>{episodeText(props.entry.progress)}</p>}
                 {share !== null && <div className='mt-1.5'><ProgressBarComponent share={share} /></div>}
                 {next !== null && (
                     <div className='mt-auto pt-3'>

@@ -1,10 +1,7 @@
 import SpinnerComponent from 'components/spinner/spinner';
 import { Check, ChevronsRight, SquarePen } from 'lucide-react';
-import type { Maybe } from 'models';
 import { t } from 'modules/language/language-service';
-import { useToastContext } from 'modules/toast/toast-hooks';
-import type { ToastContextProps } from 'modules/toast/toast-models';
-import { dayText, episodeText, parsePosition, positionText } from 'modules/watchlist/watchlist-formatting';
+import { dayText, episodeText } from 'modules/watchlist/watchlist-formatting';
 import { useSave } from 'modules/watchlist/watchlist-hooks';
 import type { Entry, EntryChanges } from 'modules/watchlist/watchlist-models';
 import { nextEpisode, seasonShare } from 'modules/watchlist/watchlist-shelves';
@@ -38,7 +35,7 @@ interface ProgressFieldsProps {
 
 /**
  * @function ProgressBarComponent
- * @description A thin bar showing how far into a season or a film the owner is
+ * @description A thin bar showing how far into a season the owner is
  *
  * @param {ProgressBarComponentProps} props The properties of the component
  */
@@ -137,84 +134,8 @@ function EpisodeFieldsComponent(props: ProgressFieldsProps): JSX.Element {
 }
 
 /**
- * @function PositionFieldComponent
- * @description Where a film stopped, as a time code the owner may type or leave empty. It is stored when the field is
- * left or Enter is pressed, and a bar shows it against the film's runtime when the catalog gives one.
- *
- * @param {ProgressFieldsProps} props The properties of the component
- */
-function PositionFieldComponent(props: ProgressFieldsProps): JSX.Element {
-    const { showToast }: ToastContextProps = useToastContext();
-    const stored = props.entry.position;
-    const [text, setText] = useState(stored === null ? '' : positionText(stored));
-    const runtime = props.entry.runtime === null || props.entry.runtime === 0 ? null : props.entry.runtime * 60;
-
-    /**
-     * @function commit
-     * @description Stores what was typed, if it changed: nothing clears the moment, a time code within the film sets it
-     */
-    const commit = (): void => {
-        const isEmpty = text.trim() === '';
-        const position: Maybe<number> = isEmpty ? null : parsePosition(text);
-
-        if (!isEmpty && (position === null || (runtime !== null && position > runtime))) {
-            showToast(t('watchlist.positionInvalid'));
-            setText(stored === null ? '' : positionText(stored));
-
-            return;
-        }
-
-        if (position === stored) {
-            setText(position === null ? '' : positionText(position));
-
-            return;
-        }
-
-        void props.save({ position }).then((isSaved) => {
-            if (isSaved) {
-                setText(position === null ? '' : positionText(position));
-            }
-        });
-    };
-
-    /**
-     * @function submit
-     * @description Stores the moment instead of sending the form
-     */
-    const submit = (event: FormEvent<HTMLFormElement>): void => {
-        event.preventDefault();
-        commit();
-    };
-
-    /**
-     * @function clear
-     * @description Forgets where the film stopped
-     */
-    const clear = (): void => {
-        setText('');
-        void props.save({ position: null });
-    };
-
-    return (
-        <form onSubmit={submit} className='mt-3'>
-            <label htmlFor='watchlist-position' className='field-label'>{t('watchlist.position')}</label>
-            <div className='flex items-center gap-2'>
-                <input id='watchlist-position' type='text' inputMode='numeric' autoComplete='off' value={text} placeholder={t('watchlist.positionPlaceholder')} onChange={(event) => setText(event.target.value)} onBlur={commit} className='field bg-white tabular-nums' />
-                {runtime !== null && <span className='shrink-0 text-[13px] text-ink-tertiary tabular-nums'>/ {positionText(runtime)}</span>}
-                {stored !== null && (
-                    <button type='button' onClick={clear} className='shrink-0 text-[13px] font-medium text-ink-tertiary hover:text-ink'>
-                        {t('watchlist.clear')}
-                    </button>
-                )}
-            </div>
-            {stored !== null && runtime !== null && <div className='mt-2.5'><ProgressBarComponent share={Math.min(1, stored / runtime)} /></div>}
-        </form>
-    );
-}
-
-/**
  * @function ProgressPanelComponent
- * @description A title being watched, in its sheet: when it was started, where a series or a film is, and the button
+ * @description A title being watched, in its sheet: when it was started, which episode a series is at, and the button
  * that marks it watched
  *
  * @param {ProgressPanelComponentProps} props The properties of the component
@@ -228,7 +149,7 @@ function ProgressPanelComponent(props: ProgressPanelComponentProps): JSX.Element
                 <span className='text-[13px] text-ink-tertiary'>{props.entry.startedAt === null ? '' : t('watchlist.startedOn', { date: dayText(props.entry.startedAt) })}</span>
                 {isSaving && <SpinnerComponent size={14} />}
             </div>
-            {props.entry.mediaType === 'tv' ? <EpisodeFieldsComponent entry={props.entry} save={save} /> : <PositionFieldComponent entry={props.entry} save={save} />}
+            {props.entry.mediaType === 'tv' && <EpisodeFieldsComponent entry={props.entry} save={save} />}
             <button type='button' onClick={props.onFinish} className='mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent px-4 text-[15px] font-semibold text-white transition hover:bg-accent-strong'>
                 <Check size={18} strokeWidth={2.6} />
                 {t('watchlist.finished')}

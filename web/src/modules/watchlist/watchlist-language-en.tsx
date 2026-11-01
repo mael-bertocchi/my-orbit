@@ -113,11 +113,6 @@ export const watchlistEn = {
     'watchlist.changeEpisode': 'Change',
     'watchlist.season': 'Season',
     'watchlist.episodeNumber': 'Episode',
-    'watchlist.position': 'Where you stopped',
-    'watchlist.positionPlaceholder': 'E.g. 1:23:45',
-    'watchlist.positionInvalid': 'Give a moment within the film, like 1:23:45.',
-    'watchlist.stoppedAt': 'Stopped at {time}',
-    'watchlist.clear': 'Clear',
     'watchlist.finished': 'Finished',
     'watchlist.ratingShelf': '{stars} ★',
 

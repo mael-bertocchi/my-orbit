@@ -188,57 +188,6 @@ export function episodeText(progress: Progress): string {
 }
 
 /**
- * @function positionText
- * @description A moment of a film as a time code: 1:23:45, or 23:45 within the first hour
- *
- * @param {number} seconds The moment, in seconds from the start
- * @returns {string} The time code
- */
-export function positionText(seconds: number): string {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const rest = seconds % 60;
-    const twoDigits = (value: number): string => String(value).padStart(2, '0');
-
-    return hours > 0 ? `${hours}:${twoDigits(minutes)}:${twoDigits(rest)}` : `${minutes}:${twoDigits(rest)}`;
-}
-
-/**
- * @constant POSITION_PATTERN
- * @description A time code as typed: hours, minutes and seconds (1:23:45), hours and minutes (1:23 or 1h23), or
- * minutes alone (83)
- */
-const POSITION_PATTERN = /^(?:(\d+)\s*[:h]\s*(\d{1,2})(?:\s*:\s*(\d{1,2}))?|(\d+))\s*(?:min)?$/i;
-
-/**
- * @function parsePosition
- * @description Reads a time code typed for a film. Two numbers are hours and minutes, as a film is told; three add the
- * seconds; one is minutes.
- *
- * @param {string} text What was typed
- * @returns {Maybe<number>} The moment in seconds, or null when it isn't a time code
- */
-export function parsePosition(text: string): Maybe<number> {
-    const found = POSITION_PATTERN.exec(text.trim());
-
-    if (found === null) {
-        return null;
-    }
-
-    const [, hours, minutes, seconds, alone] = found;
-
-    if (alone !== undefined) {
-        return Number(alone) * 60;
-    }
-
-    if (Number(minutes) > 59 || Number(seconds ?? 0) > 59) {
-        return null;
-    }
-
-    return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds ?? 0);
-}
-
-/**
  * @function dayText
  * @description A day, written in the page's language
  *

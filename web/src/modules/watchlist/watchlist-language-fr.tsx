@@ -115,11 +115,6 @@ export const watchlistFr: WatchlistMessages = {
     'watchlist.changeEpisode': 'Modifier',
     'watchlist.season': 'Saison',
     'watchlist.episodeNumber': 'Épisode',
-    'watchlist.position': 'Où vous en êtes',
-    'watchlist.positionPlaceholder': 'Ex. 1:23:45',
-    'watchlist.positionInvalid': 'Indiquez un moment du film, comme 1:23:45.',
-    'watchlist.stoppedAt': 'Arrêté à {time}',
-    'watchlist.clear': 'Effacer',
     'watchlist.finished': 'Terminé',
     'watchlist.ratingShelf': '{stars} ★',
 
