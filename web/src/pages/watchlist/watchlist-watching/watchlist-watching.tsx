@@ -19,8 +19,9 @@ interface WatchingCardComponentProps {
 
 /**
  * @function WatchingCardComponent
- * @description One title being watched: its poster, its name, since when, and for a series the episode it is at and a
- * button that counts one more episode seen
+ * @description One title being watched: its poster, its name, since when, and for a series the episode it is at, a
+ * button that counts one more episode seen and how far into its season it is. Everything fits beside the poster, so every
+ * card is as tall as its poster.
  *
  * @param {WatchingCardComponentProps} props The properties of the component
  */
@@ -38,16 +39,20 @@ function WatchingCardComponent(props: WatchingCardComponentProps): JSX.Element {
             <div className='flex min-w-0 flex-1 flex-col'>
                 <button type='button' onClick={props.onOpen} className='text-left'>
                     <span className='block truncate text-[17px] font-semibold tracking-tight'>{localized(props.entry.title)}</span>
-                    <span className='block text-[13px] text-ink-tertiary'>{facts.filter((fact) => fact !== null).join(' • ')}</span>
+                    <span className='block truncate text-[13px] text-ink-tertiary'>{facts.filter((fact) => fact !== null).join(' • ')}</span>
                 </button>
-                {props.entry.progress !== null && <p className='mt-2 text-[14px] font-semibold tabular-nums'>{episodeText(props.entry.progress)}</p>}
-                {share !== null && <div className='mt-1.5'><ProgressBarComponent share={share} /></div>}
-                {next !== null && (
-                    <div className='mt-auto pt-3'>
-                        <button type='button' disabled={isSaving} onClick={() => void save({ progress: next })} className='inline-flex h-8 items-center gap-1.5 rounded-lg bg-fill px-2.5 text-[13px] font-semibold transition hover:bg-fill-strong disabled:opacity-60'>
-                            <ChevronsRight size={15} />
-                            {props.entry.progress === null ? t('watchlist.firstEpisode') : t('watchlist.nextEpisode')}
-                        </button>
+                {props.entry.mediaType === 'tv' && (
+                    <div className='mt-auto'>
+                        <div className='flex items-center justify-between gap-2'>
+                            <span className='truncate text-[14px] font-semibold tabular-nums'>{props.entry.progress === null ? '' : episodeText(props.entry.progress)}</span>
+                            {next !== null && (
+                                <button type='button' disabled={isSaving} onClick={() => void save({ progress: next })} className='inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-fill px-2.5 text-[13px] font-semibold transition hover:bg-fill-strong disabled:opacity-60'>
+                                    <ChevronsRight size={15} />
+                                    {props.entry.progress === null ? t('watchlist.firstEpisode') : t('watchlist.nextEpisode')}
+                                </button>
+                            )}
+                        </div>
+                        {share !== null && <div className='mt-2'><ProgressBarComponent share={share} /></div>}
                     </div>
                 )}
             </div>
