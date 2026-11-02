@@ -44,11 +44,11 @@ function WatchingCardComponent(props: WatchingCardComponentProps): JSX.Element {
                 {props.entry.mediaType === 'tv' && (
                     <div className='mt-auto'>
                         <div className='flex items-center justify-between gap-2'>
-                            <span className='truncate text-[14px] font-semibold tabular-nums'>{props.entry.progress === null ? '' : episodeText(props.entry.progress)}</span>
+                            <span className={`truncate tabular-nums ${props.entry.progress === null ? 'text-[13px] text-ink-tertiary' : 'text-[14px] font-semibold'}`}>{props.entry.progress === null ? t('watchlist.noEpisodeShort') : episodeText(props.entry.progress)}</span>
                             {next !== null && (
                                 <button type='button' disabled={isSaving} onClick={() => void save({ progress: next })} className='inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-fill px-2.5 text-[13px] font-semibold transition hover:bg-fill-strong disabled:opacity-60'>
                                     <ChevronsRight size={15} />
-                                    {props.entry.progress === null ? t('watchlist.firstEpisode') : t('watchlist.nextEpisode')}
+                                    {t('watchlist.nextEpisode')}
                                 </button>
                             )}
                         </div>

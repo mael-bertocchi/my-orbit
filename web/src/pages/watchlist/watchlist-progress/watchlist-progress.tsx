@@ -121,7 +121,7 @@ function EpisodeFieldsComponent(props: ProgressFieldsProps): JSX.Element {
                 {next !== null && (
                     <button type='button' onClick={() => void props.save({ progress: next })} className='inline-flex h-9 items-center gap-1.5 rounded-xl bg-white px-3 text-[14px] font-semibold shadow-control transition hover:bg-fill-strong'>
                         <ChevronsRight size={16} />
-                        {progress === null ? t('watchlist.firstEpisode') : t('watchlist.nextEpisode')}
+                        {t('watchlist.nextEpisode')}
                     </button>
                 )}
                 <button type='button' onClick={openEditor} className='inline-flex h-9 items-center gap-1.5 rounded-xl bg-white px-3 text-[14px] font-semibold shadow-control transition hover:bg-fill-strong'>
