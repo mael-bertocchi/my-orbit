@@ -32,8 +32,8 @@ function WatchingCardComponent(props: WatchingCardComponentProps): JSX.Element {
 
     return (
         <li className='card flex gap-4 p-3.5'>
-            <button type='button' onClick={props.onOpen} className='shrink-0' aria-label={localized(props.entry.title)}>
-                <PosterComponent path={props.entry.posterPath} title={localized(props.entry.title)} width='w185' className='w-20 rounded-xl shadow-control' />
+            <button type='button' onClick={props.onOpen} className='block shrink-0 self-start' aria-label={localized(props.entry.title)}>
+                <PosterComponent path={props.entry.posterPath} title={localized(props.entry.title)} width='w185' className='w-20 rounded-lg shadow-control' />
             </button>
             <div className='flex min-w-0 flex-1 flex-col'>
                 <button type='button' onClick={props.onOpen} className='text-left'>

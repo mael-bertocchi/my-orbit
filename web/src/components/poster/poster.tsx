@@ -17,14 +17,15 @@ interface PosterComponentProps {
 
 /**
  * @function PosterComponent
- * @description A film's or a series' poster, at the 2:3 ratio of a poster. Without one, or while it can't load, a
+ * @description A film's or a series' poster, at the 2:3 ratio of a poster. It is a block whatever holds it, so its width,
+ * its ratio and its rounded corners hold even inside a button or a link. Without one, or while it can't load, a
  * clapperboard on a grey card stands in.
  *
  * @param {PosterComponentProps} props The properties of the component
  */
 function PosterComponent(props: PosterComponentProps): JSX.Element {
     const [hasFailed, setHasFailed] = useState(false);
-    const className = `relative aspect-[2/3] shrink-0 overflow-hidden bg-fill-strong ${props.className ?? 'w-full rounded-xl'}`;
+    const className = `relative block aspect-[2/3] shrink-0 overflow-hidden bg-fill-strong ${props.className ?? 'w-full rounded-xl'}`;
 
     if (props.path === null || hasFailed) {
         return (
