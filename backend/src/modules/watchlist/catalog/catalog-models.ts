@@ -117,7 +117,6 @@ export const TmdbShowSchema = z.object({
     poster_path: z.string().nullish(),
     overview: z.string().default(''),
     number_of_seasons: z.number().int().nullish(),
-    seasons: z.array(z.object({ season_number: z.number().int(), episode_count: z.number().int().nullish() })).default([]),
     genres: z.array(TmdbGenreSchema).default([])
 });
 
@@ -216,7 +215,6 @@ export const CatalogDetailsSchema = CatalogTitleSchema.extend({
     genres: z.array(TmdbGenreSchema),
     runtime: z.number().int().nullable(),
     seasons: z.number().int().nullable(),
-    episodeCounts: z.array(z.number().int()),
     collection: TmdbGenreSchema.nullable(),
     offers: CatalogOffersSchema
 });

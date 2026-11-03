@@ -44,7 +44,6 @@ export const TMDB_ANSWERS: Record<string, unknown> = {
         poster_path: '/got.jpg',
         overview: 'Neuf familles nobles se disputent le contrôle de Westeros.',
         number_of_seasons: 8,
-        seasons: [0, 1, 2, 3, 4, 5, 6, 7, 8].map((season) => ({ season_number: season, episode_count: [13, 10, 10, 10, 10, 10, 10, 7, 6][season] })),
         genres: [{ id: 10765, name: 'Science-Fiction & Fantastique' }, { id: 18, name: 'Drame' }]
     },
     '/tv/1399/watch/providers': {

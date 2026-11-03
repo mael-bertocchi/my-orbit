@@ -34,7 +34,7 @@ async function add(request: FastifyRequest<EntryCreateRequest>, reply: FastifyRe
  * @returns {Promise<void>} Resolves when the stored title is sent.
  */
 async function update(request: FastifyRequest<EntryUpdateRequest>, reply: FastifyReply): Promise<void> {
-    const entry = await updateEntry(request.server.prisma, request.params.entryId, request.body, { variables: request.server.variables, logger: request.log });
+    const entry = await updateEntry(request.server.prisma, request.params.entryId, request.body);
 
     reply.status(StatusCodes.OK).send({ data: entry });
 }
