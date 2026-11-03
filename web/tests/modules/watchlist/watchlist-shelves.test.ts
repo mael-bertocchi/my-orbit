@@ -1,6 +1,6 @@
 import { chooseLanguage } from 'modules/language/language-service';
 import type { Entry } from 'modules/watchlist/watchlist-models';
-import { isMediaType, isShelfOrder, matches, nextEpisode, ofKinds, seasonShare, shelves, statusOf, toWatch, watchedEntries, watchedIn, watchedShelves, watchedYears, watching } from 'modules/watchlist/watchlist-shelves';
+import { isMediaType, isShelfOrder, matches, ofKinds, shelves, statusOf, toWatch, watchedEntries, watchedIn, watchedShelves, watchedYears, watching } from 'modules/watchlist/watchlist-shelves';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -21,10 +21,8 @@ function entry(overrides: Partial<Entry>): Entry {
         collectionName: null,
         runtime: null,
         seasons: null,
-        episodeCounts: [],
         addedAt: new Date('2026-10-01T10:00:00Z'),
         startedAt: null,
-        progress: null,
         watchedAt: null,
         rating: null,
         comment: null,
@@ -147,27 +145,6 @@ describe('the three statuses', () => {
         expect(list.map(statusOf)).toEqual(['toWatch', 'watching', 'watching', 'watched']);
         expect(toWatch(list).map((found) => found.tmdbId)).toEqual([1]);
         expect(watching(list).map((found) => found.tmdbId)).toEqual([3, 2]);
-    });
-});
-
-describe('nextEpisode and seasonShare', () => {
-    const series = (progress: Entry['progress'], episodeCounts: number[]): Entry => entry({ mediaType: 'tv', startedAt: new Date('2026-10-01T10:00:00Z'), progress, episodeCounts });
-
-    it('starts at the first episode, goes on within a season, then to the next season, and stops at the last', () => {
-        expect(nextEpisode(series(null, [10, 8]))).toEqual({ season: 1, episode: 1 });
-        expect(nextEpisode(series({ season: 1, episode: 4 }, [10, 8]))).toEqual({ season: 1, episode: 5 });
-        expect(nextEpisode(series({ season: 1, episode: 10 }, [10, 8]))).toEqual({ season: 2, episode: 1 });
-        expect(nextEpisode(series({ season: 2, episode: 8 }, [10, 8]))).toBeNull();
-    });
-
-    it('just goes one episode further when the seasons are unknown', () => {
-        expect(nextEpisode(series({ season: 3, episode: 12 }, []))).toEqual({ season: 3, episode: 13 });
-        expect(seasonShare(series({ season: 3, episode: 12 }, []))).toBeNull();
-    });
-
-    it('tells how far into its season a series is', () => {
-        expect(seasonShare(series({ season: 1, episode: 4 }, [10, 8]))).toBe(0.4);
-        expect(seasonShare(series(null, [10, 8]))).toBeNull();
     });
 });
 

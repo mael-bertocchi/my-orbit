@@ -61,7 +61,6 @@ export const TitleDetailsSchema = CatalogTitleSchema.extend({
     genres: z.array(GenreSchema),
     runtime: z.number().int().nullable(),
     seasons: z.number().int().nullable(),
-    episodeCounts: z.array(z.number().int()).default([]),
     collection: GenreSchema.nullable(),
     offers: OffersSchema
 });
@@ -86,20 +85,10 @@ export const LocalizedTextSchema = z.object({
 });
 
 /**
- * @constant ProgressSchema
- * @description Where a series being watched is: the last episode seen, by season and episode, from 1.
- */
-export const ProgressSchema = z.object({
-    season: z.number().int(),
-    episode: z.number().int()
-});
-
-/**
  * @constant EntrySchema
  * @description A title on the watchlist: to watch while it is neither started nor watched, being watched once
- * `startedAt` is set, watched once `watchedAt` is, then rated in half stars (1 to 10) and maybe commented on. A series
- * being watched may say which episode it is at, and keeps how many episodes each of its seasons has. Its title and its
- * saga's name are kept in both of the portal's languages.
+ * `startedAt` is set, watched once `watchedAt` is, then rated in half stars (1 to 10) and maybe commented on. Its title
+ * and its saga's name are kept in both of the portal's languages.
  */
 export const EntrySchema = z.object({
     id: z.string(),
@@ -114,10 +103,8 @@ export const EntrySchema = z.object({
     collectionName: LocalizedTextSchema.nullable(),
     runtime: z.number().int().nullable(),
     seasons: z.number().int().nullable(),
-    episodeCounts: z.array(z.number().int()).default([]),
     addedAt: z.coerce.date(),
     startedAt: z.coerce.date().nullable().default(null),
-    progress: ProgressSchema.nullable().default(null),
     watchedAt: z.coerce.date().nullable(),
     rating: z.number().int().nullable(),
     comment: z.string().nullable()
@@ -172,12 +159,6 @@ export type Collection = z.infer<typeof CollectionSchema>;
 export type LocalizedText = z.infer<typeof LocalizedTextSchema>;
 
 /**
- * @type Progress
- * @description Where a series being watched is.
- */
-export type Progress = z.infer<typeof ProgressSchema>;
-
-/**
  * @type Entry
  * @description A title on the watchlist.
  */
@@ -204,19 +185,9 @@ export interface TitleReference {
  */
 export interface EntryChanges {
     startedAt?: Maybe<Date>; /*!< When it was started, or null to put it back to watch */
-    progress?: Maybe<Progress>; /*!< The last episode seen of a series being watched */
     watchedAt?: Maybe<Date>; /*!< When it was watched, or null to watch it again */
     rating?: Maybe<number>; /*!< Its rating in half stars, 1 to 10 */
     comment?: Maybe<string>; /*!< What to say about it */
-}
-
-/**
- * @interface SaveHandle
- * @description How to store a change to a title, and whether one is on its way
- */
-export interface SaveHandle {
-    save: (changes: EntryChanges) => Promise<boolean>; /*!< Stores a change, telling whether it went through */
-    isSaving: boolean; /*!< Whether a change is on its way */
 }
 
 /**

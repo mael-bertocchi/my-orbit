@@ -1,7 +1,7 @@
 import type { Maybe } from 'models';
 import { currentLanguage, t } from 'modules/language/language-service';
 import { localized } from 'modules/watchlist/watchlist-formatting';
-import type { Entry, EntryStatus, MediaType, Progress } from 'modules/watchlist/watchlist-models';
+import type { Entry, EntryStatus, MediaType } from 'modules/watchlist/watchlist-models';
 
 /**
  * @type ShelfOrder
@@ -173,48 +173,6 @@ export function watching(entries: Entry[]): Entry[] {
     const started = (entry: Entry): number => entry.startedAt?.getTime() ?? 0;
 
     return entries.filter((entry) => statusOf(entry) === 'watching').sort((first, second) => started(second) - started(first));
-}
-
-/**
- * @function nextEpisode
- * @description The episode after the last one seen of a series: the first one when none was seen, the next season's
- * first once a season is over, and none past the last episode the catalog knows. A series of unknown seasons just goes
- * one episode further.
- *
- * @param {Entry} entry The series
- * @returns {Maybe<Progress>} The next episode, or null when the series is over
- */
-export function nextEpisode(entry: Entry): Maybe<Progress> {
-    if (entry.progress === null) {
-        return { season: 1, episode: 1 };
-    }
-
-    const { season, episode } = entry.progress;
-    const episodes = entry.episodeCounts.at(season - 1);
-
-    if (entry.episodeCounts.length === 0 || episodes === undefined || episodes === 0 || episode < episodes) {
-        return { season, episode: episode + 1 };
-    }
-
-    return season < entry.episodeCounts.length ? { season: season + 1, episode: 1 } : null;
-}
-
-/**
- * @function seasonShare
- * @description How far into its season a series being watched is, from 0 to 1, or null when the season's length is
- * unknown.
- *
- * @param {Entry} entry The series
- * @returns {Maybe<number>} The share of the season seen
- */
-export function seasonShare(entry: Entry): Maybe<number> {
-    if (entry.progress === null) {
-        return null;
-    }
-
-    const episodes = entry.episodeCounts.at(entry.progress.season - 1);
-
-    return episodes === undefined || episodes === 0 ? null : Math.min(1, entry.progress.episode / episodes);
 }
 
 /**

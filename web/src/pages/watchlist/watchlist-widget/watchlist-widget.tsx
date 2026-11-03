@@ -2,7 +2,7 @@ import PosterComponent from 'components/poster/poster';
 import RatingComponent from 'components/rating/rating';
 import SpinnerComponent from 'components/spinner/spinner';
 import { t } from 'modules/language/language-service';
-import { episodeText, localized, ratingText } from 'modules/watchlist/watchlist-formatting';
+import { localized, ratingText } from 'modules/watchlist/watchlist-formatting';
 import { useWatchlist, useWatchlistContext } from 'modules/watchlist/watchlist-hooks';
 import { WatchlistProvider } from 'modules/watchlist/watchlist-provider';
 import { toWatch, watchedEntries, watching } from 'modules/watchlist/watchlist-shelves';
@@ -16,9 +16,8 @@ const POSTERS = 4;
 
 /**
  * @function WatchlistGlanceComponent
- * @description How many titles are left to watch, the latest added, and either the title being watched (with its
- * episode for a series) or, when none is, the last one watched with its rating. It reads the same watchlist the app
- * shows, loading it if the app hasn't.
+ * @description How many titles are left to watch, the latest added, and either the title being watched or, when none
+ * is, the last one watched with its rating. It reads the same watchlist the app shows, loading it if the app hasn't.
  *
  * @returns {JSX.Element} The glance at the watchlist
  */
@@ -53,10 +52,7 @@ function WatchlistGlanceComponent(): JSX.Element {
                 <p className='text-[13px] font-medium text-ink-secondary'>{t('watchlist.toWatch')}</p>
                 <p className='mt-0.5 text-[30px] font-semibold leading-tight tracking-tight tabular-nums'>{pending.length}</p>
                 {current !== undefined && (
-                    <p className='mt-1 truncate text-[13px] text-ink-tertiary'>
-                        {t('watchlist.nowWatching', { title: localized(current.title) })}
-                        {current.progress !== null && <span className='tabular-nums'> · {episodeText(current.progress)}</span>}
-                    </p>
+                    <p className='mt-1 truncate text-[13px] text-ink-tertiary'>{t('watchlist.nowWatching', { title: localized(current.title) })}</p>
                 )}
                 {current === undefined && lastWatched === undefined && (
                     <p className='text-[13px] text-ink-tertiary'>{t('watchlist.nothingWatched')}</p>

@@ -1,6 +1,6 @@
 import type { Maybe } from 'models';
 import { currentLanguage, t } from 'modules/language/language-service';
-import type { LocalizedText, MediaType, Progress } from 'modules/watchlist/watchlist-models';
+import type { LocalizedText, MediaType } from 'modules/watchlist/watchlist-models';
 
 /**
  * @constant IMAGE_BASE_URL
@@ -174,17 +174,6 @@ export function ratingText(rating: Maybe<number>): string {
  */
 export function starsText(rating: number): string {
     return new Intl.NumberFormat(currentLanguage(), { maximumFractionDigits: 1 }).format(rating / 2);
-}
-
-/**
- * @function episodeText
- * @description An episode of a series, such as S3 · E4
- *
- * @param {Progress} progress The episode
- * @returns {string} The episode, written out
- */
-export function episodeText(progress: Progress): string {
-    return t('watchlist.episode', { season: progress.season, episode: progress.episode });
 }
 
 /**

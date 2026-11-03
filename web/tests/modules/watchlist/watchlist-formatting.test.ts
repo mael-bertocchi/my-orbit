@@ -1,5 +1,5 @@
 import { chooseLanguage } from 'modules/language/language-service';
-import { episodeText, imageUrl, ratingText, releaseYear, runtimeText, titleFacts, titlesText, watchedText } from 'modules/watchlist/watchlist-formatting';
+import { imageUrl, ratingText, releaseYear, runtimeText, titleFacts, titlesText, watchedText } from 'modules/watchlist/watchlist-formatting';
 import { describe, expect, it } from 'vitest';
 
 describe('watchlist formatting', () => {
@@ -39,12 +39,5 @@ describe('watchlist formatting', () => {
         expect(ratingText(null)).toBe('Not rated');
         chooseLanguage('fr');
         expect(ratingText(7)).toBe('3,5 étoiles sur 5');
-    });
-
-    it('names an episode in the page\'s language', () => {
-        chooseLanguage('fr');
-        expect(episodeText({ season: 3, episode: 4 })).toBe('S3 · É4');
-        chooseLanguage('en');
-        expect(episodeText({ season: 3, episode: 4 })).toBe('S3 · E4');
     });
 });

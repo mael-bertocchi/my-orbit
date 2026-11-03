@@ -1,11 +1,9 @@
 import PosterComponent from 'components/poster/poster';
-import { ChevronsRight } from 'lucide-react';
 import { t } from 'modules/language/language-service';
-import { dayText, episodeText, kindName, localized, titlesText } from 'modules/watchlist/watchlist-formatting';
-import { useSave, useWatchlist, useWatchlistSheetContext } from 'modules/watchlist/watchlist-hooks';
+import { dayText, localized, titleFacts, titlesText } from 'modules/watchlist/watchlist-formatting';
+import { useWatchlist, useWatchlistSheetContext } from 'modules/watchlist/watchlist-hooks';
 import type { Entry, WatchlistSheetContextProps } from 'modules/watchlist/watchlist-models';
-import { nextEpisode, seasonShare, watching } from 'modules/watchlist/watchlist-shelves';
-import { ProgressBarComponent } from 'pages/watchlist/watchlist-progress/watchlist-progress';
+import { watching } from 'modules/watchlist/watchlist-shelves';
 import { useMemo, type JSX } from 'react';
 
 /**
@@ -19,51 +17,29 @@ interface WatchingCardComponentProps {
 
 /**
  * @function WatchingCardComponent
- * @description One title being watched: its poster, its name, since when, and for a series the episode it is at, a
- * button that counts one more episode seen and how far into its season it is. Everything fits beside the poster, so every
- * card is as tall as its poster.
+ * @description One title being watched: its poster, its name, its year and kind, and since when. The whole card opens
+ * the title, where it is marked watched.
  *
  * @param {WatchingCardComponentProps} props The properties of the component
  */
 function WatchingCardComponent(props: WatchingCardComponentProps): JSX.Element {
-    const { save, isSaving } = useSave(props.entry);
-    const next = props.entry.mediaType === 'tv' ? nextEpisode(props.entry) : null;
-    const share = props.entry.mediaType === 'tv' ? seasonShare(props.entry) : null;
-    const facts = [kindName(props.entry.mediaType), props.entry.startedAt === null ? null : t('watchlist.startedOn', { date: dayText(props.entry.startedAt) })];
-
     return (
-        <li className='card flex gap-4 p-3.5'>
-            <button type='button' onClick={props.onOpen} className='block shrink-0 self-start' aria-label={localized(props.entry.title)}>
+        <li>
+            <button type='button' onClick={props.onOpen} className='card flex w-full gap-4 p-3.5 text-left transition hover:bg-fill'>
                 <PosterComponent path={props.entry.posterPath} title={localized(props.entry.title)} width='w185' className='w-20 rounded-lg shadow-control' />
+                <span className='flex min-w-0 flex-1 flex-col self-stretch'>
+                    <span className='line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight'>{localized(props.entry.title)}</span>
+                    <span className='mt-0.5 block truncate text-[13px] text-ink-tertiary'>{titleFacts(props.entry)}</span>
+                    {props.entry.startedAt !== null && <span className='mt-auto block truncate text-[13px] text-ink-secondary'>{t('watchlist.startedOn', { date: dayText(props.entry.startedAt) })}</span>}
+                </span>
             </button>
-            <div className='flex min-w-0 flex-1 flex-col'>
-                <button type='button' onClick={props.onOpen} className='text-left'>
-                    <span className='block truncate text-[17px] font-semibold tracking-tight'>{localized(props.entry.title)}</span>
-                    <span className='block truncate text-[13px] text-ink-tertiary'>{facts.filter((fact) => fact !== null).join(' • ')}</span>
-                </button>
-                {props.entry.mediaType === 'tv' && (
-                    <div className='mt-auto'>
-                        <div className='flex items-center justify-between gap-2'>
-                            <span className={`truncate tabular-nums ${props.entry.progress === null ? 'text-[13px] text-ink-tertiary' : 'text-[14px] font-semibold'}`}>{props.entry.progress === null ? t('watchlist.noEpisodeShort') : episodeText(props.entry.progress)}</span>
-                            {next !== null && (
-                                <button type='button' disabled={isSaving} onClick={() => void save({ progress: next })} className='inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-fill px-2.5 text-[13px] font-semibold transition hover:bg-fill-strong disabled:opacity-60'>
-                                    <ChevronsRight size={15} />
-                                    {t('watchlist.nextEpisode')}
-                                </button>
-                            )}
-                        </div>
-                        {share !== null && <div className='mt-2'><ProgressBarComponent share={share} /></div>}
-                    </div>
-                )}
-            </div>
         </li>
     );
 }
 
 /**
  * @function WatchlistWatchingComponent
- * @description The "Watching" tab: the titles started and not finished, the latest started first, each on a card large
- * enough to say where it is
+ * @description The "Watching" tab: the titles started and not finished, the latest started first, each on a card
  *
  * @returns {JSX.Element} The titles being watched
  */

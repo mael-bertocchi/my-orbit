@@ -13,7 +13,6 @@ import { useWatchlist, useWatchlistContext } from 'modules/watchlist/watchlist-h
 import type { CatalogTitle, Collection, Entry, EntryStatus, Offers, Provider, TitleDetails, TitleReference } from 'modules/watchlist/watchlist-models';
 import watchlistService from 'modules/watchlist/watchlist-service';
 import { statusOf } from 'modules/watchlist/watchlist-shelves';
-import ProgressPanelComponent from 'pages/watchlist/watchlist-progress/watchlist-progress';
 import { useEffect, useState, type FormEvent, type JSX } from 'react';
 import { messageOf } from 'utils/errors';
 
@@ -464,7 +463,7 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
     /**
      * @function changeStatus
      * @description Moves the title to the place picked. Watched asks for a review first; being watched starts it now;
-     * to watch forgets its start, its progress and its review.
+     * to watch forgets its start and its review.
      *
      * @param {Entry} current The title's entry
      * @param {EntryStatus} next The place picked
@@ -525,10 +524,10 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
             body = <div className='mt-3 flex justify-end'>{removeButton}</div>;
         } else if (statusOf(entry) === 'watching') {
             body = (
-                <>
-                    <ProgressPanelComponent entry={entry} onFinish={() => setIsReviewing(true)} />
-                    <div className='mt-3 flex justify-end'>{removeButton}</div>
-                </>
+                <div className='mt-3 flex items-center justify-between gap-3'>
+                    <span className='text-[13px] text-ink-tertiary'>{entry.startedAt === null ? '' : t('watchlist.startedOn', { date: dayText(entry.startedAt) })}</span>
+                    {removeButton}
+                </div>
             );
         } else {
             body = (

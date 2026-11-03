@@ -1,11 +1,8 @@
 import type { Maybe } from 'models';
 import { WatchlistContext, WatchlistSheetContext } from 'modules/watchlist/watchlist-context';
-import { useToastContext } from 'modules/toast/toast-hooks';
-import type { ToastContextProps } from 'modules/toast/toast-models';
-import type { Entry, EntryChanges, SaveHandle, WatchlistSheetContextProps, WatchlistSnapshot } from 'modules/watchlist/watchlist-models';
+import type { WatchlistSheetContextProps, WatchlistSnapshot } from 'modules/watchlist/watchlist-models';
 import type { WatchlistStore } from 'modules/watchlist/watchlist-store';
 import { useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type RefCallback } from 'react';
-import { messageOf } from 'utils/errors';
 
 /**
  * @constant CATCH_UP_EVERY
@@ -135,39 +132,4 @@ export function useProgressive(step: number, key: string): Progressive {
     }, [step]);
 
     return { shown, sentinel };
-}
-
-/**
- * @function useSave
- * @description Stores a change to a title, showing why it failed if it did
- *
- * @param {Entry} entry The title
- * @returns {SaveHandle} How to store a change, and whether one is on its way
- */
-export function useSave(entry: Entry): SaveHandle {
-    const store = useWatchlistContext();
-    const { showToast }: ToastContextProps = useToastContext();
-    const [isSaving, setIsSaving] = useState(false);
-
-    /**
-     * @function save
-     * @description Stores the change
-     */
-    const save = async (changes: EntryChanges): Promise<boolean> => {
-        setIsSaving(true);
-
-        try {
-            await store.update(entry.id, changes);
-
-            return true;
-        } catch (failure: unknown) {
-            showToast(messageOf(failure));
-
-            return false;
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    return { save, isSaving };
 }
