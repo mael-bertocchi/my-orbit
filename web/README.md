@@ -124,6 +124,6 @@ A multi-stage image lives at `.docker/Dockerfile`: the build is served as static
 docker build -f .docker/Dockerfile -t my-orbit-web .
 ```
 
-The page calls the API on its own domain, `https://api-obole.mael-bertocchi.fr`, from the browser. The backend lets it through with CORS, so its `CORS_ORIGIN` must list the page's origin (`https://obole.mael-bertocchi.fr`), and its `IDENTITY_ORIGIN` must be that origin too, or no passkey will be accepted. To build for another API, set `VITE_API_URL` when building, and add that origin to `connect-src` in the Caddyfile's Content-Security-Policy.
+The page calls the API on its own domain, `https://my-orbit-api.mael-bertocchi.fr`, from the browser. The backend lets it through with CORS, so its `CORS_ORIGIN` must list the page's origin (`https://my-orbit.mael-bertocchi.fr`), and its `IDENTITY_ORIGIN` must be that origin too, or no passkey will be accepted. To build for another API, set `VITE_API_URL` when building, and add that origin to `connect-src` in the Caddyfile's Content-Security-Policy.
 
 The page is served with a strict Content-Security-Policy and kept out of search engines.

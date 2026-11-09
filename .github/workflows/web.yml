@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://obole.mael-bertocchi.fr
+      url: https://my-orbit.mael-bertocchi.fr
     concurrency:
       group: deploy-web
       cancel-in-progress: false

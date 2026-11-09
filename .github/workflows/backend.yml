@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://api-obole.mael-bertocchi.fr
+      url: https://my-orbit-api.mael-bertocchi.fr
     concurrency:
       group: deploy-backend
       cancel-in-progress: false

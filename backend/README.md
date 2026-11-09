@@ -105,7 +105,7 @@ The API is live; verify it with `GET /v1/health`.
 There is one account, and the only way in is a **passkey**: kept in your password manager, unlocked with Face ID or Touch ID, impossible to phish because it only signs for the portal's own site.
 
 ```bash
-IDENTITY_ORIGIN="https://obole.mael-bertocchi.fr"
+IDENTITY_ORIGIN="https://my-orbit.mael-bertocchi.fr"
 IDENTITY_OWNER_NAME="Maël"
 ```
 

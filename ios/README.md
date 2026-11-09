@@ -62,7 +62,7 @@ The local JSON store is the working copy; the server holds the durable one, and 
 
 A failed push flips the Settings badge to **Offline**, and the next reconcile catches up. Access tokens refresh automatically on a `401`; when the refresh token is gone, the app returns to the sign-in screen.
 
-The app talks to a fixed HTTPS endpoint, `https://api-obole.mael-bertocchi.fr` (`ApplicationSession.serverURL`). To develop against a local server, change that constant.
+The app talks to a fixed HTTPS endpoint, `https://my-orbit-api.mael-bertocchi.fr` (`ApplicationSession.serverURL`). To develop against a local server, change that constant.
 
 ## Local Development
 
@@ -102,13 +102,13 @@ If the profile has already expired, the reinstall works but the launch is refuse
 
 ## Signing in
 
-The only way in is the owner's **passkey**, which belongs to the Orbit portal's site (`obole.mael-bertocchi.fr`). An app can only use a site's passkeys with the *Associated Domains* capability, which a free developer team doesn't get, so the app signs in **through the portal**, the way an app offers "Sign in with Apple":
+The only way in is the owner's **passkey**, which belongs to the Orbit portal's site (`my-orbit.mael-bertocchi.fr`). An app can only use a site's passkeys with the *Associated Domains* capability, which a free developer team doesn't get, so the app signs in **through the portal**, the way an app offers "Sign in with Apple":
 
 1. **Sign in with a passkey** opens the portal's `/connect` page in an ephemeral browser sheet (`ASWebAuthenticationSession`), with a fresh PKCE challenge (`PortalConnection`).
 2. The page asks for the passkey (Face ID); the backend checks it and hands back a one-time code, bound to that challenge, through the `my-orbit://` scheme.
 3. The app trades the code, with the PKCE verifier only it knows, for its tokens (`POST /v1/identity/connect/token`).
 
-Closing the sheet simply cancels. The app needs the backend at `https://api-obole.mael-bertocchi.fr` and the portal at `https://obole.mael-bertocchi.fr` (`ApplicationSession.portalURL`).
+Closing the sheet simply cancels. The app needs the backend at `https://my-orbit-api.mael-bertocchi.fr` and the portal at `https://my-orbit.mael-bertocchi.fr` (`ApplicationSession.portalURL`).
 
 ## Running Demonstration
 
