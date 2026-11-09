@@ -1,13 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8B74E8"/>
-      <stop offset="1" stop-color="#5B45B8"/>
+      <stop offset="0" stop-color="#6B7787"/>
+      <stop offset="1" stop-color="#434C59"/>
     </linearGradient>
+    <clipPath id="planet">
+      <circle cx="32" cy="32" r="10"/>
+    </clipPath>
   </defs>
   <rect width="64" height="64" rx="15" fill="url(#tile)"/>
-  <circle cx="22.5" cy="22.5" r="7" fill="#fff"/>
-  <rect x="35" y="15.5" width="14" height="14" rx="4" fill="#fff" fill-opacity="0.72"/>
-  <rect x="15.5" y="35" width="14" height="14" rx="4" fill="#fff" fill-opacity="0.72"/>
-  <rect x="35" y="35" width="14" height="14" rx="4" fill="#fff" fill-opacity="0.72"/>
+  <g transform="rotate(-24 32 32)">
+    <path d="M 10 32 A 22 7 0 0 1 54 32" fill="none" stroke="#A4AAB2" stroke-width="2.5"/>
+    <circle cx="32" cy="32" r="10" fill="#E9E4DA"/>
+    <path d="M 54 32 A 22 7 0 0 1 10 32" fill="none" stroke="#C3C3C0" stroke-width="5.5" clip-path="url(#planet)"/>
+    <path d="M 54 32 A 22 7 0 0 1 10 32" fill="none" stroke="#A4AAB2" stroke-width="2.5"/>
+    <circle cx="50" cy="28" r="3.6" fill="#C9B79C"/>
+  </g>
 </svg>
