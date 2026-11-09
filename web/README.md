@@ -120,10 +120,12 @@ npm run dev
 
 A multi-stage image lives at `.docker/Dockerfile`: the build is served as static files by Caddy (`.docker/Caddyfile`), on port 80 over plain HTTP; TLS belongs to the proxy in front of it.
 
+The API's origin is given at build time, as the build argument `VITE_API_URL` (in Dokploy, under *Build-time arguments*); the image refuses to build without it. Vite bakes it into the page, and Caddy writes it into the Content-Security-Policy's `connect-src`.
+
 ```bash
-docker build -f .docker/Dockerfile -t my-orbit-web .
+docker build -f .docker/Dockerfile --build-arg VITE_API_URL=https://my-orbit-api.mael-bertocchi.fr -t my-orbit-web .
 ```
 
-The page calls the API on its own domain, `https://my-orbit-api.mael-bertocchi.fr`, from the browser. The backend lets it through with CORS, so its `CORS_ORIGIN` must list the page's origin (`https://my-orbit.mael-bertocchi.fr`), and its `IDENTITY_ORIGIN` must be that origin too, or no passkey will be accepted. To build for another API, set `VITE_API_URL` when building, and add that origin to `connect-src` in the Caddyfile's Content-Security-Policy.
+The page calls that API from the browser. The backend lets it through with CORS, so its `CORS_ORIGIN` must list the page's origin (`https://my-orbit.mael-bertocchi.fr`), and its `IDENTITY_ORIGIN` must be that origin too, or no passkey will be accepted.
 
 The page is served with a strict Content-Security-Policy and kept out of search engines.

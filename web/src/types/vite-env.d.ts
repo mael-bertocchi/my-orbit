@@ -5,7 +5,7 @@
  * @description The variables a build can be given.
  */
 interface ImportMetaEnv {
-    readonly VITE_API_URL?: string; /*!< The portal API's origin, when not the production one */
+    readonly VITE_API_URL?: string; /*!< The portal API's origin; the page calls its own origin without it */
 }
 
 /**

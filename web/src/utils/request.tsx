@@ -6,17 +6,11 @@ import { clearTokens, getTokens, setTokens } from 'utils/token';
 import type { z } from 'zod';
 
 /**
- * @constant PRODUCTION_API_URL
- * @description Where the portal's API lives, the same server the app talks to
- */
-const PRODUCTION_API_URL = 'https://my-orbit-api.mael-bertocchi.fr';
-
-/**
  * @constant API_URL
- * @description The origin every request goes to. A build can point elsewhere with `VITE_API_URL`; in development the
- * page calls its own origin, which the development server forwards to the local backend.
+ * @description The origin every request goes to, set at build time with `VITE_API_URL`. Without it, as in development,
+ * the page calls its own origin, which the development server forwards to the local backend.
  */
-const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '' : PRODUCTION_API_URL);
+const API_URL = import.meta.env.VITE_API_URL ?? '';
 
 /**
  * @constant REQUEST_TIMEOUT
