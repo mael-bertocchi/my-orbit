@@ -13,7 +13,7 @@ export function testVariables(overrides: Partial<Variables> = {}): Variables {
         NODE_ENV: 'test',
         PORT: 0,
         DATABASE_URL: 'postgresql://test@localhost/test',
-        IDENTITY_ORIGIN: 'https://obole.example.fr',
+        IDENTITY_ORIGIN: 'https://orbit.example.fr',
         IDENTITY_OWNER_NAME: 'Owner',
         IDENTITY_ENROLLMENT_TOKEN: '',
         CORS_ORIGIN: '',

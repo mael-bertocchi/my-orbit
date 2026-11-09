@@ -1,6 +1,6 @@
 {
-  "name": "@obole/backend",
-  "description": "The Fastify backend for Obole, a personal portal: its passkey identity and the data of its apps.",
+  "name": "@my-orbit/backend",
+  "description": "The Fastify backend for Orbit, a personal portal: its passkey identity and the data of its apps.",
   "version": "7.3.0",
   "private": true,
   "type": "module",

@@ -179,7 +179,7 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
     const origin = fastify.variables.IDENTITY_ORIGIN;
 
     fastify.decorate('identity', {
-        relyingParty: { id: new URL(origin).hostname, name: 'Obole', origin },
+        relyingParty: { id: new URL(origin).hostname, name: 'Orbit', origin },
 
         ownerName: fastify.variables.IDENTITY_OWNER_NAME,
 

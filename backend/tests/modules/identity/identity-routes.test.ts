@@ -20,7 +20,7 @@ import { testVariables } from '../../support/variables';
  * @constant ORIGIN
  * @description The portal's origin in the tests, which the passkeys are bound to
  */
-const ORIGIN = 'https://obole.example.fr';
+const ORIGIN = 'https://orbit.example.fr';
 /**
  * @constant TOKEN
  * @description The enrollment token set in the test environment
@@ -266,7 +266,7 @@ describe('enrollment', () => {
         const { app } = await buildApp();
         const options = (await post(app, '/v1/identity/enrollment/options', { token: TOKEN })).json<{ data: { rp: { id: string; name: string }; user: { name: string }; authenticatorSelection: { residentKey: string; userVerification: string } } }>().data;
 
-        expect(options.rp).toEqual({ id: 'obole.example.fr', name: 'Obole' });
+        expect(options.rp).toEqual({ id: 'orbit.example.fr', name: 'Orbit' });
         expect(options.user.name).toBe('Maël');
         expect(options.authenticatorSelection).toMatchObject({ residentKey: 'required', userVerification: 'required' });
     });
@@ -317,7 +317,7 @@ describe('POST /v1/identity/login', () => {
         const { app } = await buildApp();
         const options = (await post(app, '/v1/identity/login/options')).json<{ data: { rpId: string; userVerification: string; allowCredentials?: unknown[] } }>().data;
 
-        expect(options.rpId).toBe('obole.example.fr');
+        expect(options.rpId).toBe('orbit.example.fr');
         expect(options.userVerification).toBe('required');
         expect(options.allowCredentials ?? []).toEqual([]);
     });

@@ -14,7 +14,7 @@ import { publicOrigin } from 'src/shared/public-origin';
  * @constant SCOPE
  * @description The single scope a token carries: everything the owner can do.
  */
-const SCOPE = 'obole';
+const SCOPE = 'my-orbit';
 
 /**
  * @constant DEFAULT_CLIENT_NAME
@@ -59,7 +59,7 @@ function clientFor(request: FastifyRequest, clientId: string, redirectUri: strin
 function resourceMetadata(request: FastifyRequest, reply: FastifyReply): void {
     const origin = publicOrigin(request);
 
-    reply.status(StatusCodes.OK).send({ resource: `${origin}/mcp`, authorization_servers: [origin], bearer_methods_supported: ['header'], scopes_supported: [SCOPE], resource_name: 'Obole' });
+    reply.status(StatusCodes.OK).send({ resource: `${origin}/mcp`, authorization_servers: [origin], bearer_methods_supported: ['header'], scopes_supported: [SCOPE], resource_name: 'Orbit' });
 }
 
 /**

@@ -133,7 +133,7 @@ describe('the MCP endpoint', () => {
         const response = await rpc(app, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '1' } }, accessToken);
 
         expect(response.statusCode).toBe(StatusCodes.OK);
-        expect(response.json<RpcAnswer>().result.serverInfo.name).toBe('obole');
+        expect(response.json<RpcAnswer>().result.serverInfo.name).toBe('my-orbit');
         expect(response.json<RpcAnswer>().result.instructions).toContain('budget_ or watchlist_');
     });
 
