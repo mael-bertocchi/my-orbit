@@ -465,10 +465,10 @@ final class ApplicationSession {
      * @constant serverURL
      * @description The server's address
      */
-    static let serverURL = "https://api-obole.mael-bertocchi.fr"
+    static let serverURL = "https://my-orbit-api.mael-bertocchi.fr"
     /**
      * @constant portalURL
      * @description The Orbit portal, whose connect page the app signs in through with the passkey
      */
-    static let portalURL = URL(string: "https://obole.mael-bertocchi.fr")!
+    static let portalURL = URL(string: "https://my-orbit.mael-bertocchi.fr")!
 }
