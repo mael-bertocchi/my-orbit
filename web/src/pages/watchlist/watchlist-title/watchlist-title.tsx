@@ -1,6 +1,7 @@
 import AlertComponent from 'components/alert/alert';
 import PosterComponent from 'components/poster/poster';
 import RatingComponent from 'components/rating/rating';
+import SheetFooterComponent from 'components/sheet/sheet-footer';
 import SpinnerComponent from 'components/spinner/spinner';
 import { Bookmark, Check, ChevronLeft, CircleCheckBig, CirclePlay, ExternalLink, Plus, SquarePen, Trash2 } from 'lucide-react';
 import type { Maybe } from 'models';
@@ -511,25 +512,19 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
         );
     } else {
         const removeButton = (
-            <button type='button' disabled={isBusy} onClick={() => setIsConfirmingRemoval(true)} className={`${secondary} h-9 bg-white px-3 text-[14px] text-negative-text shadow-control`}>
-                <Trash2 size={15} />
+            <button type='button' disabled={isBusy} onClick={() => setIsConfirmingRemoval(true)} className={`${secondary} w-full text-negative-text`}>
+                <Trash2 size={17} />
                 {t('watchlist.remove')}
             </button>
         );
-        let body: JSX.Element;
+        let body: Maybe<JSX.Element> = null;
+        let footer: JSX.Element = removeButton;
 
         if (isReviewing) {
             body = <ReviewFormComponent entry={entry} title={props.title} onDone={() => setIsReviewing(false)} />;
-        } else if (statusOf(entry) === 'toWatch') {
-            body = <div className='mt-3 flex justify-end'>{removeButton}</div>;
-        } else if (statusOf(entry) === 'watching') {
-            body = (
-                <div className='mt-3 flex items-center justify-between gap-3'>
-                    <span className='text-[13px] text-ink-tertiary'>{entry.startedAt === null ? '' : t('watchlist.startedOn', { date: dayText(entry.startedAt) })}</span>
-                    {removeButton}
-                </div>
-            );
-        } else {
+        } else if (statusOf(entry) === 'watching' && entry.startedAt !== null) {
+            body = <p className='mt-3 text-[13px] text-ink-tertiary'>{t('watchlist.startedOn', { date: dayText(entry.startedAt) })}</p>;
+        } else if (statusOf(entry) === 'watched') {
             body = (
                 <div className='mt-3 rounded-2xl bg-fill p-4'>
                     <div className='flex flex-wrap items-center justify-between gap-2'>
@@ -537,13 +532,15 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
                         {entry.watchedAt !== null && <span className='text-[13px] text-ink-tertiary'>{t('watchlist.watchedOn', { date: dayText(entry.watchedAt) })}</span>}
                     </div>
                     {entry.comment !== null && <p className='mt-3 whitespace-pre-line text-[15px] leading-relaxed'>{entry.comment}</p>}
-                    <div className='mt-4 flex flex-wrap gap-2'>
-                        <button type='button' onClick={() => setIsReviewing(true)} className={`${secondary} h-9 bg-white px-3 text-[14px] shadow-control`}>
-                            <SquarePen size={15} />
-                            {t('watchlist.editReview')}
-                        </button>
-                        {removeButton}
-                    </div>
+                </div>
+            );
+            footer = (
+                <div className='grid grid-cols-2 gap-3'>
+                    <button type='button' onClick={() => setIsReviewing(true)} className={secondary}>
+                        <SquarePen size={17} />
+                        {t('watchlist.editReview')}
+                    </button>
+                    {removeButton}
                 </div>
             );
         }
@@ -552,6 +549,7 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
             <>
                 <StatusControlComponent status={isReviewing ? 'watched' : statusOf(entry)} disabled={isBusy} onChange={(next) => changeStatus(entry, next)} />
                 {body}
+                {!isReviewing && <SheetFooterComponent>{footer}</SheetFooterComponent>}
             </>
         );
     }
