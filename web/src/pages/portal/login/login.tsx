@@ -99,7 +99,7 @@ function LoginPage(): JSX.Element {
                 <div className='flex justify-center'>
                     <LogoComponent size={76} />
                 </div>
-                <h1 className='mt-6 text-[34px] font-semibold tracking-tight'>Obole</h1>
+                <h1 className='mt-6 text-[34px] font-semibold tracking-tight'>Orbit</h1>
                 <p className='mt-1 text-[17px] text-ink-secondary'>{t('portal.tagline')}</p>
 
                 {mode === 'signIn' ? (

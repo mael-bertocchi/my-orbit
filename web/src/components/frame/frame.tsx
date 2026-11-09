@@ -129,7 +129,7 @@ function FrameComponent(props: FrameComponentProps): JSX.Element {
                             <LogoComponent size={28} />
                         ) : <AppIconComponent app={props.app} size={28} />}
                         <span className='text-[17px] font-semibold tracking-tight'>
-                            {props.app === undefined ? 'Obole' : t(props.app.name)}
+                            {props.app === undefined ? 'Orbit' : t(props.app.name)}
                         </span>
                     </Link>
 

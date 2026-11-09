@@ -421,7 +421,7 @@ function AccountPage(): JSX.Element {
                     <ListRowComponent icon={<IconTileComponent icon={LogOut} color={NEGATIVE} size={30} />} title={t('account.signOut')} destructive onClick={() => setIsConfirmingSignOut(true)} />
                 </ListGroupComponent>
 
-                <p className='mt-10 text-center text-[12px] text-ink-quaternary'>Obole Web {__APP_VERSION__}</p>
+                <p className='mt-10 text-center text-[12px] text-ink-quaternary'>Orbit Web {__APP_VERSION__}</p>
 
                 <SheetComponent open={renaming !== null} title={t('account.renameTitle')} onClose={() => setRenaming(null)} footer={renameFooter}>
                     {renaming !== null && <PasskeyNameFormComponent passkey={renaming} onSave={saveName} />}

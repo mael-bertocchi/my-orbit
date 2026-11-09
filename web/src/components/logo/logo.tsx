@@ -29,8 +29,8 @@ interface LogoComponentProps {
 
 /**
  * @function LogoComponent
- * @description Obole's mark, as the favicon draws it: on its violet tile, a grid of apps whose first is a coin, the
- * obol the portal grew from
+ * @description Orbit's mark, as the favicon draws it: on its violet tile, a grid of apps whose first is a coin, the
+ * budget the portal grew from
  *
  * @param {LogoComponentProps} props The properties of the component
  */
