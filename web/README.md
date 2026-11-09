@@ -1,6 +1,6 @@
-# 🖥️ Obole • Web
+# 🖥️ Orbit • Web
 
-**Obole, the portal**: a personal space in the browser, light, calm and Apple-like. Open it, sign in with your passkey, and every app is there: the budget, the same as on the iOS app, and the watchlist.
+**Orbit, the portal**: a personal space in the browser, light, calm and Apple-like. Open it, sign in with your passkey, and every app is there: the budget, the same as on the iOS app, and the watchlist.
 
 ## The portal
 
@@ -13,8 +13,8 @@
 
 ## The budget
 
-- **Budget** • the ring with what is left to spend, the spent, days-left and per-day figures, and every category against its limit. The current month adds where it ends at its pace (recurring operations counted once) and, per category, a badge with the change from its usual spending at the same day, once it strays by 15% and €10 or more. Step back through past months; a past month is measured against the budget frozen when it ended.
-- **History** • operations grouped by day with day totals, each at the time it happened (latest first, read in the browser's time zone), a search, and a filter chip per category.
+- **Budget** • the ring with what is left to spend, the spent, days-left and per-day figures, and every category against its limit. The current month adds, per category, a badge with the change from its usual spending at the same day, once it strays by 15% and €10 or more. Step back through past months; a past month is measured against the budget frozen when it ended.
+- **History** • operations grouped by day with day totals, each at the time it happened (latest first, read in the browser's time zone), a search, and one row of filters: several categories at once, and a day or a period, kept in the address.
 - **New & edit operation** • amount in any currency with the euro equivalent at the rate of the operation's own day (bank markup included), category, name, note, date and time, online, place, recurring. Delete with a confirmation.
 - **Analysis** • what each of the last twelve months spent, in all or per category, against its budget and the average; the expenses that come back every month and what they cost over a year; and the habits of the last 90 days: each weekday's average, the share paid online, the places most spent at. Worked out in the page, from the budget it holds.
 - **Limits** • the monthly budget and each category's limit, with what is left to dispatch.
@@ -24,10 +24,13 @@
 
 ## The watchlist
 
-- **To watch** • films and series shelved by genre (their main one), by saga (each saga's films in the order they came out, whatever the order they were added in) or the latest added first, and filtered by films or series. The shelving lives in the address.
+Every title stands in one of three places: **to watch**, **watching** or **watched**, picked from the title's own sheet.
+
+- **To watch** • films and series shelved by genre (their main one), by saga (each saga's films in the order they came out, whatever the order they were added in) or as one shelf, narrowed by kind and by a search. The shelving, the kinds and the search live in the address.
+- **Watching** • the titles started and not finished, the latest started first, each on a card with its poster and since when.
+- **Watched** • a wall of posters, shelved by the year they were watched or by rating, with one row of filters (several years and kinds add up) and a search through titles, sagas and comments. A title is rated in half stars, with a comment, when it moves there.
 - **Add** • the catalog is searched as you type; add a title in a tap, or open it first.
 - **A title** • poster, year, length or seasons, genres, summary, where to watch it in France (subscription, free, rent, buy) and, for a film, its saga with what is watched and what is left.
-- **Watched** • mark a title watched on a day, with a rating in half stars and a comment, or rate one you have already seen in one go; list them the latest watched first or the best rated first. A title can go back to the list, or off it.
 - **Credits** • data and images come from TMDB and offers from JustWatch, credited as they ask.
 
 ## Stack
@@ -60,7 +63,7 @@ src/
 ├─ pages/         One folder per page area, each page or section in its own folder:
 │  ├─ portal/        Home, account, login, connect, authorize
 │  ├─ budget/        The budget's root page, its tabs (overview, history, analysis, settings), sheets and home tile
-│  └─ watchlist/     The watchlist's root page, its tabs (to watch, watched), search and title sheets and home tile
+│  └─ watchlist/     The watchlist's root page, its tabs (to watch, watching, watched), search and title sheets and home tile
 ├─ styles/        Tailwind entry
 ├─ types/         Vite's environment types
 └─ utils/         Requests (with the session's renewal), tokens, the errors shown to the person
@@ -118,7 +121,7 @@ npm run dev
 A multi-stage image lives at `.docker/Dockerfile`: the build is served as static files by Caddy (`.docker/Caddyfile`), on port 80 over plain HTTP; TLS belongs to the proxy in front of it.
 
 ```bash
-docker build -f .docker/Dockerfile -t obole-web .
+docker build -f .docker/Dockerfile -t my-orbit-web .
 ```
 
 The page calls the API on its own domain, `https://api-obole.mael-bertocchi.fr`, from the browser. The backend lets it through with CORS, so its `CORS_ORIGIN` must list the page's origin (`https://obole.mael-bertocchi.fr`), and its `IDENTITY_ORIGIN` must be that origin too, or no passkey will be accepted. To build for another API, set `VITE_API_URL` when building, and add that origin to `connect-src` in the Caddyfile's Content-Security-Policy.

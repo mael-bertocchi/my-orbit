@@ -1,60 +1,76 @@
 <div align="center">
 
-# 🪙 Obole
+# Orbit
 
-### Your personal space.
+### A personal portal for one person, on their own server.
 
-A portal of your own: one site, one passkey, and the apps you use every day inside it. The first one is the budget: log an operation, scan the history ledger, and watch the month, on your iPhone or in the browser, in any currency, always with the euro next to it. The second is a watchlist of films and series, rated once seen.
+One site, opened with a passkey, with two apps inside: a **budget** for daily spending, on the web and on the iPhone, and a **watchlist** of films and series, on the web. Claude can read and change both through an MCP connector the owner authorizes.
 
-`Passkeys` &nbsp;•&nbsp; `iOS 26 · SwiftUI` &nbsp;•&nbsp; `Liquid Glass` &nbsp;•&nbsp; `Web` &nbsp;•&nbsp; `Multi-currency` &nbsp;•&nbsp; `English & French` &nbsp;•&nbsp; `Offline-first` &nbsp;•&nbsp; `Self-hosted backend`
+`Passkeys` &nbsp;•&nbsp; `Web · React` &nbsp;•&nbsp; `iOS 26 · SwiftUI` &nbsp;•&nbsp; `Fastify · PostgreSQL` &nbsp;•&nbsp; `MCP` &nbsp;•&nbsp; `English & French` &nbsp;•&nbsp; `Self-hosted`
 
 </div>
 
 ---
 
-## Why Obole
+## What it does
 
-- 🔑 **One passkey, nothing else** • the portal opens with a passkey kept in your password manager, behind Face ID. No password, no code, nothing to phish.
-- 🧩 **Apps inside a portal** • a home page with a tile for each app, an app switcher in the bar, and one account for all of them. Each app is a folder that the portal loads only when it is opened.
-- 🎯 **One glance, one number** • a budget ring that tells you what is left to spend, and how much that is per remaining day.
-- 🧾 **A ledger you can read** • operations grouped by day, with day totals, search, and filters by category.
-- 🌍 **Any currency, always in euros** • enter in USD, CHF, KRW… the euro equivalent is computed live and shown next to the original amount.
-- 🚦 **Limits that speak up** • per-category limits, with the bar and the amount turning red the moment you go over.
-- 🗣️ **In English or in French** • pick the language in Settings or let it follow your device; amounts and dates are written the way that language writes them.
-- ☁️ **Saved on your own server** • sign in once and every change syncs to a self-hosted backend; the app keeps working offline and reconciles when it's back.
-- 🖥️ **Also in the browser** • the same budget inside the portal, on a clean, light web page; the app and the page merge each other's changes instead of overwriting them.
-- 🎬 **A watchlist for films and series** • shelve what to watch by genre or by saga, see where it streams in France, then rate it in half stars and say what you thought.
-- 🔒 **Yours to own** • a single account on your own server, opened with your passkey; the iOS app signs in through the portal. No sign-ups, no third parties.
+### The portal
+
+- **One account, one passkey** • there is a single owner and no sign-up, password or code: the portal opens with a passkey (WebAuthn). The first one is created with an enrollment token set on the server for that purpose; the others are added from the account page, and the last one can't be removed.
+- **Home and app switcher** • a tile per app with a glance at it, and a switcher in the bar to jump between them. Each app is loaded only once it is opened.
+- **Account** • the passkeys, the apps connected through OAuth (such as Claude) with when each was authorized and last used, revoking one at once, the language, signing out.
+- **English and French** • every screen follows the browser's or the device's language, or the one picked in the settings; amounts and dates are written the way that language writes them.
+
+### The budget (web and iOS)
+
+- **The month at a glance** • a ring with what is left to spend, the spent amount, the days left and what that leaves per day, and every category against its own limit, turning red once over it. Past months are measured against the budget frozen when they ended.
+- **Compared with usual** • in the current month, a category that strays from its usual spending at the same day (by 15% and €10 or more) gets a badge with the change.
+- **History** • operations grouped by day with day totals, a search, and filters by category and by date.
+- **Operations** • amount in any currency, converted to euros at the reference rate of the operation's own day ([Frankfurter](https://frankfurter.dev), ECB data) plus the 1% a bank adds; category, name, note, place, online or not, recurring or not.
+- **Analysis** • the last twelve months against their budget and the average, the expenses that come back every month and their cost over a year, and the habits of the last 90 days (weekdays, share paid online, places).
+- **Trash** • a deleted operation goes to a trash it can be restored from.
+- **Two clients, one budget** • the web page and the iOS app write the same budget entry by entry, so neither overwrites the other. The iOS app keeps working offline and merges its changes when the connection returns.
+
+### The watchlist (web)
+
+- **Three statuses** • every film or series is **to watch**, **watching** or **watched**.
+- **To watch** • shelved by genre, by saga (in release order) or as one list, filtered by kind and searched.
+- **Watching** • the titles started and not finished, latest started first.
+- **Watched** • a wall of posters by year watched or by rating, filtered by year and kind, each title rated in half stars with a comment.
+- **Catalog** • titles are searched and described by [TMDB](https://www.themoviedb.org), with where to watch them in France from JustWatch. The server calls TMDB itself, so its token never reaches the browser.
+
+### Claude, through MCP
+
+The backend serves an MCP endpoint (`/mcp`). Claude, or any MCP client, registers itself with OAuth 2.1, the owner approves it on the portal with the passkey, and it can then search and log budget operations, read a month's summary, search the watchlist, read a title's details, add a title and rate one. Write tools are marked as such, so the client asks before running them. Each connection shows in the account page and can be revoked at once.
 
 ## What's inside
 
-| Component | What it does |
+| Component | What it is |
 | --- | --- |
-| **[iOS](ios/README.md)** | The iOS application (SwiftUI): the budget on the iPhone. |
-| **[Web](web/README.md)** | The portal (React), light and Apple-like, with its apps: the budget and the watchlist. |
-| **[Backend](backend/README.md)** | A Fastify + PostgreSQL server: the passkey identity and the data of every app. |
+| **[Backend](backend/README.md)** | Fastify + PostgreSQL: the passkey identity, the OAuth server for MCP clients, the MCP endpoint, and the data of the budget and the watchlist |
+| **[Web](web/README.md)** | The portal and its two apps, a single React build served by Caddy |
+| **[iOS](ios/README.md)** | The budget on the iPhone, in SwiftUI with Liquid Glass; it signs in through the portal's passkey |
 
-## Under the hood
-
-**iOS** • Swift · SwiftUI · Observation · iOS 26 Liquid Glass materials
-**Web** • React 19 · TypeScript · Vite · Tailwind CSS · SimpleWebAuthn · Caddy
-**Backend** • Node 24 · Fastify 5 · TypeScript · Prisma 7 · PostgreSQL · WebAuthn · JWT · TMDB
+**Backend** • Node 24 · Fastify 5 · TypeScript · Prisma 7 · PostgreSQL · Zod · SimpleWebAuthn · MCP SDK
+**Web** • React 19 · TypeScript · Vite · Tailwind CSS · React Router · SimpleWebAuthn · Caddy
+**iOS** • Swift · SwiftUI · Observation · URLSession, with no third-party dependency
 
 ## Layout
 
 ```
-obole/
-├─ ios/        iOS application (SwiftUI)
-├─ web/        The portal and its apps (React)
-├─ backend/    Fastify server (TypeScript)
-└─ .github/    The pipeline: checks, then deployment to Dokploy
+├─ backend/    Fastify server, Prisma schema and migrations
+├─ web/        The portal and its apps
+├─ ios/        The iOS app (Xcode project Orbit.xcodeproj)
+└─ .github/    Checks and deployment to Dokploy
 ```
 
-Pick a side: **[run the application](ios/README.md)**, **[open the portal](web/README.md)** or **[spin up the server](backend/README.md)**.
+Each folder's README explains how to run it locally: start with the **[backend](backend/README.md)**, then the **[web](web/README.md)**, then the **[iOS app](ios/README.md)**.
 
 ## Deployment
 
-The backend and the portal run on Dokploy, and the pipeline decides when they ship. Each push to `main` runs the workflow of the side it touches ([backend](.github/workflows/backend.yml), [web](.github/workflows/web.yml)): lint, types, tests and build, then a deployment that waits for your approval in GitHub. Once approved, it asks Dokploy to deploy that application ([deploy-dokploy](.github/actions/deploy-dokploy/action.yml)) and follows the deployment until it succeeds or fails. The iOS app is not deployed from here.
+The backend and the web portal run on Dokploy; the iOS app is installed from Xcode and is not deployed from here.
+
+Each push to `main` runs the workflow of the side it touches ([backend](.github/workflows/backend.yml), [web](.github/workflows/web.yml)): lint, types, tests and build, then a deployment that waits for approval in GitHub. Once approved, it asks Dokploy to deploy that application ([deploy-dokploy](.github/actions/deploy-dokploy/action.yml)) and follows it until it succeeds or fails.
 
 To set it up, once:
 
@@ -63,4 +79,4 @@ To set it up, once:
    - the variables `DOKPLOY_URL` (the panel's address, without `/api`), `DOKPLOY_BACKEND_APPLICATION_ID` and `DOKPLOY_WEB_APPLICATION_ID` (each at the end of the application's address in Dokploy);
    - the secret `DOKPLOY_API_KEY`.
 
-A failed deployment fails the run, with Dokploy's error message; *Re-run jobs* tries again.
+A failed deployment fails the run with Dokploy's error message; *Re-run jobs* tries again.

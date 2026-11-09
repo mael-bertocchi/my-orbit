@@ -1,6 +1,6 @@
-# ⚙️ Obole • Backend
+# ⚙️ Orbit • Backend
 
-The **Fastify + TypeScript** server behind the Obole portal: it opens the single account with a passkey and keeps the data of every app (the budget and the watchlist), backed by PostgreSQL.
+The **Fastify + TypeScript** server behind the Orbit portal: it opens the single account with a passkey and keeps the data of every app (the budget and the watchlist), backed by PostgreSQL.
 
 ## Features
 
@@ -8,7 +8,7 @@ The **Fastify + TypeScript** server behind the Obole portal: it opens the single
 - **Passkey-only identity** • the single account opens with a passkey (WebAuthn), nothing else: no password, no code, no user table, no registration. The first passkey is created with an enrollment token you set only for that; the iOS app signs in through the portal with a one-time code bound to a PKCE challenge. JWT access + refresh sessions.
 - **Entry-by-entry writes** • clients read the whole budget document at once (`GET /v1/budget/state`) and write it one entry at a time: an operation, a category, the settings, a frozen month. No route can replace or wipe the whole budget. Each write bumps a revision, so a client can tell whether anything changed since it last read.
 - **A trash for operations** • a deleted operation is kept with the moment it was deleted, out of the budget, and can be restored.
-- **Watchlist** • films and series to watch, then watched with a rating in half stars and a comment (`/v1/watchlist/entries`). What a title is comes from TMDB, which the server asks itself so its token never leaves it (`/v1/watchlist/catalog`): search, details with where to watch it in France (JustWatch data), sagas and genres, kept in memory for a while. A title and its saga's name are stored in English and in French, so the list reads right in either language.
+- **Watchlist** • films and series to watch, being watched (`startedAt`) or watched (`watchedAt`, with a rating in half stars and a comment) (`/v1/watchlist/entries`). What a title is comes from TMDB, which the server asks itself so its token never leaves it (`/v1/watchlist/catalog`): search, details with where to watch it in France (JustWatch data), sagas and genres, kept in memory for a while. A title and its saga's name are stored in English and in French, so the list reads right in either language.
 - **MCP server** • Claude, or any MCP client, reads and changes the budget and the watchlist through `/mcp` (Streamable HTTP), with tools named after their app. The client is let in with OAuth 2.1: it registers itself, the owner authorizes it on the portal with the passkey, and it gets the same tokens as the apps.
 - **Hardened** • Helmet, CORS open to the portal's origin only, rate limiting, Zod request validation, and a non-root Docker image.
 
@@ -49,7 +49,7 @@ Node 24 · Fastify 5 · TypeScript · Prisma 7 · PostgreSQL · Zod · SimpleWeb
 | `GET /v1/budget/rates/:date` | access | The reference rates of one past day |
 | `GET /v1/watchlist/entries` | access | Every title on the watchlist |
 | `POST /v1/watchlist/entries` | access | Add a `{ mediaType, tmdbId }`, described by the catalog; `409` if it is already there |
-| `PATCH /v1/watchlist/entries/:id` | access | Mark it watched (`watchedAt`), rate it (`rating`, 1 to 10 half stars), comment on it; marking it unwatched forgets both |
+| `PATCH /v1/watchlist/entries/:id` | access | Start it (`startedAt`), mark it watched (`watchedAt`), rate it (`rating`, 1 to 10 half stars), comment on it |
 | `DELETE /v1/watchlist/entries/:id` | access | Take a title off the watchlist |
 | `GET /v1/watchlist/catalog/search?query=` | access | Find films and series in the catalog |
 | `GET /v1/watchlist/catalog/titles/:mediaType/:tmdbId` | access | A title's details, and where to watch it in France |
@@ -135,7 +135,7 @@ Without it, the watchlist still lists its titles, but searching and opening one 
 
 ## MCP
 
-`/mcp` offers Obole to Claude and other MCP clients. In Claude, add a custom connector with the URL `https://<api host>/mcp`: Claude registers itself, sends you to the portal's `/authorize` page to confirm with your passkey, then calls the tools as you.
+`/mcp` offers Orbit to Claude and other MCP clients. In Claude, add a custom connector with the URL `https://<api host>/mcp`: Claude registers itself, sends you to the portal's `/authorize` page to confirm with your passkey, then calls the tools as you.
 
 - **Read** • `budget_list_categories`, `budget_search_operations`, `budget_month_summary`, `watchlist_search`, and `watchlist_title_details`, which reads a title's synopsis, genres and streaming services from TMDB.
 - **Write** • `budget_create_operation` (priced at its day's rate with the bank's markup, as the apps price it, and dated at noon UTC on its day), `budget_update_operation`, `budget_delete_operation` (to the trash), `watchlist_rate_title` and `watchlist_add_title`. Each is marked as writing, and the delete as destructive, so the client asks before running them.
@@ -159,5 +159,5 @@ The server keeps no MCP session: each message is answered on its own. Client ids
 A multi-stage, non-root image lives at `.docker/Dockerfile`:
 
 ```bash
-docker build -f .docker/Dockerfile -t obole-backend .
+docker build -f .docker/Dockerfile -t my-orbit-backend .
 ```

@@ -1,4 +1,4 @@
-# 🪙 Obole • iOS
+# 🪙 Orbit • iOS
 
 The native **iOS** app, built entirely in SwiftUI against the iOS 26 "Liquid Glass" design language: translucent, blurred materials floating over ambient colour glows on a pure-black base.
 
@@ -7,14 +7,14 @@ The native **iOS** app, built entirely in SwiftUI against the iOS 26 "Liquid Gla
 - **Budget ring** • left to spend, spent, days left, and a per-day allowance that recomputes as the month runs down.
 - **Per-category limits** • a tinted tile, a progress bar, and an over-budget state that turns everything red.
 - **Month stepper** • walk back through previous months; every figure recomputes.
-- **End of the month** • the current month shows where it ends at its pace (recurring operations counted once) and, per category, a badge with the change from its usual spending at the same day of the last six months, once it strays by 15% and €10 or more.
+- **Compared with usual** • the current month shows, per category, a badge with the change from its usual spending at the same day of the last six months, once it strays by 15% and €10 or more.
 - **History ledger** • day groups with day totals, each operation at the time it happened (latest first, read in the time zone the phone is in now), a search field, and filter chips for each category.
 - **Multi-currency** • pick the entry currency; the euro equivalent recomputes live and is stored with the operation, so past entries keep the rate they were logged at. Every rate carries the 1% a bank adds on top of the reference rate, so the euro figure matches the statement rather than the mid-market quote.
 - **English & French** • the language follows the device, or the one picked in Settings, and switches on the spot. Amounts and dates follow it too: `€1,234.50` in English, `1 234,50 €` in French.
 - **Analysis** • what each of the last twelve months spent, in all or per category, against its budget and the average, with Swift Charts; the expenses that come back every month and what they cost over a year; and the habits of the last 90 days: each weekday's average, the share paid online, the places most spent at. Worked out on the phone, from the budget it holds.
 - **Trash** • a deleted operation leaves the budget but stays in the server's trash, listed under **Settings ▸ Trash**, until it is restored.
 - **Connected apps** • the apps authorized with the passkey on the portal, such as Claude through its MCP connector, listed under **Settings ▸ Connected apps** with when each was authorized and last used; revoking one cuts its access at once.
-- **Sign in & sync** • one account, opened with the passkey of the Obole portal, behind Face ID; every change is pushed to the server and restored on a fresh device. Offline changes stay local and reconcile when the connection returns, and edits made in the web interface merge in rather than being overwritten.
+- **Sign in & sync** • one account, opened with the passkey of the Orbit portal, behind Face ID; every change is pushed to the server and restored on a fresh device. Offline changes stay local and reconcile when the connection returns, and edits made in the web interface merge in rather than being overwritten.
 
 ## Screens
 
@@ -22,16 +22,16 @@ The native **iOS** app, built entirely in SwiftUI against the iOS 26 "Liquid Gla
 
 ## Tech
 
-Swift · SwiftUI · Observation · URLSession, in a single target (`Obole`) with no third-party dependencies.
+Swift · SwiftUI · Observation · URLSession, in a single target (`Orbit`) with no third-party dependencies.
 
 ## Architecture
 
 ```
-Obole/
+Orbit/
 ├─ Application/    App entry, root shell (auth gate + native TabView)
 ├─ Core/
 │  ├─ Errors/      UserFacingError: the failures written for the person, and the generic message for any other
-│  ├─ Budget/      Derived selectors (month summary, category spend, day groups) and the analysis (projection, comparison with usual, trends, recurring expenses, habits)
+│  ├─ Budget/      Derived selectors (month summary, category spend, day groups) and the analysis (comparison with usual, trends, recurring expenses, habits)
 │  ├─ Formatting/  Euro, amount, rate and date formatting, in the interface's language
 │  ├─ Models/      Domain types (Category, Operation, BudgetSettings)
 │  ├─ Localization/ Interface language (automatic, English, French) and lookups in it
@@ -47,7 +47,7 @@ Obole/
 
 ### Languages
 
-Every string lives in `Obole/Localizable.xcstrings`, with English as the source and a French translation. The language can change while the app runs, which the main bundle can't follow, so the root sets the chosen locale in the environment (`Text("…")` resolves in it), and strings built outside a view go through `String(appLocalized:)`, which looks them up in that locale. Category names stay in English in the synced document and are translated by id when shown, so the app and the web never fight over them.
+Every string lives in `Orbit/Localizable.xcstrings`, with English as the source and a French translation. The language can change while the app runs, which the main bundle can't follow, so the root sets the chosen locale in the environment (`Text("…")` resolves in it), and strings built outside a view go through `String(appLocalized:)`, which looks them up in that locale. Category names stay in English in the synced document and are translated by id when shown, so the app and the web never fight over them.
 
 State lives in `@Observable` objects injected through the environment: `LocalStore` (data, persisted to Application Support as JSON), `ExchangeRates` (currencies), `Preferences` (UserDefaults), and `ApplicationSession` (auth + sync). Views read them directly and derive everything else through `BudgetMath`, with no view models.
 
@@ -69,20 +69,20 @@ The app talks to a fixed HTTPS endpoint, `https://api-obole.mael-bertocchi.fr` (
 1. Open the project in Xcode
 
 ```bash
-open Obole.xcodeproj
+open Orbit.xcodeproj
 ```
 
 2. Build the application
 
 ```bash
-xcodebuild -project Obole.xcodeproj -scheme Obole -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+xcodebuild -project Orbit.xcodeproj -scheme Orbit -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
 ```
 
 > Note: To run the simulator, go to Xcode and press the run button.
 
 ## Keeping It Installed On A Device
 
-The project signs with a free personal Apple team, so each provisioning profile lasts **seven days**. When one lapses, iOS refuses to launch the app (*"Obole" Is No Longer Available*, greyed-out icon) and also drops the developer trust, which only a tap on the phone can restore.
+The project signs with a free personal Apple team, so each provisioning profile lasts **seven days**. When one lapses, iOS refuses to launch the app (*"Orbit" Is No Longer Available*, greyed-out icon) and also drops the developer trust, which only a tap on the phone can restore.
 
 `Scripts/refresh-device-install.sh` rebuilds, re-signs and reinstalls over the network. The iPhone only needs to be paired for wireless debugging and on the same Wi-Fi, with no cable. Run it once a week, before the profile runs out, and the trust stays intact:
 
@@ -96,13 +96,13 @@ The project signs with a free personal Apple team, so each provisioning profile 
 | `--no-launch` | Install without launching the app |
 | `--device <udid>` | Target a specific device instead of the paired iPhone |
 
-It builds `Release` into `build/device`; set `OBOLE_CONFIGURATION=Debug` to match what Xcode's Run button installs.
+It builds `Release` into `build/device`; set `ORBIT_CONFIGURATION=Debug` to match what Xcode's Run button installs.
 
 If the profile has already expired, the reinstall works but the launch is refused: restore the trust under **Settings ▸ General ▸ VPN & Device Management** on the phone, then run the script again.
 
 ## Signing in
 
-The only way in is the owner's **passkey**, which belongs to the Obole portal's site (`obole.mael-bertocchi.fr`). An app can only use a site's passkeys with the *Associated Domains* capability, which a free developer team doesn't get, so the app signs in **through the portal**, the way an app offers "Sign in with Apple":
+The only way in is the owner's **passkey**, which belongs to the Orbit portal's site (`obole.mael-bertocchi.fr`). An app can only use a site's passkeys with the *Associated Domains* capability, which a free developer team doesn't get, so the app signs in **through the portal**, the way an app offers "Sign in with Apple":
 
 1. **Sign in with a passkey** opens the portal's `/connect` page in an ephemeral browser sheet (`ASWebAuthenticationSession`), with a fresh PKCE challenge (`PortalConnection`).
 2. The page asks for the passkey (Face ID); the backend checks it and hands back a one-time code, bound to that challenge, through the `obole://` scheme.
