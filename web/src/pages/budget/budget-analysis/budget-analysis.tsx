@@ -17,13 +17,13 @@ import { useState, type JSX } from 'react';
  * @constant ACCENT
  * @description The colour of the bars and of the online share.
  */
-const ACCENT = '#6E56CF';
+const ACCENT = '#56616F';
 
 /**
  * @constant ACCENT_LIGHT
  * @description The colour of the in-person share, next to the online one.
  */
-const ACCENT_LIGHT = '#C9BFF2';
+const ACCENT_LIGHT = '#C3C9D2';
 
 /**
  * @constant COMPARED_MONTHS

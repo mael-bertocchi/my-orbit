@@ -20,7 +20,7 @@ import { useState, type ChangeEvent, type JSX } from 'react';
  * @constant ACCENT
  * @description The colour of the plain setting tiles.
  */
-const ACCENT = '#6E56CF';
+const ACCENT = '#56616F';
 
 /**
  * @constant NEGATIVE

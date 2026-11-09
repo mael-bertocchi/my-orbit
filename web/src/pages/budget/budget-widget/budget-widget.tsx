@@ -12,7 +12,7 @@ import { useEffect, type JSX } from 'react';
  * @constant ACCENT
  * @description The bar's colour while there is budget left.
  */
-const ACCENT = '#6E56CF';
+const ACCENT = '#56616F';
 
 /**
  * @constant NEGATIVE

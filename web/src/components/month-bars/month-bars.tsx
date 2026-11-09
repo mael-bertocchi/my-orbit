@@ -17,7 +17,7 @@ const PADDING = { top: 12, right: 8, bottom: 26, left: 52 };
  * @constant ACCENT
  * @description The bars' colour.
  */
-const ACCENT = '#6E56CF';
+const ACCENT = '#56616F';
 
 /**
  * @constant GRID

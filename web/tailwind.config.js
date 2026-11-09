@@ -21,9 +21,9 @@ export default {
         },
         hairline: 'rgb(0 0 0 / 0.08)',
         accent: {
-          DEFAULT: '#6E56CF',
-          strong: '#5B45B8',
-          soft: '#F1EEFD',
+          DEFAULT: '#56616F',
+          strong: '#434C59',
+          soft: '#ECEEF1',
         },
         positive: {
           DEFAULT: '#34C759',
