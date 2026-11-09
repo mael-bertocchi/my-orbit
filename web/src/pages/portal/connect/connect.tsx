@@ -14,7 +14,7 @@ import { messageOf } from 'utils/errors';
  * @description Where the page hands the one-time code back: the iOS app's own scheme, which the browser sheet it opened
  * the page in is waiting for.
  */
-const CALLBACK = 'obole://identity';
+const CALLBACK = 'my-orbit://identity';
 
 /**
  * @function isChallenge

@@ -22,7 +22,7 @@ const MESSAGES: Record<Language, Messages> = { en, fr };
  * @constant CHOICE_KEY
  * @description Where the language picked in the account settings is kept.
  */
-const CHOICE_KEY = 'obole.language';
+const CHOICE_KEY = 'my-orbit.language';
 
 /**
  * @function isLanguage

@@ -7,7 +7,7 @@ import { IdentityTokensSchema } from 'modules/identity/identity-models';
  * @description Where the session's tokens are kept. Session storage survives a reload but not closing the tab, so the
  * page asks for the passkey again each time it is opened.
  */
-const STORAGE_KEY = 'obole.identity';
+const STORAGE_KEY = 'my-orbit.identity';
 
 /**
  * @function getTokens

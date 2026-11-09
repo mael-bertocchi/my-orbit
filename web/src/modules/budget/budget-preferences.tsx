@@ -4,7 +4,7 @@ import { EURO, isSupportedCurrency } from 'modules/budget/budget-currencies';
  * @constant CURRENCY_KEY
  * @description Where the default currency is kept.
  */
-const CURRENCY_KEY = 'obole.currency';
+const CURRENCY_KEY = 'my-orbit.currency';
 
 /**
  * @function defaultCurrency
