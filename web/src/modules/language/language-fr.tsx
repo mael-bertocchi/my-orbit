@@ -42,7 +42,7 @@ const portalFr: PortalMessages = {
     'frame.home': 'Accueil',
     'frame.launcherEyebrow': 'Orbit',
     'frame.apps': 'Applications',
-    'frame.account': 'Compte',
+    'frame.settings': 'Réglages',
 
     'home.morning': 'Bonjour, {name}',
     'home.afternoon': 'Bonjour, {name}',

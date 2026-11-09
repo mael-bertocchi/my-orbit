@@ -41,7 +41,7 @@ export const portalEn = {
     'frame.home': 'Home',
     'frame.launcherEyebrow': 'Orbit',
     'frame.apps': 'Apps',
-    'frame.account': 'Account',
+    'frame.settings': 'Settings',
 
     'home.morning': 'Good morning, {name}',
     'home.afternoon': 'Good afternoon, {name}',

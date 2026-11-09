@@ -1,11 +1,9 @@
 import AppIconComponent from 'components/app-icon/app-icon';
 import LauncherComponent from 'components/launcher/launcher';
 import LogoComponent from 'components/logo/logo';
-import { Grip, type LucideIcon } from 'lucide-react';
+import { Grip, Settings, type LucideIcon } from 'lucide-react';
 import type { PortalApp } from 'modules/apps/apps-models';
 import { appPath } from 'modules/apps/apps-registry';
-import { useIdentityContext } from 'modules/identity/identity-hooks';
-import type { IdentityContextProps } from 'modules/identity/identity-models';
 import type { MessageKey } from 'modules/language/language-en';
 import { t } from 'modules/language/language-service';
 import { useEffect, useRef, useState, type JSX, type ReactNode } from 'react';
@@ -34,16 +32,13 @@ interface FrameComponentProps {
 }
 
 /**
- * @function AccountButtonComponent
- * @description The owner's initial in a circle, opening the account page, where they can also sign out.
+ * @function SettingsButtonComponent
+ * @description A cogwheel opening the account's settings, where the owner can also sign out.
  */
-function AccountButtonComponent(): JSX.Element {
-    const { account }: IdentityContextProps = useIdentityContext();
-    const initial = account?.name.trim().charAt(0).toLocaleUpperCase() ?? '';
-
+function SettingsButtonComponent(): JSX.Element {
     return (
-        <Link to='/account' aria-label={t('frame.account')} className='flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-b from-[#A1A1A8] to-[#7C7C84] text-[15px] font-semibold text-white shadow-control transition hover:brightness-105'>
-            {initial}
+        <Link to='/account' aria-label={t('frame.settings')} className='flex h-9 w-9 items-center justify-center rounded-full text-ink-secondary transition hover:bg-fill-strong/70 hover:text-ink'>
+            <Settings size={19} strokeWidth={2.1} />
         </Link>
     );
 }
@@ -57,7 +52,7 @@ const LAUNCHER_ID = 'portal-launcher';
 /**
  * @function FrameComponent
  * @description The portal's frame around every page: a bar the colour of the page with the app's name on the left, its
- * tabs as a segmented control in the middle, and its action, the app switcher and the account button on the right. It only
+ * tabs as a segmented control in the middle, and its action, the app switcher and the settings button on the right. It only
  * draws its bottom rule once the page scrolls under it, like an iOS navigation bar. On a phone the tabs move to a tab bar
  * along the bottom edge. The app switcher's button fades the page out and the launcher in, in its place, with the tabs
  * and the action, which belong to the page; Escape, the button again, or picking a destination brings the page back.
@@ -152,7 +147,7 @@ function FrameComponent(props: FrameComponentProps): JSX.Element {
                         <button ref={launcherButton} type='button' aria-label={t('frame.apps')} aria-expanded={isLaunching} aria-controls={LAUNCHER_ID} onClick={() => setIsLaunching(!isLaunching)} className='flex h-9 w-9 items-center justify-center rounded-full text-ink-secondary transition hover:bg-fill-strong/70 hover:text-ink aria-expanded:bg-fill-strong/70 aria-expanded:text-ink'>
                             <Grip size={18} strokeWidth={2.2} />
                         </button>
-                        <AccountButtonComponent />
+                        <SettingsButtonComponent />
                     </div>
                 </div>
             </header>
