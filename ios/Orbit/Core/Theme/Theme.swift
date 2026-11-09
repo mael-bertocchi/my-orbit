@@ -3,7 +3,7 @@ import UIKit
 
 /**
  * @type Theme
- * @description Every colour and size the interface uses, and its fonts: dark Liquid Glass, violet accent
+ * @description Every colour and size the interface uses, and its fonts: dark Liquid Glass, slate accent
  */
 enum Theme {
 
@@ -57,24 +57,24 @@ enum Theme {
 
     /**
      * @constant accent
-     * @description The violet accent
+     * @description The slate accent, a lighter shade of the logo's tile so it reads on black
      */
-    static let accent    = Color(hex: 0xA78BFA)
+    static let accent    = Color(hex: 0xA4AFBF)
     /**
      * @constant accent900
      * @description The accent's darkest shade
      */
-    static let accent900 = Color(hex: 0x2B2741)
+    static let accent900 = Color(hex: 0x262B33)
     /**
      * @constant accent300
      * @description A light shade of the accent
      */
-    static let accent300 = Color(hex: 0xD2CEFD)
+    static let accent300 = Color(hex: 0xCDD3DC)
     /**
      * @constant accent200
      * @description The accent's lightest shade
      */
-    static let accent200 = Color(hex: 0xE7E5FE)
+    static let accent200 = Color(hex: 0xE3E7EC)
 
     /**
      * @constant positive
@@ -121,10 +121,10 @@ enum Theme {
     static let specularCard = Color.white.opacity(0.14)
 
     /**
-     * @constant glowViolet
-     * @description The violet ambient glow
+     * @constant glowSlate
+     * @description The slate ambient glow
      */
-    static let glowViolet = Color(hex: 0xA78BFA).opacity(0.22)
+    static let glowSlate  = Color(hex: 0x8A97A8).opacity(0.22)
     /**
      * @constant glowBlue
      * @description The blue ambient glow

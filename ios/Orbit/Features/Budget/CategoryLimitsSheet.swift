@@ -145,7 +145,7 @@ struct CategoryLimitsSheet: View {
 
     /**
      * @method dispatchColor
-     * @description The colour of what is left to dispatch: violet while some is, red when over, green when exactly
+     * @description The colour of what is left to dispatch: slate while some is, red when over, green when exactly
      * dispatched
      */
     private var dispatchColor: Color {

@@ -109,7 +109,7 @@ extension View {
 
 /**
  * @class AmbientBackground
- * @description The screens' background: black, with violet, blue and teal glows at its edges
+ * @description The screens' background: black, with slate, blue and teal glows at its edges
  */
 struct AmbientBackground: View {
     /**
@@ -119,7 +119,7 @@ struct AmbientBackground: View {
     var body: some View {
         ZStack {
             Theme.background
-            glow(Theme.glowViolet, center: UnitPoint(x: 0.12, y: -0.05), radius: 0.66)
+            glow(Theme.glowSlate, center: UnitPoint(x: 0.12, y: -0.05), radius: 0.66)
             glow(Theme.glowBlue, center: UnitPoint(x: 1.06, y: 0.14), radius: 0.62)
             glow(Theme.glowTeal, center: UnitPoint(x: 0.5, y: 1.12), radius: 0.66)
         }

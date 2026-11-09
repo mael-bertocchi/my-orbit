@@ -41,7 +41,7 @@ extension View {
 
 /**
  * @class PrimaryButton
- * @description The main action of a screen or a sheet: a full-width violet button
+ * @description The main action of a screen or a sheet: a full-width slate button
  */
 struct PrimaryButton: View {
     let title: String /*!< Its title */
@@ -250,7 +250,7 @@ struct SearchField: View {
 
 /**
  * @class InlineLink
- * @description A small violet link inside a line of text
+ * @description A small slate link inside a line of text
  */
 struct InlineLink: View {
     let title: String /*!< Its title */
