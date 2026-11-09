@@ -10,7 +10,7 @@ enum Keychain {
      * @constant service
      * @description The service every item is filed under
      */
-    private static let service = "fr.mael-bertocchi.obole"
+    private static let service = "fr.mael-bertocchi.my-orbit"
 
     /**
      * @method set

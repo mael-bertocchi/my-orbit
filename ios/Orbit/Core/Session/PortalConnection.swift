@@ -22,7 +22,7 @@ struct PortalConnection {
      * @constant callbackScheme
      * @description The scheme the portal hands the code back through, which the browser sheet waits for
      */
-    static let callbackScheme = "obole"
+    static let callbackScheme = "my-orbit"
 
     let verifier: String /*!< The secret the server checks the code against; it never leaves the app until the code is traded */
     let state: String /*!< A random value the portal sends back as is, so the app only takes an answer to the request it made */

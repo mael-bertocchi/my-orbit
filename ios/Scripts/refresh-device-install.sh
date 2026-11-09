@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-BUNDLE_ID="fr.mael-bertocchi.obole"
+BUNDLE_ID="fr.mael-bertocchi.my-orbit"
 SCHEME="Orbit"
 CONFIGURATION="${ORBIT_CONFIGURATION:-Release}"
 
