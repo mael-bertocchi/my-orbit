@@ -11,7 +11,6 @@ export const budget: PortalApp = {
     name: 'budget.appName',
     summary: 'budget.appSummary',
     icon: Wallet,
-    colors: ['#5FD383', '#22A04B'],
     load: () => import('pages/budget/budget'),
     loadWidget: () => import('pages/budget/budget-widget/budget-widget')
 };

@@ -11,7 +11,6 @@ export const watchlist: PortalApp = {
     name: 'watchlist.appName',
     summary: 'watchlist.appSummary',
     icon: Clapperboard,
-    colors: ['#FF7A5C', '#E8384F'],
     load: () => import('pages/watchlist/watchlist'),
     loadWidget: () => import('pages/watchlist/watchlist-widget/watchlist-widget')
 };
