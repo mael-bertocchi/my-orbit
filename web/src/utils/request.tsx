@@ -9,7 +9,7 @@ import type { z } from 'zod';
  * @constant PRODUCTION_API_URL
  * @description Where the portal's API lives, the same server the app talks to
  */
-const PRODUCTION_API_URL = 'https://api-obole.mael-bertocchi.fr';
+const PRODUCTION_API_URL = 'https://my-orbit-api.mael-bertocchi.fr';
 
 /**
  * @constant API_URL
