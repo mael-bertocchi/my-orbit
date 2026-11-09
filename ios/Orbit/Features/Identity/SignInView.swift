@@ -57,15 +57,11 @@ struct SignInView: View {
      */
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Theme.accent.opacity(0.16))
-                    .frame(width: 60, height: 60)
-                Image(systemName: "eurosign.circle.fill")
-                    .font(.system(size: 30, weight: .regular))
-                    .foregroundStyle(Theme.accent)
-            }
-            .padding(.bottom, 6)
+            Image("Mark")
+                .resizable()
+                .frame(width: 60, height: 60)
+                .accessibilityHidden(true)
+                .padding(.bottom, 6)
             Text(verbatim: "Orbit")
                 .font(Theme.font(30, .semibold))
                 .tracking(-0.5)
