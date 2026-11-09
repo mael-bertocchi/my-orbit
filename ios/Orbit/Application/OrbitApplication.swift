@@ -1,11 +1,11 @@
 import SwiftUI
 
 /**
- * @class OboleApplication
+ * @class OrbitApplication
  * @description The app: it builds the store, the rates, the settings and the session once, and hands them to every view
  */
 @main
-struct OboleApplication: App {
+struct OrbitApplication: App {
     @State private var store: LocalStore /*!< The budget, saved on the device */
     @State private var rates: ExchangeRates /*!< The exchange rates */
     @State private var preferences: Preferences /*!< The device's settings */

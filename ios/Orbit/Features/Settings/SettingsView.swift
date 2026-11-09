@@ -178,7 +178,7 @@ struct SettingsView: View {
                 }
                 .glassCard()
 
-                Text(verbatim: "Obole \(applicationVersion)")
+                Text(verbatim: "Orbit \(applicationVersion)")
                     .font(Theme.font(11))
                     .foregroundStyle(Theme.faint)
                     .frame(maxWidth: .infinity)

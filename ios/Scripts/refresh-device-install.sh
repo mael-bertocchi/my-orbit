@@ -3,16 +3,16 @@
 set -euo pipefail
 
 BUNDLE_ID="fr.mael-bertocchi.obole"
-SCHEME="Obole"
-CONFIGURATION="${OBOLE_CONFIGURATION:-Release}"
+SCHEME="Orbit"
+CONFIGURATION="${ORBIT_CONFIGURATION:-Release}"
 
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 IOS_DIR="$(dirname "$(dirname "$SCRIPT_PATH")")"
-PROJECT="$IOS_DIR/Obole.xcodeproj"
+PROJECT="$IOS_DIR/Orbit.xcodeproj"
 BUILD_DIR="$IOS_DIR/build/device"
 PROFILE_DIR="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
 
-DEVICE="${OBOLE_DEVICE:-}"
+DEVICE="${ORBIT_DEVICE:-}"
 DEVICE_NAME=""
 LAUNCH=1
 STATUS_ONLY=0
@@ -22,7 +22,7 @@ fail() { log "error: $*" >&2; exit 1; }
 
 usage() {
     cat <<'USAGE'
-Reinstalls Obole on the paired iPhone, over the network.
+Reinstalls Orbit on the paired iPhone, over the network.
 
   refresh-device-install.sh              rebuild, install, launch
   refresh-device-install.sh --status     days left on the profile

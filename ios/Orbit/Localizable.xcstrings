@@ -654,12 +654,12 @@
         }
       }
     },
-    "It will lose its access to Obole at once. To connect it again, you'll authorize it with your passkey." : {
+    "It will lose its access to Orbit at once. To connect it again, you'll authorize it with your passkey." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elle perdra aussitôt son accès à Obole. Pour la reconnecter, il faudra l’autoriser avec votre clé d’accès."
+            "value" : "Elle perdra aussitôt son accès à Orbit. Pour la reconnecter, il faudra l’autoriser avec votre clé d’accès."
           }
         }
       }
@@ -1294,12 +1294,12 @@
         }
       }
     },
-    "Sign in with your passkey to open your budget. The Obole portal opens in a secure sheet to ask for it." : {
+    "Sign in with your passkey to open your budget. The Orbit portal opens in a secure sheet to ask for it." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connectez-vous avec votre clé d’accès pour ouvrir votre budget. Le portail Obole s’ouvre dans une feuille sécurisée pour la demander."
+            "value" : "Connectez-vous avec votre clé d’accès pour ouvrir votre budget. Le portail Orbit s’ouvre dans une feuille sécurisée pour la demander."
           }
         }
       }

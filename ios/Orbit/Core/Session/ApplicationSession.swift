@@ -468,7 +468,7 @@ final class ApplicationSession {
     static let serverURL = "https://api-obole.mael-bertocchi.fr"
     /**
      * @constant portalURL
-     * @description The Obole portal, whose connect page the app signs in through with the passkey
+     * @description The Orbit portal, whose connect page the app signs in through with the passkey
      */
     static let portalURL = URL(string: "https://obole.mael-bertocchi.fr")!
 }

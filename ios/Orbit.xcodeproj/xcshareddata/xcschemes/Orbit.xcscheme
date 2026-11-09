@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B100000000000000000000A6"
-               BuildableName = "Obole.app"
-               BlueprintName = "Obole"
-               ReferencedContainer = "container:Obole.xcodeproj">
+               BuildableName = "Orbit.app"
+               BlueprintName = "Orbit"
+               ReferencedContainer = "container:Orbit.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -44,9 +44,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B100000000000000000000A6"
-            BuildableName = "Obole.app"
-            BlueprintName = "Obole"
-            ReferencedContainer = "container:Obole.xcodeproj">
+            BuildableName = "Orbit.app"
+            BlueprintName = "Orbit"
+            ReferencedContainer = "container:Orbit.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>
@@ -71,9 +71,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B100000000000000000000A6"
-            BuildableName = "Obole.app"
-            BlueprintName = "Obole"
-            ReferencedContainer = "container:Obole.xcodeproj">
+            BuildableName = "Orbit.app"
+            BlueprintName = "Orbit"
+            ReferencedContainer = "container:Orbit.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

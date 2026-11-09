@@ -3,7 +3,7 @@ import Foundation
 
 /**
  * @class PortalConnection
- * @description One sign-in through the Obole portal. The passkey belongs to the portal's site, and the app can't use it
+ * @description One sign-in through the Orbit portal. The passkey belongs to the portal's site, and the app can't use it
  * directly without the Associated Domains capability, which a free developer team doesn't get. So the app opens the
  * portal's connect page in a browser sheet, the owner signs in there with the passkey, and the page hands back a
  * one-time code through the app's scheme. The code is bound to a PKCE challenge: only the app holding the matching

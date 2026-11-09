@@ -7,11 +7,11 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		B100000000000000000000A5 /* Obole.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Obole.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B100000000000000000000A5 /* Orbit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Orbit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		B100000000000000000000A1 /* Obole */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Obole; sourceTree = "<group>"; };
+		B100000000000000000000A1 /* Orbit */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Orbit; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -28,7 +28,7 @@
 		B100000000000000000000A3 = {
 			isa = PBXGroup;
 			children = (
-				B100000000000000000000A1 /* Obole */,
+				B100000000000000000000A1 /* Orbit */,
 				B100000000000000000000A4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -36,7 +36,7 @@
 		B100000000000000000000A4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				B100000000000000000000A5 /* Obole.app */,
+				B100000000000000000000A5 /* Orbit.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -44,9 +44,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		B100000000000000000000A6 /* Obole */ = {
+		B100000000000000000000A6 /* Orbit */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B100000000000000000000A7 /* Build configuration list for PBXNativeTarget "Obole" */;
+			buildConfigurationList = B100000000000000000000A7 /* Build configuration list for PBXNativeTarget "Orbit" */;
 			buildPhases = (
 				B100000000000000000000A8 /* Sources */,
 				B100000000000000000000A2 /* Frameworks */,
@@ -57,13 +57,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				B100000000000000000000A1 /* Obole */,
+				B100000000000000000000A1 /* Orbit */,
 			);
-			name = Obole;
+			name = Orbit;
 			packageProductDependencies = (
 			);
-			productName = Obole;
-			productReference = B100000000000000000000A5 /* Obole.app */;
+			productName = Orbit;
+			productReference = B100000000000000000000A5 /* Orbit.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -81,7 +81,7 @@
 					};
 				};
 			};
-			buildConfigurationList = B100000000000000000000AB /* Build configuration list for PBXProject "Obole" */;
+			buildConfigurationList = B100000000000000000000AB /* Build configuration list for PBXProject "Orbit" */;
 			compatibilityVersion = "Xcode 15.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -96,7 +96,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				B100000000000000000000A6 /* Obole */,
+				B100000000000000000000A6 /* Orbit */,
 			);
 		};
 /* End PBXProject section */
@@ -254,7 +254,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Support/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Obole;
+				INFOPLIST_KEY_CFBundleDisplayName = Orbit;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -281,7 +281,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Support/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Obole;
+				INFOPLIST_KEY_CFBundleDisplayName = Orbit;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -299,7 +299,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B100000000000000000000A7 /* Build configuration list for PBXNativeTarget "Obole" */ = {
+		B100000000000000000000A7 /* Build configuration list for PBXNativeTarget "Orbit" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B100000000000000000000AE /* Debug */,
@@ -308,7 +308,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		B100000000000000000000AB /* Build configuration list for PBXProject "Obole" */ = {
+		B100000000000000000000AB /* Build configuration list for PBXProject "Orbit" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B100000000000000000000AC /* Debug */,

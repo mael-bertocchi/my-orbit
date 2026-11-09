@@ -3,7 +3,7 @@ import SwiftUI
 
 /**
  * @class SignInView
- * @description The sign-in screen: one button opening the Obole portal in a secure sheet, where the passkey lives
+ * @description The sign-in screen: one button opening the Orbit portal in a secure sheet, where the passkey lives
  */
 struct SignInView: View {
     @Environment(ApplicationSession.self) private var session /*!< The session to open */
@@ -53,7 +53,7 @@ struct SignInView: View {
 
     /**
      * @method header
-     * @description Obole's mark, its name and what signing in takes
+     * @description Orbit's mark, its name and what signing in takes
      */
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -66,11 +66,11 @@ struct SignInView: View {
                     .foregroundStyle(Theme.accent)
             }
             .padding(.bottom, 6)
-            Text(verbatim: "Obole")
+            Text(verbatim: "Orbit")
                 .font(Theme.font(30, .semibold))
                 .tracking(-0.5)
                 .foregroundStyle(Theme.text)
-            Text("Sign in with your passkey to open your budget. The Obole portal opens in a secure sheet to ask for it.")
+            Text("Sign in with your passkey to open your budget. The Orbit portal opens in a secure sheet to ask for it.")
                 .font(Theme.font(14))
                 .foregroundStyle(Theme.muted)
         }

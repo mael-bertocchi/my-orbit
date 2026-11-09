@@ -59,7 +59,7 @@ struct ConnectionsSheet: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: { _ in
-            Text("It will lose its access to Obole at once. To connect it again, you'll authorize it with your passkey.")
+            Text("It will lose its access to Orbit at once. To connect it again, you'll authorize it with your passkey.")
         }
     }
 
