@@ -11,7 +11,7 @@ The native **iOS** app, built entirely in SwiftUI against the iOS 26 "Liquid Gla
 - **History ledger** • day groups with day totals, each operation at the time it happened (latest first, read in the time zone the phone is in now), a search field, and filter chips for each category.
 - **Multi-currency** • pick the entry currency; the euro equivalent recomputes live and is stored with the operation, so past entries keep the rate they were logged at. Every rate carries the 1% a bank adds on top of the reference rate, so the euro figure matches the statement rather than the mid-market quote.
 - **English & French** • the language follows the device, or the one picked in Settings, and switches on the spot. Amounts and dates follow it too: `€1,234.50` in English, `1 234,50 €` in French.
-- **Analysis** • what each of the last twelve months spent, in all or per category, against its budget and the average, with Swift Charts; the expenses that come back every month and what they cost over a year; and the habits of the last 90 days: each weekday's average, the share paid online, the places most spent at. Worked out on the phone, from the budget it holds.
+- **Analysis** • what each of the last twelve months spent, in all or per category, against its budget and the average, with Swift Charts; the recurring operations, managed there: each one's frequency, next occurrence and cost over a year, in a card of fixed height whose list scrolls, and a sheet to add, change, pause or delete one; and the habits of the last 90 days: each weekday's average, the share paid online, the places most spent at. Worked out on the phone, from the budget it holds, but the recurring operations, which the server keeps and logs.
 - **Trash** • a deleted operation leaves the budget but stays in the server's trash, listed under **Settings ▸ Trash**, until it is restored.
 - **Connected apps** • the apps authorized with the passkey on the portal, such as Claude through its MCP connector, listed under **Settings ▸ Connected apps** with when each was authorized and last used; revoking one cuts its access at once.
 - **Sign in & sync** • one account, opened with the passkey of the Orbit portal, behind Face ID; every change is pushed to the server and restored on a fresh device. Offline changes stay local and reconcile when the connection returns, and edits made in the web interface merge in rather than being overwritten.
@@ -31,7 +31,7 @@ Orbit/
 ├─ Application/    App entry, root shell (auth gate + native TabView)
 ├─ Core/
 │  ├─ Errors/      UserFacingError: the failures written for the person, and the generic message for any other
-│  ├─ Budget/      Derived selectors (month summary, category spend, day groups) and the analysis (comparison with usual, trends, recurring expenses, habits)
+│  ├─ Budget/      Derived selectors (month summary, category spend, day groups) and the analysis (comparison with usual, trends, habits)
 │  ├─ Formatting/  Euro, amount, rate and date formatting, in the interface's language
 │  ├─ Models/      Domain types (Category, Operation, BudgetSettings)
 │  ├─ Localization/ Interface language (automatic, English, French) and lookups in it

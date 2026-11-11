@@ -4,7 +4,8 @@ import SwiftUI
 /**
  * @class AnalysisView
  * @description The Analysis tab, about what a single month can't show: how the spending moved over the last year, the
- * expenses that come back every month, and the recent habits. Everything is worked out on the device
+ * recurring operations, managed here, and the recent habits. Everything but the recurring operations, which the server
+ * keeps, is worked out on the device
  */
 struct AnalysisView: View {
     @Environment(LocalStore.self) private var store /*!< The budget */
@@ -25,7 +26,7 @@ struct AnalysisView: View {
 
                 TrendsSection(totals: totals, categories: store.categories.filter { spending.contains($0.id) })
 
-                RecurringSection(expenses: BudgetAnalysis.recurringExpenses(store.operations, categories: store.categories, now: now))
+                RecurringSection()
                     .padding(.top, 26)
 
                 HabitsSection(habits: BudgetAnalysis.spendingHabits(store.operations, now: now))
@@ -455,10 +456,24 @@ private struct MonthBarsChart: View {
 
 /**
  * @class RecurringSection
- * @description The expenses that come back every month, with what they all cost over a year
+ * @description The recurring operations, read from the server: a ＋ adds one, and each opens to be changed, paused or
+ * deleted. Their card keeps the same height however many there are, its list scrolling within it
  */
 private struct RecurringSection: View {
-    let expenses: [RecurringExpense] /*!< The expenses, the costliest first */
+    /**
+     * @constant listHeight
+     * @description The height of the card holding the list
+     */
+    private let listHeight: CGFloat = 300
+
+    @Environment(ApplicationSession.self) private var session /*!< The session with the server */
+    @Environment(ExchangeRates.self) private var rates /*!< The exchange rates, for what a foreign one costs */
+    @Environment(LocalStore.self) private var store /*!< The budget, for the categories */
+    @Environment(Preferences.self) private var preferences /*!< The device's settings, for the haptics */
+
+    @State private var recurring: [RecurringOperation]? /*!< The recurring operations, nil until loaded */
+    @State private var failure: String? /*!< Why they couldn't be loaded */
+    @State private var route: RecurringEditorRoute? /*!< What the editor is open on, nil while closed */
 
     /**
      * @method body
@@ -466,49 +481,162 @@ private struct RecurringSection: View {
      */
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                SectionLabel(String(appLocalized: "Recurring expenses"))
+            HStack(alignment: .center) {
+                SectionLabel(String(appLocalized: "Recurring operations"))
                 Spacer(minLength: 8)
-                if !expenses.isEmpty {
-                    Text(verbatim: String(appLocalized: "\(Formatting.euro(yearly)) / year"))
-                        .font(Theme.font(13, .semibold))
-                        .foregroundStyle(Theme.text)
-                        .monospacedDigit()
+                Button {
+                    preferences.tap()
+                    route = .new
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .expandedTapTarget(vertical: 10, horizontal: 10)
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("New recurring operation")
             }
-            SectionNote(text: String(appLocalized: "Marked recurring, or logged under the same name for about the same amount in at least 3 of the last 7 months."))
+            SectionNote(text: String(appLocalized: "Each one is logged as an operation on the day it falls due."))
 
-            if expenses.isEmpty {
-                EmptyStateCard(message: String(appLocalized: "No expense comes back every month yet."))
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(expenses.enumerated()), id: \.element.id) { index, expense in
-                        RecurringRow(expense: expense)
-                        if index < expenses.count - 1 {
-                            RowDivider()
-                        }
-                    }
-                }
+            content
+                .frame(height: listHeight)
                 .glassCard()
-            }
+        }
+        .task {
+            await load()
+        }
+        .sheet(item: $route) { opened in
+            RecurringEditorSheet(route: opened, onSaved: saved, onDeleted: deleted)
         }
     }
 
     /**
-     * @method yearly
-     * @description What the expenses all cost over a year
+     * @method content
+     * @description The recurring operations in a list scrolling within the card, a spinner while they load, or a word
+     * that there is none yet
      */
-    private var yearly: Double {
-        expenses.reduce(0) { $0 + $1.yearly }
+    @ViewBuilder
+    private var content: some View {
+        if let recurring {
+            if recurring.isEmpty {
+                placeholder(String(appLocalized: "No recurring operation yet. Add a rent or a subscription so it logs itself."))
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(Array(sorted.enumerated()), id: \.element.id) { index, item in
+                            Button {
+                                preferences.tap()
+                                route = .edit(item)
+                            } label: {
+                                RecurringRow(recurring: item, category: store.categoryOrFallback(id: item.categoryId), monthly: monthly(item))
+                            }
+                            .buttonStyle(.plain)
+                            if index < sorted.count - 1 {
+                                RowDivider()
+                            }
+                        }
+                    }
+                }
+            }
+        } else if let failure {
+            placeholder(failure)
+        } else {
+            ProgressView()
+                .tint(Theme.muted)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    /**
+     * @method placeholder
+     * @description A word standing in for the list, at the top of the card
+     *
+     * @param message The word
+     * @returns The placeholder
+     */
+    private func placeholder(_ message: String) -> some View {
+        Text(verbatim: message)
+            .font(Theme.font(13))
+            .foregroundStyle(Theme.muted)
+            .lineSpacing(3)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /**
+     * @method sorted
+     * @description The running recurring operations first, each kind by its next occurrence
+     */
+    private var sorted: [RecurringOperation] {
+        (recurring ?? []).sorted { left, right in
+            if left.isRunning != right.isRunning {
+                return left.isRunning
+            }
+            return (left.nextDate ?? "") < (right.nextDate ?? "")
+        }
+    }
+
+    /**
+     * @method monthly
+     * @description What a recurring operation costs a month on average, in euros at the latest rate
+     *
+     * @param item The recurring operation
+     * @returns The euros a month
+     */
+    private func monthly(_ item: RecurringOperation) -> Double {
+        rates.euroAmount(item.amount, code: item.currencyCode) / Double(max(item.intervalMonths, 1))
+    }
+
+    /**
+     * @method load
+     * @description Reads the recurring operations from the server
+     */
+    private func load() async {
+        do {
+            recurring = try await session.recurring()
+            failure = nil
+        } catch {
+            failure = String(appLocalized: "The recurring operations couldn't be loaded.")
+        }
+    }
+
+    /**
+     * @method saved
+     * @description Puts a stored recurring operation in the list, in place of its former self
+     *
+     * @param stored The recurring operation
+     */
+    private func saved(_ stored: RecurringOperation) {
+        var list = recurring ?? []
+        if let index = list.firstIndex(where: { $0.id == stored.id }) {
+            list[index] = stored
+        } else {
+            list.append(stored)
+        }
+        recurring = list
+    }
+
+    /**
+     * @method deleted
+     * @description Takes a deleted recurring operation out of the list
+     *
+     * @param id Its id
+     */
+    private func deleted(_ id: String) {
+        recurring?.removeAll { $0.id == id }
     }
 }
 
 /**
  * @class RecurringRow
- * @description A recurring expense: its name and category, when it was last paid, and what it costs a month and a year
+ * @description A recurring operation: its name, how often it comes back and when next, its amount and what it costs a
+ * year
  */
 private struct RecurringRow: View {
-    let expense: RecurringExpense /*!< The expense */
+    let recurring: RecurringOperation /*!< The recurring operation */
+    let category: Category /*!< Its category */
+    let monthly: Double /*!< What it costs a month on average, in euros */
 
     /**
      * @method body
@@ -516,13 +644,13 @@ private struct RecurringRow: View {
      */
     var body: some View {
         HStack(spacing: 11) {
-            IconTile(symbol: expense.category.symbol, color: expense.category.color)
+            IconTile(symbol: category.symbol, color: category.color)
             VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: expense.name)
+                Text(verbatim: recurring.name)
                     .font(Theme.font(14))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
-                Text(verbatim: detail)
+                Text(verbatim: RecurringDay.intervalTitle(recurring.intervalMonths) + " • " + status)
                     .font(Theme.font(11))
                     .foregroundStyle(Theme.muted)
                     .lineLimit(2)
@@ -530,32 +658,40 @@ private struct RecurringRow: View {
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
-                Text(verbatim: String(appLocalized: "\(Formatting.euro(expense.monthly)) / month"))
+                Text(verbatim: Formatting.amount(recurring.amount, currency: Currency.named(recurring.currencyCode)))
                     .font(Theme.font(14, .semibold))
                     .foregroundStyle(Theme.text)
                     .monospacedDigit()
-                Text(verbatim: String(appLocalized: "\(Formatting.euro(expense.yearly)) / year"))
+                Text(verbatim: String(appLocalized: "\(Formatting.euro(monthly * 12)) / year"))
                     .font(Theme.font(11))
                     .foregroundStyle(Theme.muted)
                     .monospacedDigit()
             }
             .fixedSize()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.faint)
         }
         .padding(.vertical, 11)
         .padding(.horizontal, 14)
+        .opacity(recurring.isRunning ? 1 : 0.6)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 
     /**
-     * @method detail
-     * @description Its category and when it was last paid, the category left out when the expense is named after it
+     * @method status
+     * @description When it next falls due, or that it is paused or over
      */
-    private var detail: String {
-        let day = Formatting.dayShort(expense.lastDate).replacingOccurrences(of: " ", with: "\u{00A0}")
-        guard expense.name.trimmingCharacters(in: .whitespaces).lowercased() != expense.category.title.lowercased() else {
-            return String(appLocalized: "Last \(day)")
+    private var status: String {
+        if recurring.isPaused {
+            return String(appLocalized: "Paused")
         }
-        return expense.category.title + " • " + String(appLocalized: "last \(day)")
+        guard let next = recurring.nextDate.flatMap(RecurringDay.date) else {
+            return String(appLocalized: "Ended")
+        }
+        let day = Formatting.dayShort(next).replacingOccurrences(of: " ", with: "\u{00A0}")
+        return String(appLocalized: "next on \(day)")
     }
 }
 

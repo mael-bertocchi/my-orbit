@@ -4,16 +4,6 @@
     "" : {
       "shouldTranslate" : false
     },
-    "%@ / month" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ / mois"
-          }
-        }
-      }
-    },
     "%@ / year" : {
       "localizations" : {
         "fr" : {
@@ -664,26 +654,6 @@
         }
       }
     },
-    "last %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "dernière le %@"
-          }
-        }
-      }
-    },
-    "Last %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dernière le %@"
-          }
-        }
-      }
-    },
     "Last 3 months vs the 3 before" : {
       "localizations" : {
         "fr" : {
@@ -710,16 +680,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reste par jour"
-          }
-        }
-      }
-    },
-    "Marked recurring, or logged under the same name for about the same amount in at least 3 of the last 7 months." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Marquées récurrentes, ou notées sous le même nom pour à peu près le même montant sur au moins 3 des 7 derniers mois."
           }
         }
       }
@@ -764,16 +724,6 @@
         }
       }
     },
-    "No expense comes back every month yet." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune dépense ne revient chaque mois pour l’instant."
-          }
-        }
-      }
-    },
     "Nothing spent over the last 90 days." : {
       "localizations" : {
         "fr" : {
@@ -800,16 +750,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sur les 90 derniers jours, hors dépenses récurrentes."
-          }
-        }
-      }
-    },
-    "Recurring expenses" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dépenses récurrentes"
           }
         }
       }
@@ -1130,16 +1070,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Loyer"
-          }
-        }
-      }
-    },
-    "Repeats monthly" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se répète chaque mois"
           }
         }
       }
@@ -1660,6 +1590,266 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Votre session a expiré."
+          }
+        }
+      }
+    },
+    "Recurring operations" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opérations récurrentes"
+          }
+        }
+      }
+    },
+    "Each one is logged as an operation on the day it falls due." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chacune est enregistrée comme une opération le jour de son échéance."
+          }
+        }
+      }
+    },
+    "No recurring operation yet. Add a rent or a subscription so it logs itself." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune opération récurrente. Ajoutez un loyer ou un abonnement pour qu’il s’enregistre tout seul."
+          }
+        }
+      }
+    },
+    "The recurring operations couldn't be loaded." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de charger les opérations récurrentes."
+          }
+        }
+      }
+    },
+    "Paused" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En pause"
+          }
+        }
+      }
+    },
+    "Ended" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminée"
+          }
+        }
+      }
+    },
+    "next on %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "prochaine le %@"
+          }
+        }
+      }
+    },
+    "New recurring operation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouvelle opération récurrente"
+          }
+        }
+      }
+    },
+    "Edit recurring operation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier l’opération récurrente"
+          }
+        }
+      }
+    },
+    "Save recurring operation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer l’opération récurrente"
+          }
+        }
+      }
+    },
+    "Delete recurring operation" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer l’opération récurrente"
+          }
+        }
+      }
+    },
+    "Delete this recurring operation?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer cette opération récurrente ?"
+          }
+        }
+      }
+    },
+    "No occurrence will be logged anymore. Those already logged stay in the budget." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus aucune échéance ne sera enregistrée. Celles déjà enregistrées restent dans le budget."
+          }
+        }
+      }
+    },
+    "Frequency" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fréquence"
+          }
+        }
+      }
+    },
+    "First occurrence" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Première échéance"
+          }
+        }
+      }
+    },
+    "Every occurrence falls on this day of the month, or on the last day of a shorter month. Those already past are logged as soon as it is saved." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaque échéance tombe ce jour du mois, ou le dernier jour d’un mois plus court. Celles déjà passées sont enregistrées dès l’enregistrement."
+          }
+        }
+      }
+    },
+    "Ends" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se termine"
+          }
+        }
+      }
+    },
+    "No occurrence after a given day" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus d’échéance après un jour donné"
+          }
+        }
+      }
+    },
+    "Last day" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernier jour"
+          }
+        }
+      }
+    },
+    "Its occurrences are skipped meanwhile" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ses échéances sont sautées en attendant"
+          }
+        }
+      }
+    },
+    "Changes apply to the occurrences still to come; those already logged stay as they are." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les modifications valent pour les échéances à venir ; celles déjà enregistrées restent telles quelles."
+          }
+        }
+      }
+    },
+    "Every month" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaque mois"
+          }
+        }
+      }
+    },
+    "Every quarter" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaque trimestre"
+          }
+        }
+      }
+    },
+    "Every six months" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaque semestre"
+          }
+        }
+      }
+    },
+    "Every year" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaque année"
+          }
+        }
+      }
+    },
+    "Logged by a recurring operation: changing it changes this occurrence only." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrée par une opération récurrente : la modifier ne change que cette échéance."
           }
         }
       }

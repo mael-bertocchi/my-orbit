@@ -23,7 +23,8 @@ enum OperationEditorRoute: Identifiable {
 /**
  * @class OperationEditorSheet
  * @description The sheet logging or editing an operation: the amount in any currency with its euro equivalent at the
- * rate of its own day, the category, name, note, date and time, online or the place, recurring, and deleting it
+ * rate of its own day, the category, name, note, date and time, online or the place, and deleting it. An occurrence of a
+ * recurring operation says so: changing it changes that occurrence only
  */
 struct OperationEditorSheet: View {
     let route: OperationEditorRoute /*!< What the sheet is open on */
@@ -41,7 +42,6 @@ struct OperationEditorSheet: View {
     @State private var location = "" /*!< The place typed */
     @State private var date = Date.now /*!< When it happened */
     @State private var isOnline = false /*!< Whether it was paid online */
-    @State private var isRecurring = false /*!< Whether it repeats every month */
 
     @State private var showCurrencyPicker = false /*!< Whether the currency picker is open */
     @State private var showDatePicker = false /*!< Whether the date picker is shown */
@@ -67,6 +67,11 @@ struct OperationEditorSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                if isOccurrence {
+                    occurrenceNote
+                        .padding(.bottom, 18)
+                }
+
                 amountBlock
                     .padding(.bottom, 8)
 
@@ -383,8 +388,6 @@ struct OperationEditorSheet: View {
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
-
-            recurringRow
         }
     }
 
@@ -417,27 +420,38 @@ struct OperationEditorSheet: View {
     }
 
     /**
-     * @method recurringRow
-     * @description The recurring switch
+     * @method existing
+     * @description The operation edited, nil for a new one
      */
-    private var recurringRow: some View {
+    private var existing: Operation? {
+        guard case .edit(let operationId) = route else {
+            return nil
+        }
+        return store.operation(id: operationId)
+    }
+
+    /**
+     * @method isOccurrence
+     * @description Whether the operation edited was logged by a recurring operation
+     */
+    private var isOccurrence: Bool {
+        existing?.recurringId != nil
+    }
+
+    /**
+     * @method occurrenceNote
+     * @description The word that the operation was logged by a recurring operation, and that changing it changes it alone
+     */
+    private var occurrenceNote: some View {
         HStack(spacing: 10) {
             Image(systemName: "repeat")
-                .font(.system(size: 17))
+                .font(.system(size: 15))
                 .foregroundStyle(Theme.accent)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Recurring")
-                    .font(Theme.font(14))
-                    .foregroundStyle(Theme.text)
-                Text("Repeats monthly")
-                    .font(Theme.font(11))
-                    .foregroundStyle(Theme.muted)
-            }
-            Spacer(minLength: 8)
-            Toggle("", isOn: $isRecurring)
-                .labelsHidden()
-                .tint(Theme.accent)
-                .accessibilityLabel("Recurring")
+            Text("Logged by a recurring operation: changing it changes this occurrence only.")
+                .font(Theme.font(12))
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
@@ -464,7 +478,6 @@ struct OperationEditorSheet: View {
         location = operation.location ?? ""
         date = operation.date
         isOnline = operation.isOnline
-        isRecurring = operation.isRecurring
     }
 
     /**
@@ -511,7 +524,8 @@ struct OperationEditorSheet: View {
             currencyCode: currencyCode,
             rateToEuro: appliedRate,
             isOnline: isOnline,
-            isRecurring: isRecurring
+            isRecurring: existing?.isRecurring ?? false,
+            recurringId: existing?.recurringId
         )
 
         store.upsertOperation(operation)

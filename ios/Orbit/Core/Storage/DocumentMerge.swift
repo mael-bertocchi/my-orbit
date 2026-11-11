@@ -64,8 +64,8 @@ enum DocumentMerge {
 
     /**
      * @method comparable
-     * @description An operation with its date rounded to the second and its update stamp blanked, as both sides can
-     * compare it
+     * @description An operation with its date rounded to the second, its update stamp blanked and its recurring operation
+     * left out, which only the server sets, as both sides can compare it
      *
      * @param operation The operation
      * @returns Its comparable copy
@@ -74,6 +74,7 @@ enum DocumentMerge {
         var copy = operation
         copy.date = Date(timeIntervalSince1970: operation.date.timeIntervalSince1970.rounded(.down))
         copy.updatedAt = .distantPast
+        copy.recurringId = nil
         return copy
     }
 

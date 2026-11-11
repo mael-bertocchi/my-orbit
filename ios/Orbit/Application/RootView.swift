@@ -7,7 +7,7 @@ import SwiftUI
 enum AppTab: String, CaseIterable, Identifiable {
     case budget /*!< The budget ring and the categories */
     case history /*!< The operations, day by day */
-    case analysis /*!< The spending over the last year, the recurring expenses and the habits */
+    case analysis /*!< The spending over the last year, the recurring operations and the habits */
     case settings /*!< The settings */
 
     var id: String { rawValue } /*!< Its identifier, for the tab view */

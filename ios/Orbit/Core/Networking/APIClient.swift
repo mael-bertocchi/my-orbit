@@ -119,6 +119,92 @@ private struct OperationFields: Encodable {
 }
 
 /**
+ * @class RecurringOperation
+ * @description A recurring operation, such as a rent or a subscription, as the server keeps it: what each occurrence
+ * logs, and when it comes back. Its days are written `YYYY-MM-DD`
+ */
+struct RecurringOperation: Decodable, Identifiable, Equatable {
+    let id: String /*!< Its identifier */
+    let name: String /*!< The name each occurrence is logged under */
+    let description: String? /*!< A note each occurrence carries */
+    let categoryId: String /*!< Its category's identifier */
+    let location: String? /*!< Where it is paid */
+    let amount: Double /*!< The amount, in its currency */
+    let currencyCode: String /*!< Its currency's code */
+    let isOnline: Bool /*!< Whether it is paid online */
+    let firstDate: String /*!< Its first occurrence, whose day of the month every occurrence falls on */
+    let intervalMonths: Int /*!< How many months lie between two occurrences */
+    let endDate: String? /*!< The last day it may fall on, if it ends */
+    let isPaused: Bool /*!< Whether its occurrences are skipped for now */
+    let nextDate: String? /*!< Its next occurrence still to be logged, nil once it has ended */
+
+    var isRunning: Bool { !isPaused && nextDate != nil } /*!< Whether it still logs occurrences: neither paused nor over */
+}
+
+/**
+ * @class RecurringFields
+ * @description What describes a recurring operation, as the server takes it on creation or change. A missing note,
+ * place or end is written as null rather than left out, since a change leaves out only what stays as it is
+ */
+struct RecurringFields: Encodable {
+    var id: String? /*!< Its identifier, which only a creation names */
+    var name: String /*!< Its name */
+    var description: String? /*!< Its note */
+    var categoryId: String /*!< Its category */
+    var location: String? /*!< Its place */
+    var amount: Double /*!< Its amount */
+    var currencyCode: String /*!< Its currency */
+    var isOnline: Bool /*!< Whether it is paid online */
+    var firstDate: String /*!< Its first occurrence */
+    var intervalMonths: Int /*!< How many months lie between two occurrences */
+    var endDate: String? /*!< Its last day, if it ends */
+    var isPaused: Bool /*!< Whether it is paused */
+
+    /**
+     * @type CodingKeys
+     * @description The fields the server takes
+     */
+    private enum CodingKeys: String, CodingKey {
+        case id /*!< Its identifier */
+        case name /*!< Its name */
+        case description /*!< Its note */
+        case categoryId /*!< Its category */
+        case location /*!< Its place */
+        case amount /*!< Its amount */
+        case currencyCode /*!< Its currency */
+        case isOnline /*!< Whether it is paid online */
+        case firstDate /*!< Its first occurrence */
+        case intervalMonths /*!< Months between two occurrences */
+        case endDate /*!< Its last day */
+        case isPaused /*!< Whether it is paused */
+    }
+
+    /**
+     * @method encode
+     * @description Writes the fields, nulls included
+     *
+     * @param encoder The encoder
+     */
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        if let id {
+            try container.encode(id, forKey: .id)
+        }
+        try container.encode(name, forKey: .name)
+        try container.encode(description, forKey: .description)
+        try container.encode(categoryId, forKey: .categoryId)
+        try container.encode(location, forKey: .location)
+        try container.encode(amount, forKey: .amount)
+        try container.encode(currencyCode, forKey: .currencyCode)
+        try container.encode(isOnline, forKey: .isOnline)
+        try container.encode(firstDate, forKey: .firstDate)
+        try container.encode(intervalMonths, forKey: .intervalMonths)
+        try container.encode(endDate, forKey: .endDate)
+        try container.encode(isPaused, forKey: .isPaused)
+    }
+}
+
+/**
  * @class CategoryFields
  * @description What a category holds, with its place in the list, as the server stores it
  */
@@ -340,6 +426,51 @@ final class APIClient {
      */
     func restoreOperation(id: String) async throws {
         try await sendDiscarding(entryPath("operations", id, "restore"), method: "POST")
+    }
+
+    /**
+     * @method getRecurring
+     * @description Reads the recurring operations, once the server logged their due occurrences
+     *
+     * @returns The recurring operations, in the order they were created
+     */
+    func getRecurring() async throws -> [RecurringOperation] {
+        try await send("/v1/budget/recurring", method: "GET")
+    }
+
+    /**
+     * @method createRecurring
+     * @description Creates a recurring operation; the server logs its occurrences already due
+     *
+     * @param fields What it logs and when, with its freshly minted id
+     * @returns The stored recurring operation
+     */
+    func createRecurring(_ fields: RecurringFields) async throws -> RecurringOperation {
+        try await send("/v1/budget/recurring", method: "POST", body: fields)
+    }
+
+    /**
+     * @method updateRecurring
+     * @description Changes a recurring operation, for its occurrences still to come
+     *
+     * @param id Its id
+     * @param fields What it now logs and when
+     * @returns The stored recurring operation
+     */
+    func updateRecurring(id: String, _ fields: RecurringFields) async throws -> RecurringOperation {
+        var changes = fields
+        changes.id = nil
+        return try await send(entryPath("recurring", id), method: "PATCH", body: changes)
+    }
+
+    /**
+     * @method deleteRecurring
+     * @description Deletes a recurring operation; its occurrences already logged stay
+     *
+     * @param id Its id
+     */
+    func deleteRecurring(id: String) async throws {
+        try await sendDiscarding(entryPath("recurring", id), method: "DELETE")
     }
 
     /**

@@ -159,6 +159,52 @@ final class ApplicationSession {
     }
 
     /**
+     * @method recurring
+     * @description Reads the recurring operations, none in the demo
+     *
+     * @returns The recurring operations, in the order they were created
+     */
+    func recurring() async throws -> [RecurringOperation] {
+        guard !isDemo else {
+            return []
+        }
+        return try await api.getRecurring()
+    }
+
+    /**
+     * @method saveRecurring
+     * @description Creates a recurring operation, or changes the one named, then reconciles so the occurrences the server
+     * logged show in the budget
+     *
+     * @param id The recurring operation changed, nil for a new one
+     * @param fields What it logs and when
+     * @returns The stored recurring operation
+     */
+    func saveRecurring(id: String?, _ fields: RecurringFields) async throws -> RecurringOperation {
+        let stored: RecurringOperation
+        if let id {
+            stored = try await api.updateRecurring(id: id, fields)
+        } else {
+            var created = fields
+            created.id = UUID().uuidString
+            stored = try await api.createRecurring(created)
+        }
+        await reconcile()
+        return stored
+    }
+
+    /**
+     * @method deleteRecurring
+     * @description Deletes a recurring operation, then reconciles; its occurrences already logged stay
+     *
+     * @param id Its id
+     */
+    func deleteRecurring(id: String) async throws {
+        try await api.deleteRecurring(id: id)
+        await reconcile()
+    }
+
+    /**
      * @method connections
      * @description Reads the apps authorized with the passkey, such as Claude
      *

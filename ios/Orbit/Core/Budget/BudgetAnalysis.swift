@@ -55,21 +55,6 @@ struct MonthTotal: Identifiable, Equatable {
 }
 
 /**
- * @class RecurringExpense
- * @description An expense that comes back month after month, such as the rent or a subscription
- */
-struct RecurringExpense: Identifiable, Equatable {
-    var name: String /*!< Its name, as last logged */
-    var category: Category /*!< Its category */
-    var monthly: Double /*!< What it usually costs a month, in euros */
-    var months: Int /*!< In how many of the recent months it came back */
-    var lastDate: Date /*!< When it was last paid */
-
-    var id: String { category.id + "|" + name } /*!< Its identifier, by category and name */
-    var yearly: Double { monthly * 12 } /*!< What it comes to over a year */
-}
-
-/**
  * @class WeekdaySpend
  * @description What a weekday usually costs
  */
@@ -113,7 +98,7 @@ struct SpendingHabits: Equatable {
  * @type BudgetAnalysis
  * @description The budget's analysis, as pure functions of the budget, the same as the web's: where the month is heading
  * and how it compares with the usual spending at the same point, for the Budget tab; and, for the Analysis tab, how the
- * spending moved over the last year, the expenses that come back every month, and the recent habits
+ * spending moved over the last year and the recent habits
  */
 enum BudgetAnalysis {
     /**
@@ -137,22 +122,6 @@ enum BudgetAnalysis {
      * @description How many months the trends cover, the current one included
      */
     static let trendMonths = 12
-    /**
-     * @constant recurringWindow
-     * @description How many months back a repeated expense is looked for, the current one included
-     */
-    static let recurringWindow = 7
-    /**
-     * @constant recurringMinMonths
-     * @description In how many distinct months an expense must come back to read as recurring without being marked so
-     */
-    static let recurringMinMonths = 3
-    /**
-     * @constant recurringSpread
-     * @description How far a month's amount may stray from the usual one, as a fraction, for an expense to still read as
-     * the same one coming back
-     */
-    static let recurringSpread = 0.25
     /**
      * @constant habitDays
      * @description How many days back the habits are measured on
@@ -292,59 +261,6 @@ enum BudgetAnalysis {
         }
 
         return totals
-    }
-
-    /**
-     * @method median
-     * @description The middle value of a list of numbers
-     *
-     * @param values The numbers
-     * @returns Their median, 0 without any
-     */
-    static func median(_ values: [Double]) -> Double {
-        let sorted = values.sorted()
-        guard !sorted.isEmpty else {
-            return 0
-        }
-        let middle = sorted.count / 2
-        return sorted.count.isMultiple(of: 2) ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle]
-    }
-
-    /**
-     * @method recurringExpenses
-     * @description The expenses that come back month after month over the last seven months: those marked recurring, and
-     * those logged under the same name and category in at least three months for about the same amount. One not paid for
-     * two months is taken as stopped
-     *
-     * @param operations Every operation
-     * @param categories The categories
-     * @param now The current date
-     * @returns The expenses, the costliest over a year first
-     */
-    static func recurringExpenses(_ operations: [Operation], categories: [Category], now: Date = .now) -> [RecurringExpense] {
-        let since = BudgetMath.shiftMonth(BudgetMath.monthStart(now), by: 1 - recurringWindow)
-        let stoppedBefore = BudgetMath.shiftMonth(BudgetMath.monthStart(now), by: -1)
-        let known = Dictionary(categories.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let recent = operations.filter { $0.date >= since && $0.date <= now }
-        let groups = Dictionary(grouping: recent) { $0.categoryId + "|" + $0.name.trimmingCharacters(in: .whitespaces).lowercased() }
-
-        let found = groups.values.compactMap { group -> RecurringExpense? in
-            guard let latest = group.max(by: { $0.date < $1.date }), let category = known[latest.categoryId], latest.date >= stoppedBefore else {
-                return nil
-            }
-
-            let amounts = Array(Dictionary(grouping: group) { BudgetMath.monthKey($0.date) }.values.map { spent($0) })
-            let monthly = median(amounts)
-            let isSteady = amounts.count >= recurringMinMonths && amounts.allSatisfy { abs($0 - monthly) <= monthly * recurringSpread }
-            let isMarked = group.contains(where: \.isRecurring)
-
-            guard isSteady || isMarked else {
-                return nil
-            }
-            return RecurringExpense(name: latest.name, category: category, monthly: monthly, months: amounts.count, lastDate: latest.date)
-        }
-
-        return found.sorted { $0.yearly > $1.yearly }
     }
 
     /**
