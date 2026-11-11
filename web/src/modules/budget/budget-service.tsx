@@ -1,5 +1,5 @@
-import type { Category, MonthlyBudget, Operation, RateSnapshot, StoredState, TrashedOperation } from 'modules/budget/budget-models';
-import { RateSnapshotSchema, StoredStateSchema, TrashedOperationSchema } from 'modules/budget/budget-models';
+import type { Category, MonthlyBudget, Operation, RateSnapshot, RecurringFields, RecurringOperation, StoredState, TrashedOperation } from 'modules/budget/budget-models';
+import { RateSnapshotSchema, RecurringOperationSchema, StoredStateSchema, TrashedOperationSchema } from 'modules/budget/budget-models';
 import { fetchWithAuthentication } from 'utils/request';
 import { z } from 'zod';
 
@@ -30,9 +30,10 @@ function path(collection: string, id: string): string {
  * @description What an operation holds, as the server takes it on creation or change
  *
  * @param {Operation} operation The operation
- * @returns {Omit<Operation, 'id' | 'updatedAt'>} Its fields, without its id and its update stamp
+ * @returns {Omit<Operation, 'id' | 'updatedAt' | 'recurringId'>} Its fields, without its id, its update stamp and the
+ * recurring operation it is an occurrence of, which the server sets
  */
-function operationFields(operation: Operation): Omit<Operation, 'id' | 'updatedAt'> {
+function operationFields(operation: Operation): Omit<Operation, 'id' | 'updatedAt' | 'recurringId'> {
     return {
         date: operation.date,
         name: operation.name,
@@ -99,6 +100,50 @@ async function listTrash(): Promise<TrashedOperation[]> {
  */
 async function restoreOperation(id: string): Promise<void> {
     await fetchWithAuthentication(`${path('operations', id)}/restore`, { method: 'POST', body: '{}' }, z.unknown());
+}
+
+/**
+ * @function listRecurring
+ * @description Reads the recurring operations, once the server logged their due occurrences
+ *
+ * @returns {Promise<RecurringOperation[]>} The recurring operations, in the order they were created
+ */
+async function listRecurring(): Promise<RecurringOperation[]> {
+    return await fetchWithAuthentication('/v1/budget/recurring', { method: 'GET' }, z.array(RecurringOperationSchema));
+}
+
+/**
+ * @function createRecurring
+ * @description Creates a recurring operation under a freshly minted id; the server logs its occurrences already due
+ *
+ * @param {RecurringFields} fields What it logs and when
+ * @returns {Promise<RecurringOperation>} The stored recurring operation
+ */
+async function createRecurring(fields: RecurringFields): Promise<RecurringOperation> {
+    return await fetchWithAuthentication('/v1/budget/recurring', { method: 'POST', body: JSON.stringify({ id: crypto.randomUUID().toUpperCase(), ...fields }) }, RecurringOperationSchema);
+}
+
+/**
+ * @function updateRecurring
+ * @description Changes a recurring operation, for its occurrences still to come
+ *
+ * @param {string} id Its id
+ * @param {Partial<RecurringFields>} fields What changes
+ * @returns {Promise<RecurringOperation>} The stored recurring operation
+ */
+async function updateRecurring(id: string, fields: Partial<RecurringFields>): Promise<RecurringOperation> {
+    return await fetchWithAuthentication(path('recurring', id), { method: 'PATCH', body: JSON.stringify(fields) }, RecurringOperationSchema);
+}
+
+/**
+ * @function deleteRecurring
+ * @description Deletes a recurring operation; its occurrences already logged stay
+ *
+ * @param {string} id Its id
+ * @returns {Promise<void>} Resolves once it is deleted
+ */
+async function deleteRecurring(id: string): Promise<void> {
+    await fetchWithAuthentication(path('recurring', id), { method: 'DELETE' }, z.unknown());
 }
 
 /**
@@ -188,6 +233,10 @@ export default {
     deleteOperation,
     listTrash,
     restoreOperation,
+    listRecurring,
+    createRecurring,
+    updateRecurring,
+    deleteRecurring,
     storeCategory,
     deleteCategory,
     storeSettings,

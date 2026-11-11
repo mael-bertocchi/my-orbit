@@ -10,7 +10,7 @@ import { atTime, dayKey, isFutureDay, parseDay, timeKey, withTimeOf } from 'modu
 import { euroPrecise, fieldDate, rate } from 'modules/budget/budget-formatting';
 import { useBudgetContext, useDocument, useRates } from 'modules/budget/budget-hooks';
 import { latestLocation } from 'modules/budget/budget-math';
-import type { BudgetEditorRoute, Operation } from 'modules/budget/budget-models';
+import type { BudgetEditorRoute, Category, Operation } from 'modules/budget/budget-models';
 import { amountInputOf, deleteOperation, groupAmountInput, Limits, parseAmountInput, sanitizeAmountInput, toOperation, upsertOperation } from 'modules/budget/budget-operations';
 import { defaultCurrency, rememberCurrency } from 'modules/budget/budget-preferences';
 import { t } from 'modules/language/language-service';
@@ -27,7 +27,7 @@ const FORM_ID = 'operation-form';
  * @interface ToggleRowComponentProps
  * @description Properties of a row with a switch
  */
-interface ToggleRowComponentProps {
+export interface ToggleRowComponentProps {
     icon: LucideIcon; /*!< Its icon */
     title: string; /*!< What it toggles */
     hint: string; /*!< A word on what it means */
@@ -41,7 +41,7 @@ interface ToggleRowComponentProps {
  *
  * @param {ToggleRowComponentProps} props The properties of the component
  */
-function ToggleRowComponent(props: ToggleRowComponentProps): JSX.Element {
+export function ToggleRowComponent(props: ToggleRowComponentProps): JSX.Element {
     const Icon = props.icon;
 
     return (
@@ -60,7 +60,7 @@ function ToggleRowComponent(props: ToggleRowComponentProps): JSX.Element {
  * @interface FieldComponentProps
  * @description Properties of a labelled field
  */
-interface FieldComponentProps {
+export interface FieldComponentProps {
     label: string; /*!< Its label */
     htmlFor: string; /*!< The field it labels */
     aside?: string; /*!< A word on its right */
@@ -73,7 +73,7 @@ interface FieldComponentProps {
  *
  * @param {FieldComponentProps} props The properties of the component
  */
-function FieldComponent(props: FieldComponentProps): JSX.Element {
+export function FieldComponent(props: FieldComponentProps): JSX.Element {
     return (
         <div>
             <div className='flex items-baseline justify-between'>
@@ -81,6 +81,46 @@ function FieldComponent(props: FieldComponentProps): JSX.Element {
                 {props.aside !== undefined && <span className='text-[13px] text-ink-tertiary'>{props.aside}</span>}
             </div>
             {props.children}
+        </div>
+    );
+}
+
+/**
+ * @interface CategoryPickerComponentProps
+ * @description Properties of the category picker
+ */
+export interface CategoryPickerComponentProps {
+    categories: readonly Category[]; /*!< The categories to pick from */
+    selected: string; /*!< The id of the one picked */
+    onSelect: (id: string) => void; /*!< Called with the id of the one picked */
+}
+
+/**
+ * @function CategoryPickerComponent
+ * @description The grid of categories, the one picked ringed.
+ *
+ * @param {CategoryPickerComponentProps} props The properties of the component
+ */
+export function CategoryPickerComponent(props: CategoryPickerComponentProps): JSX.Element {
+    return (
+        <div className='border-t border-hairline pt-5'>
+            <p className='field-label'>{t('operation.category')}</p>
+            <div className='grid grid-cols-4 gap-x-2 gap-y-3 sm:grid-cols-5'>
+                {props.categories.map((category) => {
+                    const isSelected = category.id === props.selected;
+
+                    return (
+                        <button key={category.id} type='button' aria-pressed={isSelected} onClick={() => props.onSelect(category.id)} className='group flex flex-col items-center gap-1.5 rounded-2xl py-1 focus-visible:outline-none'>
+                            <span className={`rounded-[16px] p-[3px] ring-2 transition ${isSelected ? 'ring-accent' : 'ring-transparent group-hover:ring-fill-strong group-focus-visible:ring-accent/50'}`}>
+                                <CategoryIconComponent category={category} size={44} />
+                            </span>
+                            <span className={`w-full truncate text-center text-[12px] transition ${isSelected ? 'font-semibold text-accent' : 'font-medium text-ink-secondary'}`}>
+                                {categoryName(category)}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -121,7 +161,6 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
     const [location, setLocation] = useState(existing === null ? latestLocation(document.operations) ?? '' : existing.location ?? '');
     const [date, setDate] = useState(existing?.date ?? now);
     const [isOnline, setIsOnline] = useState(existing?.isOnline ?? false);
-    const [isRecurring, setIsRecurring] = useState(existing?.isRecurring ?? false);
 
     const day = dayKey(date);
     const isForeign = currencyCode !== EURO.code;
@@ -181,7 +220,8 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
             return;
         }
 
-        const operation = toOperation({ name, description, amount, currencyCode, categoryId, date, location, isOnline, isRecurring }, appliedRate, existing?.id);
+        const draft = { name, description, amount, currencyCode, categoryId, date, location, isOnline, isRecurring: existing?.isRecurring ?? false };
+        const operation = { ...toOperation(draft, appliedRate, existing?.id), recurringId: existing?.recurringId ?? null };
 
         store.apply((current) => {
             if (existing !== null && !current.operations.some((candidate) => candidate.id === existing.id)) {
@@ -211,6 +251,12 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
 
     return (
         <form id={FORM_ID} onSubmit={submit} className='space-y-5'>
+            {(existing?.recurringId ?? null) !== null && (
+                <p className='flex items-center gap-2 rounded-2xl bg-fill px-4 py-3 text-[13px] text-ink-secondary'>
+                    <Repeat size={16} className='shrink-0 text-accent' />
+                    {t('operation.occurrence')}
+                </p>
+            )}
             <div className='flex flex-col items-center pb-2 pt-1'>
                 <label htmlFor='amount' className='eyebrow'>{t('operation.amount')}</label>
                 <div className='mt-2 flex items-center gap-2'>
@@ -235,25 +281,7 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
                 )}
             </div>
 
-            <div className='border-t border-hairline pt-5'>
-                <p className='field-label'>{t('operation.category')}</p>
-                <div className='grid grid-cols-4 gap-x-2 gap-y-3 sm:grid-cols-5'>
-                    {categories.map((category) => {
-                        const isSelected = category.id === categoryId;
-
-                        return (
-                            <button key={category.id} type='button' aria-pressed={isSelected} onClick={() => setCategoryId(category.id)} className='group flex flex-col items-center gap-1.5 rounded-2xl py-1 focus-visible:outline-none'>
-                                <span className={`rounded-[16px] p-[3px] ring-2 transition ${isSelected ? 'ring-accent' : 'ring-transparent group-hover:ring-fill-strong group-focus-visible:ring-accent/50'}`}>
-                                    <CategoryIconComponent category={category} size={44} />
-                                </span>
-                                <span className={`w-full truncate text-center text-[12px] transition ${isSelected ? 'font-semibold text-accent' : 'font-medium text-ink-secondary'}`}>
-                                    {categoryName(category)}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
+            <CategoryPickerComponent categories={categories} selected={categoryId} onSelect={setCategoryId} />
 
             <FieldComponent label={t('operation.name')} htmlFor='name'>
                 <input id='name' className='field' value={name} maxLength={Limits.name} onChange={(event) => setName(event.target.value)} placeholder={t('operation.namePlaceholder')} autoComplete='off' />
@@ -280,8 +308,6 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
                     </div>
                 </FieldComponent>
             )}
-
-            <ToggleRowComponent icon={Repeat} title={t('operation.recurring')} hint={t('operation.recurringHint')} checked={isRecurring} onChange={setIsRecurring} />
 
             {existing !== null && (
                 <button type='button' onClick={props.onDelete} className='w-full py-2 text-[15px] font-medium text-negative-text transition hover:opacity-70'>

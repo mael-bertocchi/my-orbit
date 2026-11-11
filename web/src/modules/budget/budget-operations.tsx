@@ -33,7 +33,7 @@ export interface OperationDraft {
     date: Date; /*!< When it happened */
     location: string; /*!< Where it happened, ignored when online */
     isOnline: boolean; /*!< Whether it has no physical location */
-    isRecurring: boolean; /*!< Whether it repeats monthly */
+    isRecurring: boolean; /*!< Whether it is a recurring expense, as an occurrence of a recurring operation is */
 }
 
 /**

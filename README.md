@@ -26,8 +26,9 @@ One site, opened with a passkey, with two apps inside: a **budget** for daily sp
 - **The month at a glance** • a ring with what is left to spend, the spent amount, the days left and what that leaves per day, and every category against its own limit, turning red once over it. Past months are measured against the budget frozen when they ended.
 - **Compared with usual** • in the current month, a category that strays from its usual spending at the same day (by 15% and €10 or more) gets a badge with the change.
 - **History** • operations grouped by day with day totals, a search, and filters by category and by date.
-- **Operations** • amount in any currency, converted to euros at the reference rate of the operation's own day ([Frankfurter](https://frankfurter.dev), ECB data) plus the 1% a bank adds; category, name, note, place, online or not, recurring or not.
-- **Analysis** • the last twelve months against their budget and the average, the expenses that come back every month and their cost over a year, and the habits of the last 90 days (weekdays, share paid online, places).
+- **Operations** • amount in any currency, converted to euros at the reference rate of the operation's own day ([Frankfurter](https://frankfurter.dev), ECB data) plus the 1% a bank adds; category, name, note, place, online or not.
+- **Recurring operations** • a rent or a subscription is kept apart, in Analysis: every 1, 3, 6 or 12 months from a first day, until an end day if any, paused or not. Each occurrence is logged on its day as a plain operation, which can then be changed on its own.
+- **Analysis** • the last twelve months against their budget and the average, the recurring operations, and the habits of the last 90 days (weekdays, share paid online, places).
 - **Trash** • a deleted operation goes to a trash it can be restored from.
 - **Two clients, one budget** • the web page and the iOS app write the same budget entry by entry, so neither overwrites the other. The iOS app keeps working offline and merges its changes when the connection returns.
 

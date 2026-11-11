@@ -2,16 +2,23 @@ import CategoryIconComponent from 'components/category-icon/category-icon';
 import EmptyStateComponent from 'components/empty-state/empty-state';
 import type { MonthBar, MonthBarsLabels } from 'components/month-bars/month-bars';
 import MonthBarsComponent from 'components/month-bars/month-bars';
-import { Globe, MapPin } from 'lucide-react';
+import SpinnerComponent from 'components/spinner/spinner';
+import { ChevronRight, Globe, MapPin, Plus } from 'lucide-react';
 import type { Maybe } from 'models';
-import type { MonthTotal, PlaceSpend, RecurringExpense, SpendingHabits } from 'modules/budget/budget-analysis';
-import { monthTotals, recurringExpenses, spendingHabits } from 'modules/budget/budget-analysis';
-import { categoriesOf, categoryName } from 'modules/budget/budget-categories';
-import { dayShort, euro, monthShort, monthWithYear, percent, weekdayShort } from 'modules/budget/budget-formatting';
-import { useDocument } from 'modules/budget/budget-hooks';
-import type { Category } from 'modules/budget/budget-models';
+import type { MonthTotal, PlaceSpend, SpendingHabits } from 'modules/budget/budget-analysis';
+import { monthTotals, spendingHabits } from 'modules/budget/budget-analysis';
+import { categoriesOf, categoryName, categoryOrFallback } from 'modules/budget/budget-categories';
+import { bankRate, currencyNamed } from 'modules/budget/budget-currencies';
+import { dayShort, euro, money, monthShort, monthWithYear, percent, weekdayShort } from 'modules/budget/budget-formatting';
+import { useDocument, useRates } from 'modules/budget/budget-hooks';
+import type { Category, RecurringOperation } from 'modules/budget/budget-models';
+import { dayOf, intervalLabel, isRunning, monthlyEuros } from 'modules/budget/budget-recurring';
+import budgetService from 'modules/budget/budget-service';
 import { t } from 'modules/language/language-service';
-import { useState, type JSX } from 'react';
+import type { RecurringEditorRoute } from 'pages/budget/budget-recurring/budget-recurring';
+import BudgetRecurringComponent from 'pages/budget/budget-recurring/budget-recurring';
+import { useEffect, useState, type JSX } from 'react';
+import { messageOf } from 'utils/errors';
 
 /**
  * @constant ACCENT
@@ -54,18 +61,6 @@ function spentOf(total: MonthTotal, categoryId: Maybe<string>): number {
  */
 function average(values: readonly number[]): Maybe<number> {
     return values.length === 0 ? null : values.reduce((total, value) => total + value, 0) / values.length;
-}
-
-/**
- * @function capitalised
- * @description A text with a capital first letter, for a phrase that starts a line on its own.
- *
- * @param {string} text The text.
- *
- * @returns {string} The text, capitalised.
- */
-function capitalised(text: string): string {
-    return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /**
@@ -186,69 +181,124 @@ function TrendsCardComponent(props: TrendsCardComponentProps): JSX.Element {
 
 /**
  * @interface RecurringRowComponentProps
- * @description Properties of one recurring expense
+ * @description Properties of one recurring operation
  */
 interface RecurringRowComponentProps {
-    expense: RecurringExpense; /*!< The expense */
+    recurring: RecurringOperation; /*!< The recurring operation */
+    category: Category; /*!< Its category */
+    monthly: Maybe<number>; /*!< What it costs a month on average, in euros, none while its rate is unknown */
+    onOpen: (recurring: RecurringOperation) => void; /*!< Called to open it */
 }
 
 /**
  * @function RecurringRowComponent
- * @description A recurring expense: its name and category, when it was last paid, and what it costs a month and a year.
+ * @description A recurring operation: its name, how often it comes back and when next, and what it costs a month and a
+ * year. Opening it shows its details, to change or delete it.
  *
  * @param {RecurringRowComponentProps} props The properties of the component
  */
 function RecurringRowComponent(props: RecurringRowComponentProps): JSX.Element {
-    const { expense } = props;
-    const lastPaid = t('analysis.lastPaid', { date: dayShort(expense.lastDate).replaceAll(' ', '\u00a0') });
-    const isNamedAfterCategory = expense.name.trim().toLowerCase() === categoryName(expense.category).toLowerCase();
-    const detail = isNamedAfterCategory ? capitalised(lastPaid) : `${categoryName(expense.category)} • ${lastPaid}`;
+    const { recurring, category, monthly } = props;
+    const next = dayOf(recurring.nextDate);
+    let status = next === null ? t('analysis.ended') : t('analysis.nextOn', { date: dayShort(next).replaceAll(' ', '\u00a0') });
+
+    if (recurring.isPaused) {
+        status = t('analysis.paused');
+    }
 
     return (
-        <div className='flex items-center gap-3 py-2.5'>
-            <CategoryIconComponent category={expense.category} size={34} />
+        <button type='button' onClick={() => props.onOpen(recurring)} className={`flex w-full items-center gap-3 py-2.5 text-left transition hover:opacity-70 ${isRunning(recurring) ? '' : 'opacity-60'}`}>
+            <CategoryIconComponent category={category} size={34} />
             <span className='min-w-0 flex-1'>
-                <span className='block truncate text-[15px] font-medium'>{expense.name}</span>
-                <span className='block text-[13px] leading-snug text-ink-secondary'>{detail}</span>
+                <span className='block truncate text-[15px] font-medium'>{recurring.name}</span>
+                <span className='block text-[13px] leading-snug text-ink-secondary'>{`${intervalLabel(recurring.intervalMonths)} • ${status}`}</span>
             </span>
             <span className='text-right'>
-                <span className='block text-[15px] font-semibold tabular-nums'>{t('analysis.perMonth', { amount: euro(expense.monthly) })}</span>
-                <span className='block text-[13px] text-ink-secondary tabular-nums'>{t('analysis.perYear', { amount: euro(expense.yearly) })}</span>
+                <span className='block text-[15px] font-semibold tabular-nums'>{money(recurring.amount, currencyNamed(recurring.currencyCode))}</span>
+                <span className='block text-[13px] text-ink-secondary tabular-nums'>{monthly === null ? '•' : t('analysis.perYear', { amount: euro(monthly * 12) })}</span>
             </span>
-        </div>
+            <ChevronRight size={17} className='shrink-0 text-ink-quaternary' />
+        </button>
     );
 }
 
 /**
- * @interface RecurringCardComponentProps
- * @description Properties of the recurring expenses' card
- */
-interface RecurringCardComponentProps {
-    expenses: RecurringExpense[]; /*!< The expenses, the costliest first */
-}
-
-/**
  * @function RecurringCardComponent
- * @description The expenses that come back every month, with what they all cost over a year.
- *
- * @param {RecurringCardComponentProps} props The properties of the component
+ * @description The recurring operations, read from the server: a button adds one, and each opens to be changed, paused
+ * or deleted. The card keeps the same height however many there are, its list scrolling within it.
  */
-function RecurringCardComponent(props: RecurringCardComponentProps): JSX.Element {
-    const yearly = props.expenses.reduce((total, expense) => total + expense.yearly, 0);
+function RecurringCardComponent(): JSX.Element {
+    const document = useDocument();
+    const rates = useRates();
+    const [recurring, setRecurring] = useState<Maybe<RecurringOperation[]>>(null);
+    const [failure, setFailure] = useState<Maybe<string>>(null);
+    const [route, setRoute] = useState<Maybe<RecurringEditorRoute>>(null);
+    const categories = categoriesOf(document.categories);
+    useEffect(() => {
+        budgetService.listRecurring().then(setRecurring).catch((error: unknown) => setFailure(messageOf(error)));
+    }, []);
 
-    return (
-        <section className='card p-6 sm:p-8 lg:col-span-3'>
-            <div className='flex items-baseline justify-between gap-4'>
-                <h2 className='text-[20px] font-semibold tracking-tight'>{t('analysis.recurring')}</h2>
-                {props.expenses.length > 0 && <p className='shrink-0 whitespace-nowrap text-[15px] font-semibold tabular-nums'>{t('analysis.perYear', { amount: euro(yearly) })}</p>}
-            </div>
-            <p className='mt-1 text-[13px] text-ink-secondary'>{t('analysis.recurringNote')}</p>
-            <div className='mt-3 divide-y divide-hairline'>
-                {props.expenses.length === 0 && <EmptyStateComponent message={t('analysis.noRecurring')} />}
-                {props.expenses.map((expense) => (
-                    <RecurringRowComponent key={`${expense.category.id}-${expense.name}`} expense={expense} />
+    /**
+     * @function monthlyOf
+     * @description What a recurring operation costs a month on average, in euros, at the latest rate of its currency
+     */
+    const monthlyOf = (candidate: RecurringOperation): Maybe<number> => {
+        const reference = rates.latest?.rates[candidate.currencyCode];
+
+        return monthlyEuros(candidate, reference === undefined ? null : bankRate(reference, candidate.currencyCode));
+    };
+
+    /**
+     * @function saved
+     * @description Puts the stored recurring operation in the list, in place of its former self
+     */
+    const saved = (stored: RecurringOperation): void => {
+        setRecurring((current) => (current?.some((candidate) => candidate.id === stored.id) ? current.map((candidate) => (candidate.id === stored.id ? stored : candidate)) : [...current ?? [], stored]));
+        setRoute(null);
+    };
+
+    /**
+     * @function deleted
+     * @description Takes a deleted recurring operation out of the list
+     */
+    const deleted = (id: string): void => {
+        setRecurring((current) => current?.filter((candidate) => candidate.id !== id) ?? null);
+        setRoute(null);
+    };
+
+    const sorted = (recurring ?? []).toSorted((left, right) => Number(isRunning(right)) - Number(isRunning(left)) || (left.nextDate ?? '').localeCompare(right.nextDate ?? ''));
+
+    let body: JSX.Element = (
+        <div className='flex flex-1 items-center justify-center'>
+            <SpinnerComponent />
+        </div>
+    );
+
+    if (failure !== null) {
+        body = <EmptyStateComponent message={`${t('analysis.recurringFailed')} ${failure}`} />;
+    } else if (recurring !== null) {
+        body = (
+            <div className='-mr-2 mt-3 min-h-0 flex-1 divide-y divide-hairline overflow-y-auto pr-2'>
+                {sorted.length === 0 && <EmptyStateComponent message={t('analysis.noRecurring')} />}
+                {sorted.map((candidate) => (
+                    <RecurringRowComponent key={candidate.id} recurring={candidate} category={categoryOrFallback(categories, candidate.categoryId)} monthly={monthlyOf(candidate)} onOpen={(opened) => setRoute({ kind: 'edit', recurring: opened })} />
                 ))}
             </div>
+        );
+    }
+
+    return (
+        <section className='card flex h-[440px] flex-col p-6 sm:p-8 lg:col-span-3'>
+            <div className='flex items-center justify-between gap-4'>
+                <h2 className='text-[20px] font-semibold tracking-tight'>{t('analysis.recurring')}</h2>
+                <button type='button' onClick={() => setRoute({ kind: 'new' })} className='flex shrink-0 items-center gap-1 rounded-full bg-fill px-3 py-1.5 text-[14px] font-medium text-accent transition hover:bg-fill-strong'>
+                    <Plus size={15} />
+                    {t('analysis.addRecurring')}
+                </button>
+            </div>
+            <p className='mt-1 text-[13px] text-ink-secondary'>{t('analysis.recurringNote')}</p>
+            {body}
+            <BudgetRecurringComponent route={route} onSaved={saved} onDeleted={deleted} onClose={() => setRoute(null)} />
         </section>
     );
 }
@@ -350,8 +400,8 @@ function PlacesCardComponent(props: PlacesCardComponentProps): JSX.Element {
 /**
  * @function BudgetAnalysisComponent
  * @description The Analysis tab, about what a single month can't show: how the spending moved over the last year, the
- * expenses that come back every month, and the recent habits. Everything is worked out in the page, from the budget it
- * already holds.
+ * recurring operations, managed here, and the recent habits. Everything but the recurring operations is worked out in
+ * the page, from the budget it already holds.
  */
 function BudgetAnalysisComponent(): JSX.Element {
     const document = useDocument();
@@ -369,7 +419,7 @@ function BudgetAnalysisComponent(): JSX.Element {
             <div className='mt-6 flex flex-col gap-5'>
                 <TrendsCardComponent totals={totals} categories={categories} />
                 <div className='grid grid-cols-1 gap-5 lg:grid-cols-5'>
-                    <RecurringCardComponent expenses={recurringExpenses(document, now)} />
+                    <RecurringCardComponent />
                     <HabitsCardComponent habits={habits} />
                 </div>
                 {habits.places.length > 0 && <PlacesCardComponent places={habits.places} />}

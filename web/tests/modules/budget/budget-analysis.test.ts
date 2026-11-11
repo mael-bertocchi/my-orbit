@@ -1,4 +1,4 @@
-import { compareMonth, isNotable, monthTotals, recurringExpenses, referenceMonths, spendingHabits } from 'modules/budget/budget-analysis';
+import { compareMonth, isNotable, monthTotals, referenceMonths, spendingHabits } from 'modules/budget/budget-analysis';
 import { describe, expect, it } from 'vitest';
 
 import { document, NOW, operation } from '../../support/fixtures';
@@ -79,23 +79,6 @@ describe('monthTotals', () => {
 
         expect(totals).toHaveLength(12);
         expect(totals[0]?.month).toEqual(new Date(2025, 9, 1));
-    });
-});
-
-describe('recurringExpenses', () => {
-    it('finds the expenses marked recurring and those coming back for about the same amount', () => {
-        const operations = [
-            operation({ id: 'rent', date: new Date(2026, 8, 1), name: 'Loyer', amount: 850, categoryId: 'administrative', isRecurring: true }),
-            ...[5, 6, 7, 8].map((month) => operation({ id: `phone-${month}`, date: new Date(2026, month, 5), name: 'Free ', amount: month === 7 ? 21 : 19.99, categoryId: 'telecom' })),
-            ...[6, 7, 8].map((month) => operation({ id: `food-${month}`, date: new Date(2026, month, 9), name: 'Carrefour', amount: [40, 90, 150][month - 6] ?? 0 })),
-            ...[2, 3, 4].map((month) => operation({ id: `gym-${month}`, date: new Date(2026, month, 3), name: 'Gym', amount: 35, categoryId: 'selfcare' }))
-        ];
-        const found = recurringExpenses(document(operations), NOW);
-
-        expect(found.map((expense) => expense.name)).toEqual(['Loyer', 'Free ']);
-        expect(found[0]).toMatchObject({ monthly: 850, yearly: 10200, months: 1 });
-        expect(found[1]?.monthly).toBeCloseTo(19.99);
-        expect(found[1]?.months).toBe(4);
     });
 });
 

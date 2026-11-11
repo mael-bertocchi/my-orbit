@@ -32,7 +32,28 @@ export const OperationSchema = z.object({
     rateToEuro: z.number(),
     isOnline: z.boolean(),
     isRecurring: z.boolean(),
+    recurringId: z.string().nullish(),
     updatedAt: z.coerce.date().optional()
+});
+
+/**
+ * @constant RecurringOperationSchema
+ * @description Zod schema for a recurring operation: what each occurrence logs, and when it comes back.
+ */
+export const RecurringOperationSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().nullish(),
+    categoryId: z.string(),
+    location: z.string().nullish(),
+    amount: z.number(),
+    currencyCode: z.string(),
+    isOnline: z.boolean(),
+    firstDate: z.string(),
+    intervalMonths: z.number().int(),
+    endDate: z.string().nullish(),
+    isPaused: z.boolean(),
+    nextDate: z.string().nullish()
 });
 
 /**
@@ -92,6 +113,18 @@ export type Category = z.infer<typeof CategorySchema>;
  * @description An operation: an amount spent, in its currency and in euros
  */
 export type Operation = z.infer<typeof OperationSchema>;
+
+/**
+ * @type RecurringOperation
+ * @description A recurring operation, such as a rent or a subscription: each of its occurrences is logged as an operation
+ */
+export type RecurringOperation = z.infer<typeof RecurringOperationSchema>;
+
+/**
+ * @type RecurringFields
+ * @description What describes a recurring operation, as the server takes it on creation or change
+ */
+export type RecurringFields = Omit<RecurringOperation, 'id' | 'nextDate'>;
 
 /**
  * @type TrashedOperation

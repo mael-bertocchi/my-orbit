@@ -145,25 +145,6 @@ export function isNotable(comparison: CategoryComparison): boolean {
 const TREND_MONTHS = 12;
 
 /**
- * @constant RECURRING_WINDOW
- * @description How many months back a repeated expense is looked for, the current one included.
- */
-const RECURRING_WINDOW = 7;
-
-/**
- * @constant RECURRING_MIN_MONTHS
- * @description In how many distinct months an expense must come back to read as recurring without being marked so.
- */
-const RECURRING_MIN_MONTHS = 3;
-
-/**
- * @constant RECURRING_SPREAD
- * @description How far a month's amount may stray from the usual one, as a fraction, for an expense to still read as
- * the same one coming back.
- */
-const RECURRING_SPREAD = 0.25;
-
-/**
  * @constant HABIT_DAYS
  * @description How many days back the habits are measured on.
  */
@@ -185,19 +166,6 @@ export interface MonthTotal {
     limit: number; /*!< Its budget */
     byCategory: Record<string, number>; /*!< Euros spent per category id */
     isCurrent: boolean; /*!< Whether it is the current month, still under way */
-}
-
-/**
- * @interface RecurringExpense
- * @description An expense that comes back month after month, such as the rent or a subscription.
- */
-export interface RecurringExpense {
-    name: string; /*!< Its name, as last logged */
-    category: Category; /*!< Its category */
-    monthly: number; /*!< What it usually costs a month, in euros */
-    yearly: number; /*!< What that comes to over a year */
-    months: number; /*!< In how many of the recent months it came back */
-    lastDate: Date; /*!< When it was last paid */
 }
 
 /**
@@ -260,70 +228,6 @@ export function monthTotals(document: BudgetDocument, now: Date = new Date()): M
     }
 
     return totals;
-}
-
-/**
- * @function median
- * @description The middle value of a list of numbers.
- *
- * @param {readonly number[]} values The numbers, at least one.
- *
- * @returns {number} Their median.
- */
-function median(values: readonly number[]): number {
-    const sorted = values.toSorted((left, right) => left - right);
-    const middle = Math.floor(sorted.length / 2);
-
-    return sorted.length % 2 === 0 ? ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2 : sorted[middle] ?? 0;
-}
-
-/**
- * @function recurringExpenses
- * @description The expenses that come back month after month over the last seven months: those marked recurring, and
- * those logged under the same name and category in at least three months for about the same amount. One not paid for
- * two months is taken as stopped.
- *
- * @param {BudgetDocument} document The budget.
- * @param {Date} now The current date.
- *
- * @returns {RecurringExpense[]} The expenses, the costliest over a year first.
- */
-export function recurringExpenses(document: BudgetDocument, now: Date = new Date()): RecurringExpense[] {
-    const since = shiftMonth(monthStart(now), 1 - RECURRING_WINDOW);
-    const stoppedBefore = shiftMonth(monthStart(now), -1);
-    const categories = new Map(categoriesOf(document.categories).map((category) => [category.id, category]));
-    const groups = new Map<string, Operation[]>();
-
-    for (const operation of document.operations.filter((candidate) => candidate.date >= since && candidate.date <= now)) {
-        const key = `${operation.categoryId}|${operation.name.trim().toLowerCase()}`;
-
-        groups.set(key, [...(groups.get(key) ?? []), operation]);
-    }
-
-    const found: RecurringExpense[] = [];
-
-    for (const operations of groups.values()) {
-        const latest = operations.reduce((last, operation) => (operation.date > last.date ? operation : last));
-        const category = categories.get(latest.categoryId);
-        const perMonth = new Map<string, number>();
-
-        for (const operation of operations) {
-            perMonth.set(monthKey(operation.date), (perMonth.get(monthKey(operation.date)) ?? 0) + euroAmount(operation));
-        }
-
-        const amounts = [...perMonth.values()];
-        const monthly = median(amounts);
-        const isSteady = amounts.length >= RECURRING_MIN_MONTHS && amounts.every((amount) => Math.abs(amount - monthly) <= monthly * RECURRING_SPREAD);
-        const isMarked = operations.some((operation) => operation.isRecurring);
-
-        if (category === undefined || latest.date < stoppedBefore || !(isSteady || isMarked)) {
-            continue;
-        }
-
-        found.push({ name: latest.name, category, monthly, yearly: monthly * 12, months: amounts.length, lastDate: latest.date });
-    }
-
-    return found.toSorted((left, right) => right.yearly - left.yearly);
 }
 
 /**
