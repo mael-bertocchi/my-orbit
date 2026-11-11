@@ -50,6 +50,7 @@ async function buildApp(): Promise<TestApp> {
         budgetOperation: operations,
         budgetCategory: { findMany: vi.fn(() => Promise.resolve([{ id: 'groceries', name: 'Groceries', monthlyLimit: 400 }])) },
         budgetState: { upsert: vi.fn(() => Promise.resolve({ revision: 2 })) },
+        budgetRecurringOperation: { findMany: vi.fn(() => Promise.resolve([])) },
         identityRefreshSession: { updateMany: vi.fn(({ where }: { where: { connectionId: string } }) => Promise.resolve({ count: where.connectionId === LIVE_CONNECTION ? 1 : 0 })) },
         $transaction: <T>(work: (transaction: unknown) => Promise<T>): Promise<T> => work(prisma)
     };
@@ -141,7 +142,7 @@ describe('the MCP endpoint', () => {
         const { app, accessToken } = await buildApp();
         const tools = (await rpc(app, 'tools/list', {}, accessToken)).json<RpcAnswer>().result.tools;
 
-        expect(tools.map((tool) => tool.name)).toEqual(['budget_list_categories', 'budget_search_operations', 'budget_month_summary', 'budget_create_operation', 'budget_update_operation', 'budget_delete_operation', 'watchlist_search', 'watchlist_title_details', 'watchlist_rate_title', 'watchlist_add_title']);
+        expect(tools.map((tool) => tool.name)).toEqual(['budget_list_categories', 'budget_search_operations', 'budget_month_summary', 'budget_create_operation', 'budget_update_operation', 'budget_delete_operation', 'budget_list_recurring', 'budget_create_recurring', 'budget_update_recurring', 'budget_delete_recurring', 'watchlist_search', 'watchlist_title_details', 'watchlist_rate_title', 'watchlist_add_title']);
         expect(tools.find((tool) => tool.name === 'budget_delete_operation')?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
         expect(tools.find((tool) => tool.name === 'budget_search_operations')?.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
     });

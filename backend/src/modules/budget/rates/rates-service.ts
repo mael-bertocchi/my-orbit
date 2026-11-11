@@ -3,6 +3,7 @@ import { StatusCodes } from 'http-status-codes';
 import type { BudgetExchangeRateSnapshot, PrismaClient } from 'prisma/generated/prisma/client';
 import type { ProviderPayload, RatesBody } from 'src/modules/budget/rates/rates-models';
 import { BASE_CURRENCY, PROVIDER_BASE_URL, ProviderPayloadSchema, StoredRatesSchema, toIsoDay } from 'src/modules/budget/rates/rates-models';
+import type { Perhaps } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
 
 /**
@@ -204,4 +205,33 @@ export async function pullRatesForDay(prisma: PrismaClient, logger: FastifyBaseL
     }
 
     return await pullSnapshot(prisma, logger, day, day < today);
+}
+
+/**
+ * @constant BANK_MARKUP
+ * @description What the owner's bank adds on top of the reference rate of any currency but the euro, as the apps apply it.
+ */
+export const BANK_MARKUP = 0.01;
+
+/**
+ * @function rateToEuroOn
+ * @description The euros one unit of a currency cost on a day, the bank's markup included, as the apps price an operation.
+ *
+ * @param {PrismaClient} prisma The database client.
+ * @param {FastifyBaseLogger} logger The request logger.
+ * @param {string} code The currency.
+ * @param {string} day The day, as `YYYY-MM-DD`.
+ *
+ * @returns {Promise<Perhaps<number>>} The rate, or undefined when the currency has none. Rejects with 503 when no rate can
+ * be had.
+ */
+export async function rateToEuroOn(prisma: PrismaClient, logger: FastifyBaseLogger, code: string, day: string): Promise<Perhaps<number>> {
+    if (code === BASE_CURRENCY) {
+        return 1;
+    }
+
+    const snapshot = await pullRatesForDay(prisma, logger, day);
+    const reference = snapshot.rates[code];
+
+    return reference === undefined ? undefined : reference * (1 + BANK_MARKUP);
 }

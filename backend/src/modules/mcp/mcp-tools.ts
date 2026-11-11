@@ -4,7 +4,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { BudgetOperation, Prisma, PrismaClient, WatchlistEntry } from 'prisma/generated/prisma/client';
 import { createOperation, deleteOperation, updateOperation } from 'src/modules/budget/operations/operations-service';
 import { CurrencyCodeSchema } from 'src/modules/budget/rates/rates-models';
-import { pullRatesForDay } from 'src/modules/budget/rates/rates-service';
+import { rateToEuroOn } from 'src/modules/budget/rates/rates-service';
 import { StoredCategoryLimitsSchema } from 'src/modules/budget/state/state-models';
 import { DEFAULT_MONTHLY_LIMIT } from 'src/modules/budget/state/state-service';
 import type { CatalogDetails, CatalogTitle } from 'src/modules/watchlist/catalog/catalog-models';
@@ -242,7 +242,7 @@ export const searchOperations: ServerTool = {
             result: {
                 count: rows.length,
                 totalEuros: euros(rows.reduce((total, row) => total + row.amount * row.rateToEuro, 0)),
-                operations: rows.slice(0, limit).map((row) => ({ ...summaryOf(row), description: row.description, location: row.location, isOnline: row.isOnline, isRecurring: row.isRecurring }))
+                operations: rows.slice(0, limit).map((row) => ({ ...summaryOf(row), description: row.description, location: row.location, isOnline: row.isOnline, isRecurring: row.isRecurring, recurringId: row.recurringId }))
             }
         };
     }
@@ -560,18 +560,6 @@ export const watchlistTitleDetails: ServerTool = {
 };
 
 /**
- * @constant BANK_MARKUP
- * @description What the owner's bank adds on top of the reference rate of any currency but the euro, as the apps apply it.
- */
-const BANK_MARKUP = 0.01;
-
-/**
- * @constant EURO
- * @description The euro's code: the budget's own currency, at a rate of 1.
- */
-const EURO = 'EUR';
-
-/**
  * @constant LOGGED_AT
  * @description The time of day an operation logged by a model is dated at, in UTC: noon falls on the same day in every
  * time zone around Europe, where the owner lives, so the apps show it on the day it was given.
@@ -586,7 +574,7 @@ const LOGGED_AT = 'T12:00:00.000Z';
  *
  * @returns {ToolOutcome} The outcome. Anything other than a refusal is thrown again.
  */
-function failed(error: unknown): ToolOutcome {
+export function failed(error: unknown): ToolOutcome {
     if (error instanceof RequestError) {
         return { result: { error: error.message } };
     }
@@ -619,14 +607,7 @@ function momentOf(day: string, today: string): Perhaps<Date> {
  * be had.
  */
 async function rateOn(context: ToolContext, code: string, day: string): Promise<Perhaps<number>> {
-    if (code === EURO) {
-        return 1;
-    }
-
-    const snapshot = await pullRatesForDay(context.prisma, context.logger, day);
-    const reference = snapshot.rates[code];
-
-    return reference === undefined ? undefined : reference * (1 + BANK_MARKUP);
+    return await rateToEuroOn(context.prisma, context.logger, code, day);
 }
 
 /**
@@ -663,8 +644,7 @@ const CreateOperationSchema = z.object({
     location: z.string().trim().max(200).optional(),
     amount: z.number().positive().max(1_000_000_000),
     currencyCode: CurrencyCodeSchema,
-    isOnline: z.boolean().default(false),
-    isRecurring: z.boolean().default(false)
+    isOnline: z.boolean().default(false)
 });
 
 /**
@@ -676,7 +656,7 @@ export const createOperationTool: ServerTool = {
     isDestructive: false,
     declaration: {
         name: 'budget_create_operation',
-        description: 'Logs an operation (an expense) in the budget, priced in euros at its day\'s rate. Use a category id from budget_list_categories.',
+        description: 'Logs a one-off operation (an expense) in the budget, priced in euros at its day\'s rate. Use a category id from budget_list_categories. For one that comes back every month or year, create a recurring operation with budget_create_recurring instead.',
         parameters: {
             type: 'object',
             properties: {
@@ -687,8 +667,7 @@ export const createOperationTool: ServerTool = {
                 location: { type: 'string', description: 'The city or place, if any' },
                 amount: { type: 'number', description: 'The amount in its own currency' },
                 currencyCode: { type: 'string', description: 'ISO 4217 code, EUR unless the owner said otherwise' },
-                isOnline: { type: 'boolean', description: 'Whether it was paid online, false by default' },
-                isRecurring: { type: 'boolean', description: 'Whether it comes back every month, false by default' }
+                isOnline: { type: 'boolean', description: 'Whether it was paid online, false by default' }
             },
             required: ['date', 'name', 'categoryId', 'amount', 'currencyCode']
         }
@@ -720,7 +699,7 @@ export const createOperationTool: ServerTool = {
                 return { result: { error: `No exchange rate for ${draft.currencyCode}` } };
             }
 
-            const operation = await createOperation(context.prisma, { ...draft, id: randomUUID().toUpperCase(), date: moment, description: description ?? null, location: location ?? null, rateToEuro });
+            const operation = await createOperation(context.prisma, { ...draft, id: randomUUID().toUpperCase(), isRecurring: false, date: moment, description: description ?? null, location: location ?? null, rateToEuro });
 
             return { result: { status: 'Logged', operation: { ...operation, euroAmount: euros(operation.amount * operation.rateToEuro) } } };
         } catch (error: unknown) {
@@ -743,8 +722,7 @@ const UpdateOperationSchema = z.object({
         location: z.string().trim().max(200).nullable().optional(),
         amount: z.number().positive().max(1_000_000_000).optional(),
         currencyCode: CurrencyCodeSchema.optional(),
-        isOnline: z.boolean().optional(),
-        isRecurring: z.boolean().optional()
+        isOnline: z.boolean().optional()
     })
 });
 
@@ -773,8 +751,7 @@ export const updateOperationTool: ServerTool = {
                         location: { type: ['string', 'null'] },
                         amount: { type: 'number' },
                         currencyCode: { type: 'string' },
-                        isOnline: { type: 'boolean' },
-                        isRecurring: { type: 'boolean' }
+                        isOnline: { type: 'boolean' }
                     }
                 }
             },
@@ -973,20 +950,3 @@ export const addTitleTool: ServerTool = {
         }
     }
 };
-
-/**
- * @constant MCP_TOOLS
- * @description Every tool the MCP server offers, named after the app it works on: five that read, five that write.
- */
-export const MCP_TOOLS: readonly ServerTool[] = [
-    listCategories,
-    searchOperations,
-    monthSummary,
-    createOperationTool,
-    updateOperationTool,
-    deleteOperationTool,
-    searchWatchlist,
-    watchlistTitleDetails,
-    rateTitleTool,
-    addTitleTool
-];

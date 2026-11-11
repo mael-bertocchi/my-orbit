@@ -7,6 +7,7 @@ import categoriesRoutes from 'src/modules/budget/categories/categories-routes';
 import historyRoutes from 'src/modules/budget/history/history-routes';
 import operationsRoutes from 'src/modules/budget/operations/operations-routes';
 import ratesRoutes from 'src/modules/budget/rates/rates-routes';
+import recurringRoutes from 'src/modules/budget/recurring/recurring-routes';
 import settingsRoutes from 'src/modules/budget/settings/settings-routes';
 import stateRoutes from 'src/modules/budget/state/state-routes';
 import healthRoutes from 'src/modules/health/health-routes';
@@ -127,6 +128,7 @@ async function startServer(): Promise<void> {
     await fastify.register(ratesRoutes, { prefix: '/v1/budget/rates' });
     await fastify.register(stateRoutes, { prefix: '/v1/budget/state' });
     await fastify.register(operationsRoutes, { prefix: '/v1/budget/operations' });
+    await fastify.register(recurringRoutes, { prefix: '/v1/budget/recurring' });
     await fastify.register(categoriesRoutes, { prefix: '/v1/budget/categories' });
     await fastify.register(settingsRoutes, { prefix: '/v1/budget/settings' });
     await fastify.register(historyRoutes, { prefix: '/v1/budget/history' });

@@ -26,6 +26,7 @@ export function operationOf(row: BudgetOperation): Operation {
         rateToEuro: row.rateToEuro,
         isOnline: row.isOnline,
         isRecurring: row.isRecurring,
+        recurringId: row.recurringId,
         updatedAt: row.updatedAt
     };
 }

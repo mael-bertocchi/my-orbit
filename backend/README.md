@@ -8,6 +8,7 @@ The **Fastify + TypeScript** server behind the Orbit portal: it opens the single
 - **Passkey-only identity** • the single account opens with a passkey (WebAuthn), nothing else: no password, no code, no user table, no registration. The first passkey is created with an enrollment token you set only for that; the iOS app signs in through the portal with a one-time code bound to a PKCE challenge. JWT access + refresh sessions.
 - **Entry-by-entry writes** • clients read the whole budget document at once (`GET /v1/budget/state`) and write it one entry at a time: an operation, a category, the settings, a frozen month. No route can replace or wipe the whole budget. Each write bumps a revision, so a client can tell whether anything changed since it last read.
 - **A trash for operations** • a deleted operation is kept with the moment it was deleted, out of the budget, and can be restored.
+- **Recurring operations** • a rent or a subscription is kept apart (`/v1/budget/recurring`): what it logs, every 1, 3, 6 or 12 months from a first day, until an end day if any, paused or not. Every read of the budget first logs each occurrence fallen due as a plain operation on its day, priced at that day's rate, under an id made of the recurring operation's and the day's: an occurrence is never logged twice, even by two reads at once, nor again once it went to the trash. A day the month lacks falls on its last day; a paused one has its occurrences skipped.
 - **Watchlist** • films and series to watch, being watched (`startedAt`) or watched (`watchedAt`, with a rating in half stars and a comment) (`/v1/watchlist/entries`). What a title is comes from TMDB, which the server asks itself so its token never leaves it (`/v1/watchlist/catalog`): search, details with where to watch it in France (JustWatch data), sagas and genres, kept in memory for a while. A title and its saga's name are stored in English and in French, so the list reads right in either language.
 - **MCP server** • Claude, or any MCP client, reads and changes the budget and the watchlist through `/mcp` (Streamable HTTP), with tools named after their app. The client is let in with OAuth 2.1: it registers itself, the owner authorizes it on the portal with the passkey, and it gets the same tokens as the apps.
 - **Hardened** • Helmet, CORS open to the portal's origin only, rate limiting, Zod request validation, and a non-root Docker image.
@@ -34,12 +35,16 @@ Node 24 · Fastify 5 · TypeScript · Prisma 7 · PostgreSQL · Zod · SimpleWeb
 | `POST /v1/identity/refresh` | public | Rotate a refresh token into a new pair |
 | `POST /v1/identity/logout` | access | Revoke the caller's refresh session |
 | `GET /v1/identity/me` | access | Return the signed-in account and the owner's name |
-| `GET /v1/budget/state` | access | Read the whole budget document (trash left out) and its `revision` |
+| `GET /v1/budget/state` | access | Read the whole budget document (trash left out) and its `revision`, once the recurring operations' due occurrences are logged |
 | `POST /v1/budget/operations` | access | Log an operation under the id the client minted; `409` if the id is taken, even in the trash |
 | `PATCH /v1/budget/operations/:operationId` | access | Change some fields of an operation; `404` if it is unknown or in the trash |
 | `DELETE /v1/budget/operations/:operationId` | access | Move an operation to the trash; already there is a success |
 | `GET /v1/budget/operations/trash` | access | List the operations in the trash, the most recently deleted first |
 | `POST /v1/budget/operations/:operationId/restore` | access | Take an operation out of the trash |
+| `GET /v1/budget/recurring` | access | List the recurring operations, each with its `nextDate`, once their due occurrences are logged |
+| `POST /v1/budget/recurring` | access | Create a recurring operation under the id the client minted, logging its occurrences already due; `409` if the id is taken |
+| `PATCH /v1/budget/recurring/:recurringId` | access | Change some fields of a recurring operation, for its occurrences still to come |
+| `DELETE /v1/budget/recurring/:recurringId` | access | Delete a recurring operation; its occurrences already logged stay |
 | `PUT /v1/budget/categories/:categoryId` | access | Create or replace a category (look, limit, position) |
 | `DELETE /v1/budget/categories/:categoryId` | access | Remove a category |
 | `PUT /v1/budget/settings` | access | Store the monthly budget |
@@ -137,8 +142,8 @@ Without it, the watchlist still lists its titles, but searching and opening one 
 
 `/mcp` offers Orbit to Claude and other MCP clients. In Claude, add a custom connector with the URL `https://<api host>/mcp`: Claude registers itself, sends you to the portal's `/authorize` page to confirm with your passkey, then calls the tools as you.
 
-- **Read** • `budget_list_categories`, `budget_search_operations`, `budget_month_summary`, `watchlist_search`, and `watchlist_title_details`, which reads a title's synopsis, genres and streaming services from TMDB.
-- **Write** • `budget_create_operation` (priced at its day's rate with the bank's markup, as the apps price it, and dated at noon UTC on its day), `budget_update_operation`, `budget_delete_operation` (to the trash), `watchlist_rate_title` and `watchlist_add_title`. Each is marked as writing, and the delete as destructive, so the client asks before running them.
+- **Read** • `budget_list_categories`, `budget_search_operations`, `budget_month_summary`, `budget_list_recurring`, `watchlist_search`, and `watchlist_title_details`, which reads a title's synopsis, genres and streaming services from TMDB.
+- **Write** • `budget_create_operation` (priced at its day's rate with the bank's markup, as the apps price it, and dated at noon UTC on its day), `budget_update_operation`, `budget_delete_operation` (to the trash), `budget_create_recurring`, `budget_update_recurring`, `budget_delete_recurring`, `watchlist_rate_title` and `watchlist_add_title`. Each is marked as writing, and the delete as destructive, so the client asks before running them.
 
 The server keeps no MCP session: each message is answered on its own. Client ids are signed with `JWT_SECRET` rather than stored, so they survive restarts; changing the secret signs every client out. The tokens are the apps' own (`JWT_ACCESS_EXPIRY`, refreshed with `JWT_REFRESH_EXPIRY`), but they name the client's connection, which keeps its id across every rotation: the portal's and the app's settings list the connections, and revoking one cuts the client off at once, since `/mcp` checks its connection on every message and marks it as used. Outside `localhost`, the addresses the metadata gives are always HTTPS.
 

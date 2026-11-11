@@ -46,6 +46,7 @@ export async function pullState(prisma: PrismaClient): Promise<StoredStateBody> 
             rateToEuro: operation.rateToEuro,
             isOnline: operation.isOnline,
             isRecurring: operation.isRecurring,
+            recurringId: operation.recurringId,
             updatedAt: operation.updatedAt
         })),
         budget: { monthlyLimit: state?.monthlyLimit ?? DEFAULT_MONTHLY_LIMIT },
