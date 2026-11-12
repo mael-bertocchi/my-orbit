@@ -102,6 +102,21 @@ export const RateSnapshotSchema = z.object({
 });
 
 /**
+ * @constant PlaceSchema
+ * @description Zod schema for a city the server suggests: its name, and its region and country to tell it apart.
+ */
+export const PlaceSchema = z.object({
+    name: z.string(),
+    detail: z.string()
+});
+
+/**
+ * @type Place
+ * @description A city the server suggests
+ */
+export type Place = z.infer<typeof PlaceSchema>;
+
+/**
  * @type Category
  * @description A spending category, with its monthly limit
  */

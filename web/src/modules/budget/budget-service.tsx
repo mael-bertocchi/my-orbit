@@ -1,5 +1,6 @@
-import type { Category, MonthlyBudget, Operation, RateSnapshot, RecurringFields, RecurringOperation, StoredState, TrashedOperation } from 'modules/budget/budget-models';
-import { RateSnapshotSchema, RecurringOperationSchema, StoredStateSchema, TrashedOperationSchema } from 'modules/budget/budget-models';
+import type { Category, MonthlyBudget, Operation, Place, RateSnapshot, RecurringFields, RecurringOperation, StoredState, TrashedOperation } from 'modules/budget/budget-models';
+import { PlaceSchema, RateSnapshotSchema, RecurringOperationSchema, StoredStateSchema, TrashedOperationSchema } from 'modules/budget/budget-models';
+import { currentLanguage } from 'modules/language/language-service';
 import { fetchWithAuthentication } from 'utils/request';
 import { z } from 'zod';
 
@@ -225,6 +226,29 @@ async function getRatesOn(day: string): Promise<RateSnapshot> {
     return await fetchWithAuthentication(`/v1/budget/rates/${day}`, { method: 'GET' }, RateSnapshotSchema);
 }
 
+/**
+ * @function searchPlaces
+ * @description Finds the cities whose name starts with what is typed, named in the page's language
+ *
+ * @param {string} query What is typed, two letters at least
+ * @returns {Promise<Place[]>} The cities, the likeliest first
+ */
+async function searchPlaces(query: string): Promise<Place[]> {
+    return await fetchWithAuthentication(`/v1/budget/places/search?query=${encodeURIComponent(query)}&language=${currentLanguage()}`, { method: 'GET' }, z.array(PlaceSchema));
+}
+
+/**
+ * @function locatePlace
+ * @description Finds the city at a position, named in the page's language. Rejects with a 404 out of any city.
+ *
+ * @param {number} latitude The latitude
+ * @param {number} longitude The longitude
+ * @returns {Promise<Place>} The city
+ */
+async function locatePlace(latitude: number, longitude: number): Promise<Place> {
+    return await fetchWithAuthentication(`/v1/budget/places/locate?latitude=${latitude.toFixed(2)}&longitude=${longitude.toFixed(2)}&language=${currentLanguage()}`, { method: 'GET' }, PlaceSchema);
+}
+
 export default {
     getState,
     createOperation,
@@ -242,5 +266,7 @@ export default {
     storeMonth,
     deleteMonth,
     getRates,
-    getRatesOn
+    getRatesOn,
+    searchPlaces,
+    locatePlace
 };

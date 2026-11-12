@@ -5,6 +5,8 @@ import {
     isPastMonth,
     lastUsedCurrency,
     latestLocation,
+    locationSuggestions,
+    nameSuggestions,
     liveBudget,
     monthlyBudgetFor,
     recentLocations,
@@ -148,5 +150,42 @@ describe('suggestions', () => {
     it('defaults to the currency of the latest operation', () => {
         expect(lastUsedCurrency(operations)).toBe('USD');
         expect(lastUsedCurrency([])).toBe('EUR');
+    });
+});
+
+describe('nameSuggestions', () => {
+    const operations = [
+        operation({ id: 'a', name: 'Monoprix', date: new Date(2026, 8, 1) }),
+        operation({ id: 'b', name: 'monoprix', date: new Date(2026, 8, 3) }),
+        operation({ id: 'c', name: 'Café Mono', date: new Date(2026, 8, 5) }),
+        operation({ id: 'd', name: 'Moniteur', date: new Date(2026, 8, 6) }),
+        operation({ id: 'e', name: 'Lidl', date: new Date(2026, 8, 7) })
+    ];
+
+    it('suggests the names starting with what is typed first, the most used leading, each once as last written', () => {
+        expect(nameSuggestions(operations, 'mon')).toEqual(['monoprix', 'Moniteur', 'Café Mono']);
+    });
+
+    it('ignores case and accents', () => {
+        expect(nameSuggestions(operations, 'CAFE')).toEqual(['Café Mono']);
+    });
+
+    it('suggests nothing for nothing typed, nor the name typed in full', () => {
+        expect(nameSuggestions(operations, '  ')).toEqual([]);
+        expect(nameSuggestions(operations, 'Lidl')).toEqual([]);
+    });
+});
+
+describe('locationSuggestions', () => {
+    const operations = [
+        operation({ id: 'a', location: 'Saint-Étienne', date: new Date(2026, 8, 1) }),
+        operation({ id: 'b', location: 'Paris', date: new Date(2026, 8, 3) }),
+        operation({ id: 'c', location: 'Étretat', date: new Date(2026, 8, 5) })
+    ];
+
+    it('suggests the earlier places matching what is typed, those starting with it first', () => {
+        expect(locationSuggestions(operations, 'et')).toEqual(['Étretat', 'Saint-Étienne']);
+        expect(locationSuggestions(operations, 'pa')).toEqual(['Paris']);
+        expect(locationSuggestions(operations, 'paris')).toEqual([]);
     });
 });

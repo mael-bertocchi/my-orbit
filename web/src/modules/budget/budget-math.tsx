@@ -284,6 +284,110 @@ export function recentLocations(operations: readonly Operation[]): string[] {
 }
 
 /**
+ * @constant WORD_SEPARATORS
+ * @description What separates the words of a name or a place, so a suggestion matches from any of its words.
+ */
+const WORD_SEPARATORS = /[\s'’-]+/u;
+
+/**
+ * @function foldText
+ * @description Reduces a text for matching what is typed against it: trimmed, in lower case and without accents.
+ */
+export function foldText(text: string): string {
+    return text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+}
+
+/**
+ * @function rankMatch
+ * @description How well a text matches what is typed, already folded: 2 when it starts with it, 1 when one of its other
+ * words does, 0 when it doesn't match.
+ */
+export function rankMatch(text: string, typed: string): number {
+    const folded = foldText(text);
+
+    if (folded.startsWith(typed)) {
+        return 2;
+    }
+
+    return folded.split(WORD_SEPARATORS).some((word) => word.startsWith(typed)) ? 1 : 0;
+}
+
+/**
+ * @interface NameUse
+ * @description How an operation name has been used, to rank it among the suggestions.
+ */
+interface NameUse {
+    name: string; /*!< The name, as last written */
+    rank: number; /*!< How well it matches what is typed */
+    count: number; /*!< How many operations bear it */
+    latest: number; /*!< When it was last used, in milliseconds */
+}
+
+/**
+ * @function compareNameUses
+ * @description Orders the names suggested: the best match first, then the most used, then the latest.
+ */
+function compareNameUses(left: NameUse, right: NameUse): number {
+    return right.rank - left.rank || right.count - left.count || right.latest - left.latest;
+}
+
+/**
+ * @function nameSuggestions
+ * @description The names of earlier operations matching what is typed, each once as last written, the best match, the
+ * most used and the latest first. The name typed in full is left out: there is nothing left to complete.
+ */
+export function nameSuggestions(operations: readonly Operation[], typed: string, limit: number = 5): string[] {
+    const folded = foldText(typed);
+    const uses = new Map<string, NameUse>();
+
+    if (folded === '') {
+        return [];
+    }
+
+    for (const operation of operations) {
+        const key = foldText(operation.name);
+        const rank = rankMatch(operation.name, folded);
+        const time = operation.date.getTime();
+        const known = uses.get(key);
+
+        if (key === folded || rank === 0) {
+            continue;
+        }
+
+        if (known === undefined) {
+            uses.set(key, { name: operation.name.trim(), rank, count: 1, latest: time });
+            continue;
+        }
+
+        known.count += 1;
+
+        if (time > known.latest) {
+            known.latest = time;
+            known.name = operation.name.trim();
+        }
+    }
+
+    return [...uses.values()].toSorted(compareNameUses).slice(0, limit).map((use) => use.name);
+}
+
+/**
+ * @function locationSuggestions
+ * @description The places of earlier operations matching what is typed, the best match first, then the most recent. The
+ * place typed in full is left out.
+ */
+export function locationSuggestions(operations: readonly Operation[], typed: string, limit: number = 3): string[] {
+    const folded = foldText(typed);
+
+    if (folded === '') {
+        return [];
+    }
+
+    const matching = recentLocations(operations).filter((location) => foldText(location) !== folded && rankMatch(location, folded) > 0);
+
+    return matching.toSorted((left, right) => rankMatch(right, folded) - rankMatch(left, folded)).slice(0, limit);
+}
+
+/**
  * @function lastUsedCurrency
  * @description The currency of the latest operation, which the next one most likely shares. The app remembers the
  * last currency picked on the phone; the bot reads the same intent off the data.
