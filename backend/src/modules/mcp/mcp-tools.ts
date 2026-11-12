@@ -242,7 +242,7 @@ export const searchOperations: ServerTool = {
             result: {
                 count: rows.length,
                 totalEuros: euros(rows.reduce((total, row) => total + row.amount * row.rateToEuro, 0)),
-                operations: rows.slice(0, limit).map((row) => ({ ...summaryOf(row), description: row.description, location: row.location, isOnline: row.isOnline, isRecurring: row.isRecurring, recurringId: row.recurringId }))
+                operations: rows.slice(0, limit).map((row) => ({ ...summaryOf(row), description: row.description, location: row.location, isOnline: row.isOnline, recurringId: row.recurringId }))
             }
         };
     }
@@ -699,7 +699,7 @@ export const createOperationTool: ServerTool = {
                 return { result: { error: `No exchange rate for ${draft.currencyCode}` } };
             }
 
-            const operation = await createOperation(context.prisma, { ...draft, id: randomUUID().toUpperCase(), isRecurring: false, date: moment, description: description ?? null, location: location ?? null, rateToEuro });
+            const operation = await createOperation(context.prisma, { ...draft, id: randomUUID().toUpperCase(), date: moment, description: description ?? null, location: location ?? null, rateToEuro });
 
             return { result: { status: 'Logged', operation: { ...operation, euroAmount: euros(operation.amount * operation.rateToEuro) } } };
         } catch (error: unknown) {

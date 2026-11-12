@@ -62,7 +62,7 @@ describe('amount field in French', () => {
 });
 
 describe('operations', () => {
-    const draft = { name: ' Lidl ', description: ' ', amount: 12, currencyCode: 'EUR', categoryId: 'groceries', date: new Date(2026, 8, 27, 15, 30, 12, 345), location: 'Berlin', isOnline: true, isRecurring: false };
+    const draft = { name: ' Lidl ', description: ' ', amount: 12, currencyCode: 'EUR', categoryId: 'groceries', date: new Date(2026, 8, 27, 15, 30, 12, 345), location: 'Berlin', isOnline: true };
 
     it('builds an operation the way the app stores one', () => {
         const built = toOperation(draft, 0.5);

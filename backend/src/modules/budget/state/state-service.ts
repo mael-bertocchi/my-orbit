@@ -45,7 +45,6 @@ export async function pullState(prisma: PrismaClient): Promise<StoredStateBody> 
             currencyCode: operation.currencyCode,
             rateToEuro: operation.rateToEuro,
             isOnline: operation.isOnline,
-            isRecurring: operation.isRecurring,
             recurringId: operation.recurringId,
             updatedAt: operation.updatedAt
         })),

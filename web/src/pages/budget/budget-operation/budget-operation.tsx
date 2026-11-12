@@ -220,7 +220,7 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
             return;
         }
 
-        const draft = { name, description, amount, currencyCode, categoryId, date, location, isOnline, isRecurring: existing?.isRecurring ?? false };
+        const draft = { name, description, amount, currencyCode, categoryId, date, location, isOnline };
         const operation = { ...toOperation(draft, appliedRate, existing?.id), recurringId: existing?.recurringId ?? null };
 
         store.apply((current) => {

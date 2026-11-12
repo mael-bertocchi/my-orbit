@@ -243,7 +243,7 @@ export function monthTotals(document: BudgetDocument, now: Date = new Date()): M
 export function spendingHabits(document: BudgetDocument, now: Date = new Date()): SpendingHabits {
     const today = startOfDay(now);
     const since = new Date(today.getFullYear(), today.getMonth(), today.getDate() - HABIT_DAYS + 1);
-    const operations = document.operations.filter((operation) => !operation.isRecurring && operation.date >= since && operation.date <= now);
+    const operations = document.operations.filter((operation) => (operation.recurringId ?? '') === '' && operation.date >= since && operation.date <= now);
     const totals = Array.from({ length: 7 }, () => 0);
     const counts = Array.from({ length: 7 }, () => 0);
     const places = new Map<string, PlaceSpend>();

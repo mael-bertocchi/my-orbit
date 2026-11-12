@@ -91,7 +91,6 @@ private struct OperationFields: Encodable {
         case currencyCode /*!< Its currency */
         case rateToEuro /*!< Its rate to the euro */
         case isOnline /*!< Whether it was paid online */
-        case isRecurring /*!< Whether it repeats */
     }
 
     /**
@@ -114,7 +113,6 @@ private struct OperationFields: Encodable {
         try container.encode(operation.currencyCode, forKey: .currencyCode)
         try container.encode(operation.rateToEuro, forKey: .rateToEuro)
         try container.encode(operation.isOnline, forKey: .isOnline)
-        try container.encode(operation.isRecurring, forKey: .isRecurring)
     }
 }
 

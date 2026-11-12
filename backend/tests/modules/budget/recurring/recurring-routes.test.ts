@@ -47,7 +47,6 @@ interface OperationRow {
     id: string; /*!< Its identifier */
     date: Date; /*!< When it happened */
     rateToEuro: number; /*!< Euros per unit of its currency */
-    isRecurring: boolean; /*!< Whether it is recurring */
     recurringId: Maybe<string>; /*!< The recurring operation it is an occurrence of */
 }
 
@@ -198,7 +197,7 @@ describe('GET /v1/budget/recurring', () => {
         expect(first.statusCode).toBe(StatusCodes.OK);
         expect(first.json<{ data: { id: string; nextDate: string }[] }>().data).toMatchObject([{ id: RENT_ID, nextDate: '2026-12-05' }]);
         expect(second.statusCode).toBe(StatusCodes.OK);
-        expect(database.operations).toEqual([{ id: `${RENT_ID}-20261105`, date: new Date('2026-11-05T12:00:00.000Z'), name: 'Loyer', description: null, categoryId: 'housing', location: null, amount: 900, currencyCode: 'EUR', rateToEuro: 1, isOnline: true, isRecurring: true, recurringId: RENT_ID }]);
+        expect(database.operations).toEqual([{ id: `${RENT_ID}-20261105`, date: new Date('2026-11-05T12:00:00.000Z'), name: 'Loyer', description: null, categoryId: 'housing', location: null, amount: 900, currencyCode: 'EUR', rateToEuro: 1, isOnline: true, recurringId: RENT_ID }]);
         expect(database.recurring[0]?.generatedThrough).toBe('2026-11-05');
         expect(database.budgetState.upsert).toHaveBeenCalledOnce();
 
@@ -275,7 +274,7 @@ describe('DELETE /v1/budget/recurring/:recurringId', () => {
     it('deletes it and keeps its occurrences, no longer linked to it', async () => {
         const { app, database } = await buildApp();
 
-        database.operations.push({ id: `${RENT_ID}-20261005`, date: new Date('2026-10-05T12:00:00.000Z'), rateToEuro: 1, isRecurring: true, recurringId: RENT_ID });
+        database.operations.push({ id: `${RENT_ID}-20261005`, date: new Date('2026-10-05T12:00:00.000Z'), rateToEuro: 1, recurringId: RENT_ID });
 
         const response = await app.inject({ method: 'DELETE', url: `/v1/budget/recurring/${RENT_ID}` });
         const again = await app.inject({ method: 'DELETE', url: `/v1/budget/recurring/${RENT_ID}` });
@@ -283,7 +282,7 @@ describe('DELETE /v1/budget/recurring/:recurringId', () => {
         expect(response.statusCode).toBe(StatusCodes.NO_CONTENT);
         expect(again.statusCode).toBe(StatusCodes.NOT_FOUND);
         expect(database.recurring).toEqual([]);
-        expect(database.operations[0]).toMatchObject({ isRecurring: true, recurringId: null });
+        expect(database.operations[0]).toMatchObject({ recurringId: null });
 
         await app.close();
     });

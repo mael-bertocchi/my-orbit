@@ -29,8 +29,7 @@ function sameOperation(lhs: Operation, rhs: Operation): boolean {
         && lhs.amount === rhs.amount
         && lhs.currencyCode === rhs.currencyCode
         && lhs.rateToEuro === rhs.rateToEuro
-        && lhs.isOnline === rhs.isOnline
-        && lhs.isRecurring === rhs.isRecurring;
+        && lhs.isOnline === rhs.isOnline;
 }
 
 /**

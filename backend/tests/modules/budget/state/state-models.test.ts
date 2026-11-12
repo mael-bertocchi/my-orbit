@@ -26,8 +26,7 @@ const validOperation = {
     amount: 54.2,
     currencyCode: 'USD',
     rateToEuro: 0.9207,
-    isOnline: false,
-    isRecurring: false
+    isOnline: false
 };
 
 describe('CategorySchema', () => {

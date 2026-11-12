@@ -105,7 +105,7 @@ async function pricedOccurrences(prisma: PrismaClient, logger: FastifyBaseLogger
             break;
         }
 
-        operations.push({ id: occurrenceId(row.id, day), date: new Date(`${day}${LOGGED_AT}`), name: row.name, description: row.description, categoryId: row.categoryId, location: row.location, amount: row.amount, currencyCode: row.currencyCode, rateToEuro, isOnline: row.isOnline, isRecurring: true, recurringId: row.id });
+        operations.push({ id: occurrenceId(row.id, day), date: new Date(`${day}${LOGGED_AT}`), name: row.name, description: row.description, categoryId: row.categoryId, location: row.location, amount: row.amount, currencyCode: row.currencyCode, rateToEuro, isOnline: row.isOnline, recurringId: row.id });
     }
 
     return operations;

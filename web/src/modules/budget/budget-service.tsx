@@ -43,8 +43,7 @@ function operationFields(operation: Operation): Omit<Operation, 'id' | 'updatedA
         amount: operation.amount,
         currencyCode: operation.currencyCode,
         rateToEuro: operation.rateToEuro,
-        isOnline: operation.isOnline,
-        isRecurring: operation.isRecurring
+        isOnline: operation.isOnline
     };
 }
 

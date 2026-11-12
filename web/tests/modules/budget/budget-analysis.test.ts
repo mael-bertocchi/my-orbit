@@ -88,7 +88,7 @@ describe('spendingHabits', () => {
             operation({ id: 'sat', date: new Date(2026, 8, 26, 12), amount: 26, location: 'Le Comptoir' }),
             operation({ id: 'sat2', date: new Date(2026, 8, 19, 12), amount: 13, location: 'le comptoir ' }),
             operation({ id: 'web', date: new Date(2026, 8, 22, 12), amount: 39, isOnline: true }),
-            operation({ id: 'rent', date: new Date(2026, 8, 1), amount: 850, isRecurring: true }),
+            operation({ id: 'rent', date: new Date(2026, 8, 1), amount: 850, recurringId: 'rent' }),
             operation({ id: 'old', date: new Date(2026, 4, 1), amount: 500 })
         ];
         const habits = spendingHabits(document(operations), NOW);

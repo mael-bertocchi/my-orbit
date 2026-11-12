@@ -153,7 +153,7 @@ describe('the MCP endpoint', () => {
 
         expect(isError).toBe(false);
         expect(result).toMatchObject({ status: 'Logged', operation: { name: 'Monoprix', euroAmount: 42.5 } });
-        expect(operations.create.mock.calls[0]?.[0]).toMatchObject({ data: { date: new Date('2026-10-28T12:00:00.000Z'), rateToEuro: 1, isOnline: false, isRecurring: false } });
+        expect(operations.create.mock.calls[0]?.[0]).toMatchObject({ data: { date: new Date('2026-10-28T12:00:00.000Z'), rateToEuro: 1, isOnline: false } });
     });
 
     it('refuses an unknown category, a day to come and an unknown operation, telling the model why', async () => {

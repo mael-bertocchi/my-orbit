@@ -33,7 +33,6 @@ export interface OperationDraft {
     date: Date; /*!< When it happened */
     location: string; /*!< Where it happened, ignored when online */
     isOnline: boolean; /*!< Whether it has no physical location */
-    isRecurring: boolean; /*!< Whether it is a recurring expense, as an occurrence of a recurring operation is */
 }
 
 /**
@@ -154,7 +153,6 @@ export function toOperation(draft: OperationDraft, rateToEuro: number, id?: stri
         currencyCode: draft.currencyCode,
         rateToEuro: draft.currencyCode === EURO.code ? 1 : rateToEuro,
         isOnline: draft.isOnline,
-        isRecurring: draft.isRecurring,
         updatedAt: new Date()
     };
 }

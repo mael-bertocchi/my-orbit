@@ -276,7 +276,7 @@ enum BudgetAnalysis {
         let calendar = BudgetMath.calendar
         let today = calendar.startOfDay(for: now)
         let since = calendar.date(byAdding: .day, value: 1 - habitDays, to: today) ?? today
-        let recent = operations.filter { !$0.isRecurring && $0.date >= since && $0.date <= now }
+        let recent = operations.filter { $0.recurringId == nil && $0.date >= since && $0.date <= now }
         var totals: [Int: Double] = [:]
         var counts: [Int: Int] = [:]
         var places: [String: PlaceSpend] = [:]

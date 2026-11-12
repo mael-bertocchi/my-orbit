@@ -21,7 +21,6 @@ export function operation(overrides: Partial<Operation> & Pick<Operation, 'id' |
         currencyCode: 'EUR',
         rateToEuro: 1,
         isOnline: false,
-        isRecurring: false,
         ...overrides
     };
 }

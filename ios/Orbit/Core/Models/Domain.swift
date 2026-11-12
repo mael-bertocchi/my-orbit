@@ -56,7 +56,6 @@ struct Operation: Codable, Identifiable, Equatable, Hashable {
     var currencyCode: String /*!< Its currency's code */
     var rateToEuro: Double /*!< The euros one unit of its currency cost that day, bank markup included */
     var isOnline: Bool /*!< Whether it was paid online, with no place */
-    var isRecurring: Bool /*!< Whether it is a recurring expense, as an occurrence of a recurring operation is */
     var recurringId: String? /*!< The recurring operation it is an occurrence of, which the server sets */
     var updatedAt: Date /*!< When it was last changed, which the merge compares */
 
@@ -74,7 +73,6 @@ struct Operation: Codable, Identifiable, Equatable, Hashable {
      * @param currencyCode Its currency's code
      * @param rateToEuro Its rate to the euro
      * @param isOnline Whether it was paid online
-     * @param isRecurring Whether it is a recurring expense
      * @param recurringId The recurring operation it is an occurrence of
      * @param updatedAt When it was last changed
      */
@@ -89,7 +87,6 @@ struct Operation: Codable, Identifiable, Equatable, Hashable {
         currencyCode: String = Currency.euro.code,
         rateToEuro: Double = 1,
         isOnline: Bool = false,
-        isRecurring: Bool = false,
         recurringId: String? = nil,
         updatedAt: Date = .now
     ) {
@@ -103,7 +100,6 @@ struct Operation: Codable, Identifiable, Equatable, Hashable {
         self.currencyCode = currencyCode
         self.rateToEuro = rateToEuro
         self.isOnline = isOnline
-        self.isRecurring = isRecurring
         self.recurringId = recurringId
         self.updatedAt = updatedAt
     }

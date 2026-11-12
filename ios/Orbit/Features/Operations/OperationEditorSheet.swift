@@ -524,7 +524,6 @@ struct OperationEditorSheet: View {
             currencyCode: currencyCode,
             rateToEuro: appliedRate,
             isOnline: isOnline,
-            isRecurring: existing?.isRecurring ?? false,
             recurringId: existing?.recurringId
         )
 

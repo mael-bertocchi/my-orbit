@@ -32,7 +32,6 @@ interface Row {
     currencyCode: string; /*!< Its currency */
     rateToEuro: number; /*!< Euros per unit of its currency */
     isOnline: boolean; /*!< Whether it was paid online */
-    isRecurring: boolean; /*!< Whether it comes back every month */
     deletedAt: Maybe<Date>; /*!< When it went to the trash */
     updatedAt: Date; /*!< When it last changed */
 }
@@ -53,7 +52,6 @@ function groceriesRow(): Row {
         currencyCode: 'USD',
         rateToEuro: 0.92,
         isOnline: false,
-        isRecurring: false,
         deletedAt: null,
         updatedAt: new Date('2026-10-24T18:00:00Z')
     };
@@ -143,8 +141,7 @@ const newOperation = {
     location: 'Genève',
     amount: 12.5,
     currencyCode: 'CHF',
-    rateToEuro: 1.06,
-    isRecurring: false
+    rateToEuro: 1.06
 };
 
 describe('POST /v1/budget/operations', () => {

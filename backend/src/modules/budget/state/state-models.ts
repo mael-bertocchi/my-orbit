@@ -34,7 +34,6 @@ export const OperationSchema = z.object({
     currencyCode: z.string().min(1).max(8),
     rateToEuro: z.number().min(0).max(1_000_000),
     isOnline: z.boolean().default(false),
-    isRecurring: z.boolean(),
     recurringId: IdSchema.nullish(),
     updatedAt: z.coerce.date().optional()
 });
