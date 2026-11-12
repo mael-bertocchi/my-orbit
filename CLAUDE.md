@@ -60,6 +60,7 @@ export interface User {
 
 - Prefer early returns and guard clauses to reduce nesting.
 - Always use braces for `if` and `else` blocks, even when the block contains only one statement.
+- Write a condition with `!==` (`!=` in Swift) rather than `===` (`==`) whenever that keeps the code about as simple: flip the branches of a ternary or of an `if`/`else`, and use De Morgan's laws for a compound condition. Keep `===` where flipping would mean a heavy change, such as a guard clause, whose early return would otherwise nest the rest of the function.
 
 ```typescript
 // Bad
@@ -70,6 +71,12 @@ if (x) { return; }
 if (x) {
     return;
 }
+
+// Bad
+const label: string = place === null ? '' : place.name;
+
+// Good
+const label: string = place !== null ? place.name : '';
 ```
 
 ### Functions
