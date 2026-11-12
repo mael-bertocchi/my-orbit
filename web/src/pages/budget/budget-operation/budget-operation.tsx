@@ -287,8 +287,8 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
     return (
         <form id={FORM_ID} onSubmit={submit} className='space-y-5'>
             {(existing?.recurringId ?? null) !== null && (
-                <p className='flex items-center gap-2 rounded-2xl bg-fill px-4 py-3 text-[13px] text-ink-secondary'>
-                    <Repeat size={16} className='shrink-0 text-accent' />
+                <p className='mx-auto flex w-fit items-center justify-center gap-1.5 rounded-full bg-accent-soft px-3.5 py-1.5 text-center text-[13px] font-medium text-accent'>
+                    <Repeat size={14} strokeWidth={2.25} className='shrink-0' />
                     {t('operation.occurrence')}
                 </p>
             )}

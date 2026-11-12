@@ -125,7 +125,7 @@ export const budgetEn = {
     'operation.locateNoCity': 'No city found where you are.',
     'operation.suggestions': 'Suggestions',
     'operation.pickCity': 'Pick a city from the suggestions, or use Locate.',
-    'operation.occurrence': 'Logged by a recurring operation: changing it changes this occurrence only.',
+    'operation.occurrence': 'Logged by a recurring operation',
     'operation.rate': 'Rate {rate}',
     'operation.loadingRate': 'Loading…',
     'operation.save': 'Save operation',

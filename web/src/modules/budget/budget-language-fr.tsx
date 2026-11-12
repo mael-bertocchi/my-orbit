@@ -127,7 +127,7 @@ export const budgetFr: BudgetMessages = {
     'operation.locateNoCity': 'Aucune ville trouvée là où vous êtes.',
     'operation.suggestions': 'Suggestions',
     'operation.pickCity': 'Choisissez une ville parmi les suggestions, ou utilisez Localiser.',
-    'operation.occurrence': 'Enregistrée par une opération récurrente : la modifier ne change que cette échéance.',
+    'operation.occurrence': 'Enregistrée par une opération récurrente',
     'operation.rate': 'Taux {rate}',
     'operation.loadingRate': 'Chargement…',
     'operation.save': 'Enregistrer l’opération',
