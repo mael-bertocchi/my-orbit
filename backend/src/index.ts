@@ -6,7 +6,6 @@ import { StatusCodes } from 'http-status-codes';
 import categoriesRoutes from 'src/modules/budget/categories/categories-routes';
 import historyRoutes from 'src/modules/budget/history/history-routes';
 import operationsRoutes from 'src/modules/budget/operations/operations-routes';
-import { convertWrittenPlaces } from 'src/modules/budget/places/places-conversion';
 import placesRoutes from 'src/modules/budget/places/places-routes';
 import ratesRoutes from 'src/modules/budget/rates/rates-routes';
 import recurringRoutes from 'src/modules/budget/recurring/recurring-routes';
@@ -151,8 +150,6 @@ async function startServer(): Promise<void> {
         fastify.log.error(err);
         process.exit(1);
     }
-
-    void convertWrittenPlaces({ prisma: fastify.prisma, variables: fastify.variables, logger: fastify.log });
 }
 
 await startServer();
