@@ -109,9 +109,9 @@ private struct TrendsSection: View {
             VStack(spacing: 0) {
                 FigureRow(label: String(appLocalized: "Monthly average"), value: average.map(Formatting.euro) ?? "•")
                 RowDivider()
-                FigureRow(label: costliestLabel, value: costliest.map { Formatting.euro($0.amount(in: categoryId)) } ?? "•")
+                FigureRow(label: String(appLocalized: "Costliest month"), value: costliest.map { Formatting.euro($0.amount(in: categoryId)) } ?? "•", note: costliest.map { Formatting.monthWithYear($0.month) })
                 RowDivider()
-                FigureRow(label: String(appLocalized: "Last 3 months vs the 3 before"), value: trend, note: trendNote)
+                FigureRow(label: String(appLocalized: "3-month change"), value: trend, note: trendNote)
             }
             .glassCard()
         }
@@ -153,17 +153,6 @@ private struct TrendsSection: View {
     }
 
     /**
-     * @method costliestLabel
-     * @description The costliest month's label, naming it
-     */
-    private var costliestLabel: String {
-        guard let costliest else {
-            return String(appLocalized: "Costliest month")
-        }
-        return String(appLocalized: "Costliest: \(Formatting.monthWithYear(costliest.month))")
-    }
-
-    /**
      * @method recent
      * @description The average of the last three finished months
      */
@@ -199,9 +188,9 @@ private struct TrendsSection: View {
      */
     private var trendNote: String {
         guard let recent, let before else {
-            return String(appLocalized: "Needs six finished months")
+            return String(appLocalized: "Available after six full months")
         }
-        return String(appLocalized: "\(Formatting.euro(recent)) a month against \(Formatting.euro(before))")
+        return String(appLocalized: "\(Formatting.euro(recent)) a month, against \(Formatting.euro(before)) the three months before")
     }
 
     /**
@@ -724,7 +713,7 @@ private struct HabitsSection: View {
                     }
                     .padding(.top, 8)
 
-                    subtitle(String(appLocalized: "How you pay"))
+                    subtitle(String(appLocalized: "Purchase channel"))
                         .padding(.top, 18)
                     PaymentSplit(onlineShare: habits.onlineShare)
                         .padding(.top, 8)

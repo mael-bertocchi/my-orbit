@@ -158,6 +158,7 @@ function TrendsCardComponent(props: TrendsCardComponentProps): JSX.Element {
     const labels: MonthBarsLabels = { spent: t('analysis.spent'), budget: t('analysis.limit'), average: t('analysis.average'), partial: t('analysis.partial') };
     const bars: MonthBar[] = props.totals.map((total) => ({ key: total.month.toISOString(), label: monthShort(total.month), title: monthWithYear(total.month), value: spentOf(total, categoryId), marker: categoryId === null && total.limit > 0 ? total.limit : null, isPartial: total.isCurrent }));
     const trend = change === null ? '•' : `${change > 0 ? '+' : ''}${percent(change)}`;
+    const costliestNote = costliest === null ? undefined : monthWithYear(costliest.month);
     const trendNote = recent !== null && before !== null ? t('analysis.lastThreeNote', { recent: euro(recent), before: euro(before) }) : t('analysis.notEnough');
 
     return (
@@ -172,7 +173,7 @@ function TrendsCardComponent(props: TrendsCardComponentProps): JSX.Element {
 
             <div className='mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-3'>
                 <FigureComponent label={t('analysis.monthlyAverage')} value={mean === null ? '•' : euro(mean)} />
-                <FigureComponent label={costliest === null ? t('analysis.costliest') : t('analysis.costliestIn', { month: monthWithYear(costliest.month) })} value={costliest === null ? '•' : euro(spentOf(costliest, categoryId))} />
+                <FigureComponent label={t('analysis.costliest')} value={costliest === null ? '•' : euro(spentOf(costliest, categoryId))} note={costliestNote} />
                 <FigureComponent label={t('analysis.lastThree')} value={trend} note={trendNote} />
             </div>
         </section>

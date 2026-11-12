@@ -14,12 +14,12 @@
         }
       }
     },
-    "%@ a month against %@" : {
+    "%@ a month, against %@ the three months before" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ par mois contre %@"
+            "value" : "%@ par mois, contre %@ les trois mois précédents"
           }
         }
       }
@@ -80,6 +80,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld fois"
+          }
+        }
+      }
+    },
+    "3-month change" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Évolution sur 3 mois"
           }
         }
       }
@@ -180,6 +190,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Automatique"
+          }
+        }
+      }
+    },
+    "Available after six full months" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disponible après six mois complets"
           }
         }
       }
@@ -340,16 +360,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mois le plus cher"
-          }
-        }
-      }
-    },
-    "Costliest: %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le plus cher : %@"
           }
         }
       }
@@ -624,16 +634,6 @@
         }
       }
     },
-    "How you pay" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Comment vous payez"
-          }
-        }
-      }
-    },
     "In person" : {
       "localizations" : {
         "fr" : {
@@ -650,16 +650,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Elle perdra aussitôt son accès à Orbit. Pour la reconnecter, il faudra l’autoriser avec votre clé d’accès."
-          }
-        }
-      }
-    },
-    "Last 3 months vs the 3 before" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "3 derniers mois vs les 3 d’avant"
           }
         }
       }
@@ -690,16 +680,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Moyenne par mois"
-          }
-        }
-      }
-    },
-    "Needs six finished months" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Il faut six mois terminés"
           }
         }
       }
@@ -750,6 +730,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sur les 90 derniers jours, hors dépenses récurrentes."
+          }
+        }
+      }
+    },
+    "Purchase channel" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Canal d’achat"
           }
         }
       }
