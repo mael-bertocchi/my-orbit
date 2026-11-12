@@ -85,6 +85,7 @@ function OperationRowComponent(props: OperationRowComponentProps): JSX.Element {
     const category = categoryOrFallback(props.document.categories, props.operation.categoryId);
     const isForeign = props.operation.currencyCode !== EURO.code;
     const hasDescription = (props.operation.description ?? '') !== '';
+    const isOccurrence = (props.operation.recurringId ?? '') !== '';
 
     return (
         <button type='button' onClick={props.onOpen} className='flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition hover:bg-fill/60 sm:px-5'>
@@ -92,7 +93,7 @@ function OperationRowComponent(props: OperationRowComponentProps): JSX.Element {
             <span className='min-w-0 flex-1'>
                 <span className='flex items-center gap-1.5'>
                     <span className='truncate text-[15px] font-medium'>{props.operation.name}</span>
-                    {props.operation.isRecurring && (
+                    {isOccurrence && (
                         <Repeat size={13} className='shrink-0 text-ink-quaternary' aria-label={t('history.recurring')} />
                     )}
                     {hasDescription && (

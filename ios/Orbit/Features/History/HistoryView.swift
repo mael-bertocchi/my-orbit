@@ -354,7 +354,7 @@ struct OperationRow: View {
                         .font(Theme.font(14))
                         .foregroundStyle(Theme.text)
                         .lineLimit(1)
-                    if operation.isRecurring {
+                    if operation.recurringId != nil {
                         Image(systemName: "repeat")
                             .font(.system(size: 11))
                             .foregroundStyle(Theme.faint)
