@@ -396,8 +396,7 @@ export async function checkPlace(context: PlacesContext, id: string, hint: Maybe
 
 /**
  * @function matchPlace
- * @description The city a place written by hand names, when Photon knows a city of exactly that name in either language,
- * accents and case aside. The likeliest such city is taken; none when there is no such city or Photon can't be reached.
+ * @description The city a place written by hand names, as findPlaceNamed finds it; none when Photon can't be reached.
  *
  * @param {PlacesContext} context What it works with.
  * @param {string} text The place, as written.
@@ -405,13 +404,27 @@ export async function checkPlace(context: PlacesContext, id: string, hint: Maybe
  * @returns {Promise<Maybe<PlaceReference>>} The city, stored, or null.
  */
 export async function matchPlace(context: PlacesContext, text: string): Promise<Maybe<PlaceReference>> {
+    return await findPlaceNamed(context, text).catch(() => null);
+}
+
+/**
+ * @function findPlaceNamed
+ * @description The city a place written by hand names, when Photon knows a city of exactly that name in either language,
+ * accents and case aside. The likeliest such city is taken; none when there is no such city.
+ *
+ * @param {PlacesContext} context What it works with.
+ * @param {string} text The place, as written.
+ *
+ * @returns {Promise<Maybe<PlaceReference>>} The city, stored, or null; rejects when Photon can't be reached.
+ */
+export async function findPlaceNamed(context: PlacesContext, text: string): Promise<Maybe<PlaceReference>> {
     const folded = foldName(text);
 
     if (folded.length < 2) {
         return null;
     }
 
-    const found = await findCities(context, { q: text.trim(), limit: '12' }, 'fr').catch((): Place[] => []);
+    const found = await findCities(context, { q: text.trim(), limit: '12' }, 'fr');
     const match = found.find((city) => foldName(city.nameFr) === folded || foldName(city.nameEn) === folded);
 
     return match === undefined ? null : await keepPlace(context.prisma, { id: match.id, nameEn: match.nameEn, nameFr: match.nameFr });
