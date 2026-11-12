@@ -7,8 +7,9 @@ import SwiftUI
 struct Suggestion: Identifiable, Hashable {
     var value: String /*!< What it fills in */
     var detail: String = "" /*!< A word after it, to tell two alike apart, empty when there is none */
+    var key: String? /*!< What it stands for, when its text alone doesn't say */
 
-    var id: String { "\(value)|\(detail)" } /*!< Its identifier, for the list */
+    var id: String { key ?? "\(value)|\(detail)" } /*!< Its identifier, for the list */
 }
 
 /**
@@ -17,7 +18,7 @@ struct Suggestion: Identifiable, Hashable {
  */
 struct SuggestionList: View {
     let suggestions: [Suggestion] /*!< What it offers */
-    let onPick: (String) -> Void /*!< Called with the value picked */
+    let onPick: (Suggestion) -> Void /*!< Called with the suggestion picked */
 
     /**
      * @method body
@@ -46,7 +47,7 @@ struct SuggestionList: View {
      */
     private func row(_ suggestion: Suggestion) -> some View {
         Button {
-            onPick(suggestion.value)
+            onPick(suggestion)
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(verbatim: suggestion.value)

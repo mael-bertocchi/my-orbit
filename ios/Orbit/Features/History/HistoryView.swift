@@ -307,7 +307,7 @@ struct HistoryView: View {
             return true
         }
         let category = store.categoryOrFallback(id: operation.categoryId).title
-        let haystack = [operation.name, operation.description ?? "", operation.location ?? "", category]
+        let haystack = [operation.name, operation.description ?? "", operation.location ?? "", operation.place?.nameEn ?? "", operation.place?.nameFr ?? "", category]
         return haystack.contains { $0.localizedCaseInsensitiveContains(query) }
     }
 
@@ -374,11 +374,11 @@ struct OperationRow: View {
                                 .font(.system(size: 10))
                             Text("Online")
                         }
-                    } else if let location = operation.location, !location.isEmpty {
+                    } else if !operation.whereabouts.isEmpty {
                         HStack(spacing: 4) {
                             Image(systemName: "mappin")
                                 .font(.system(size: 10))
-                            Text(location)
+                            Text(operation.whereabouts)
                         }
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -426,8 +426,8 @@ struct OperationRow: View {
      */
     private var accessibilityText: String {
         var parts = [operation.name, amountText, Formatting.time(operation.date)]
-        if let location = operation.location, !location.isEmpty {
-            parts.append(location)
+        if !operation.whereabouts.isEmpty {
+            parts.append(operation.whereabouts)
         }
         if hasDescription {
             parts.append(String(appLocalized: "has a note"))

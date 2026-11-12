@@ -290,12 +290,12 @@ enum BudgetAnalysis {
         for operation in recent {
             totals[calendar.component(.weekday, from: operation.date), default: 0] += operation.euroAmount
 
-            let location = operation.location?.trimmingCharacters(in: .whitespaces) ?? ""
+            let location = operation.whereabouts
             guard !operation.isOnline, !location.isEmpty else {
                 continue
             }
 
-            let key = location.lowercased()
+            let key = operation.place?.id ?? location.lowercased()
             let previous = places[key]
             let isLatest = previous.map { operation.date >= $0.lastDate } ?? true
             places[key] = PlaceSpend(name: isLatest ? location : previous?.name ?? location, spent: (previous?.spent ?? 0) + operation.euroAmount, count: (previous?.count ?? 0) + 1, lastDate: isLatest ? operation.date : previous?.lastDate ?? operation.date)

@@ -98,7 +98,9 @@ struct RecurringEditorSheet: View {
     @State private var categoryId = "" /*!< The category picked */
     @State private var name = "" /*!< The name typed */
     @State private var description = "" /*!< The note typed */
-    @State private var location = "" /*!< The place typed */
+    @State private var location = "" /*!< The city as it reads in the field */
+    @State private var place: PlaceReference? /*!< The city picked, nil while one is being typed */
+    @State private var keptLocation: String? /*!< The place written before cities were checked, which may stay */
     @State private var isOnline = false /*!< Whether it is paid online */
     @State private var firstDate = Date.now /*!< Its first occurrence */
     @State private var intervalMonths = 1 /*!< How many months lie between two occurrences */
@@ -112,6 +114,7 @@ struct RecurringEditorSheet: View {
     @State private var failure: String? /*!< Why the last save or deletion failed */
 
     @FocusState private var focus: Field? /*!< The field being typed in */
+    @FocusState private var isCityFocused: Bool /*!< Whether the city is being typed in */
 
     /**
      * @type Field
@@ -121,7 +124,6 @@ struct RecurringEditorSheet: View {
         case amount /*!< The amount */
         case name /*!< The name */
         case description /*!< The note */
-        case location /*!< The place */
     }
 
     /**
@@ -181,7 +183,7 @@ struct RecurringEditorSheet: View {
             .background(
                 Color.clear
                     .contentShape(Rectangle())
-                    .onTapGesture { focus = nil }
+                    .onTapGesture { dismissEditing() }
             )
         }
         .scrollIndicators(.hidden)
@@ -240,7 +242,16 @@ struct RecurringEditorSheet: View {
      * come before its first occurrence
      */
     private var isValid: Bool {
-        amount > 0 && !name.trimmingCharacters(in: .whitespaces).isEmpty && !categoryId.isEmpty && (!hasEnd || RecurringDay.key(endDate) >= RecurringDay.key(firstDate))
+        amount > 0 && !name.trimmingCharacters(in: .whitespaces).isEmpty && !categoryId.isEmpty && (!hasEnd || RecurringDay.key(endDate) >= RecurringDay.key(firstDate)) && isPlaceValid
+    }
+
+    /**
+     * @method isPlaceValid
+     * @description Whether the city can be saved: none when paid online, otherwise empty, picked, or written before cities
+     * were checked
+     */
+    private var isPlaceValid: Bool {
+        isOnline || CityField.isChosen(location: location, place: place, kept: keptLocation)
     }
 
     /**
@@ -310,14 +321,21 @@ struct RecurringEditorSheet: View {
 
     /**
      * @method fields
-     * @description The name, the note, the schedule, the end, online or the place, and the pause
+     * @description The name, with the names of earlier operations matching it, the note, the schedule, the end, online or
+     * the city, and the pause
      */
     private var fields: some View {
         VStack(alignment: .leading, spacing: 12) {
-            GlassField(label: String(appLocalized: "Name")) {
-                TextField("", text: $name, prompt: Text("Whole Foods").foregroundStyle(Theme.faint))
-                    .focused($focus, equals: .name)
-                    .accessibilityLabel("Name")
+            VStack(alignment: .leading, spacing: 6) {
+                GlassField(label: String(appLocalized: "Name")) {
+                    TextField("", text: $name, prompt: Text("Whole Foods").foregroundStyle(Theme.faint))
+                        .focused($focus, equals: .name)
+                        .accessibilityLabel("Name")
+                }
+
+                if !nameOptions.isEmpty {
+                    SuggestionList(suggestions: nameOptions, onPick: pickName)
+                }
             }
 
             GlassField(label: String(appLocalized: "Description")) {
@@ -363,16 +381,7 @@ struct RecurringEditorSheet: View {
             switchRow(symbol: "globe", title: String(appLocalized: "Online"), hint: String(appLocalized: "No physical location"), isOn: $isOnline.animation(.easeOut(duration: 0.2)))
 
             if !isOnline {
-                GlassField(label: String(appLocalized: "Location")) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "mappin")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Theme.accent)
-                        TextField("", text: $location, prompt: Text("Berlin Mitte").foregroundStyle(Theme.faint))
-                            .focused($focus, equals: .location)
-                            .accessibilityLabel("Location")
-                    }
-                }
+                CityField(location: $location, place: $place, kept: keptLocation, isFocused: $isCityFocused)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
@@ -385,6 +394,38 @@ struct RecurringEditorSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    /**
+     * @method nameOptions
+     * @description The names of earlier operations matching the name typed, while it is being typed
+     */
+    private var nameOptions: [Suggestion] {
+        guard focus == .name else {
+            return []
+        }
+        return BudgetMath.nameSuggestions(store.operations, typed: name).map { Suggestion(value: $0) }
+    }
+
+    /**
+     * @method pickName
+     * @description Fills in a name suggested, and puts the keyboard away
+     *
+     * @param suggestion The name suggested
+     */
+    private func pickName(_ suggestion: Suggestion) {
+        preferences.tap()
+        name = suggestion.value
+        focus = nil
+    }
+
+    /**
+     * @method dismissEditing
+     * @description Puts the keyboard away
+     */
+    private func dismissEditing() {
+        focus = nil
+        isCityFocused = false
     }
 
     /**
@@ -434,7 +475,9 @@ struct RecurringEditorSheet: View {
             categoryId = recurring.categoryId
             name = recurring.name
             description = recurring.description ?? ""
-            location = recurring.location ?? ""
+            place = recurring.place
+            location = recurring.whereabouts
+            keptLocation = recurring.place == nil ? recurring.location : nil
             isOnline = recurring.isOnline
             firstDate = RecurringDay.date(recurring.firstDate) ?? .now
             intervalMonths = recurring.intervalMonths
@@ -461,6 +504,7 @@ struct RecurringEditorSheet: View {
             description: trimmedDescription.isEmpty ? nil : trimmedDescription,
             categoryId: categoryId,
             location: trimmedLocation.isEmpty ? nil : trimmedLocation,
+            placeId: isOnline ? nil : place?.id,
             amount: amount,
             currencyCode: currencyCode,
             isOnline: isOnline,
@@ -479,7 +523,7 @@ struct RecurringEditorSheet: View {
         guard isValid else {
             return
         }
-        focus = nil
+        dismissEditing()
         isWorking = true
 
         Task {

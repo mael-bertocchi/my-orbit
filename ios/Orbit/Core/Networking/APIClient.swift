@@ -87,6 +87,7 @@ private struct OperationFields: Encodable {
         case description /*!< Its note */
         case categoryId /*!< Its category */
         case location /*!< Its place */
+        case placeId /*!< Its city */
         case amount /*!< Its amount */
         case currencyCode /*!< Its currency */
         case rateToEuro /*!< Its rate to the euro */
@@ -109,6 +110,7 @@ private struct OperationFields: Encodable {
         try container.encode(operation.description, forKey: .description)
         try container.encode(operation.categoryId, forKey: .categoryId)
         try container.encode(operation.location, forKey: .location)
+        try container.encode(operation.place?.id, forKey: .placeId)
         try container.encode(operation.amount, forKey: .amount)
         try container.encode(operation.currencyCode, forKey: .currencyCode)
         try container.encode(operation.rateToEuro, forKey: .rateToEuro)
@@ -126,7 +128,8 @@ struct RecurringOperation: Decodable, Identifiable, Equatable {
     let name: String /*!< The name each occurrence is logged under */
     let description: String? /*!< A note each occurrence carries */
     let categoryId: String /*!< Its category's identifier */
-    let location: String? /*!< Where it is paid */
+    let location: String? /*!< Where it is paid, as written */
+    let place: PlaceReference? /*!< The city it is paid in, checked by the server */
     let amount: Double /*!< The amount, in its currency */
     let currencyCode: String /*!< Its currency's code */
     let isOnline: Bool /*!< Whether it is paid online */
@@ -137,6 +140,8 @@ struct RecurringOperation: Decodable, Identifiable, Equatable {
     let nextDate: String? /*!< Its next occurrence still to be logged, nil once it has ended */
 
     var isRunning: Bool { !isPaused && nextDate != nil } /*!< Whether it still logs occurrences: neither paused nor over */
+
+    var whereabouts: String { place?.name ?? (location ?? "").trimmingCharacters(in: .whitespaces) } /*!< Where it is paid, as shown: its city in the interface's language, else the place as written */
 }
 
 /**
@@ -150,6 +155,7 @@ struct RecurringFields: Encodable {
     var description: String? /*!< Its note */
     var categoryId: String /*!< Its category */
     var location: String? /*!< Its place */
+    var placeId: String? /*!< Its city */
     var amount: Double /*!< Its amount */
     var currencyCode: String /*!< Its currency */
     var isOnline: Bool /*!< Whether it is paid online */
@@ -168,6 +174,7 @@ struct RecurringFields: Encodable {
         case description /*!< Its note */
         case categoryId /*!< Its category */
         case location /*!< Its place */
+        case placeId /*!< Its city */
         case amount /*!< Its amount */
         case currencyCode /*!< Its currency */
         case isOnline /*!< Whether it is paid online */
@@ -192,6 +199,7 @@ struct RecurringFields: Encodable {
         try container.encode(description, forKey: .description)
         try container.encode(categoryId, forKey: .categoryId)
         try container.encode(location, forKey: .location)
+        try container.encode(placeId, forKey: .placeId)
         try container.encode(amount, forKey: .amount)
         try container.encode(currencyCode, forKey: .currencyCode)
         try container.encode(isOnline, forKey: .isOnline)

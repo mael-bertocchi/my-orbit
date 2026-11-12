@@ -224,16 +224,6 @@
         }
       }
     },
-    "Berlin Mitte" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paris 11e"
-          }
-        }
-      }
-    },
     "Budget" : {
       "localizations" : {
         "fr" : {
@@ -840,16 +830,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chargement…"
-          }
-        }
-      }
-    },
-    "Location" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lieu"
           }
         }
       }
@@ -1910,6 +1890,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Suggestions"
+          }
+        }
+      }
+    },
+    "City" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ville"
+          }
+        }
+      }
+    },
+    "Pick a city from the suggestions, or use Locate." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez une ville parmi les suggestions, ou utilisez Localiser."
           }
         }
       }

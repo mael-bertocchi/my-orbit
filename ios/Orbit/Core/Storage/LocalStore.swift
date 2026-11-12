@@ -228,11 +228,11 @@ final class LocalStore {
     }
 
     /**
-     * @method latestLocation
-     * @description Where the latest operation in a physical place happened, to suggest it for the next one
+     * @method latestPlace
+     * @description The city of the latest in-person operation that has one, to suggest it for the next one
      */
-    var latestLocation: String? {
-        operations.first { !$0.isOnline && !($0.location ?? "").isEmpty }?.location
+    var latestPlace: PlaceReference? {
+        operations.first { !$0.isOnline && $0.place != nil }?.place
     }
 
     /**

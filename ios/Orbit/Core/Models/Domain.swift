@@ -42,6 +42,18 @@ struct Category: Codable, Identifiable, Equatable, Hashable {
 }
 
 /**
+ * @class PlaceReference
+ * @description A city the server checked, by its OpenStreetMap identity, named in each of the app's languages
+ */
+struct PlaceReference: Codable, Equatable, Hashable {
+    var id: String /*!< Its identity, such as `R71525` */
+    var nameEn: String /*!< Its name in English */
+    var nameFr: String /*!< Its name in French */
+
+    var name: String { Localization.isFrench ? nameFr : nameEn } /*!< Its name in the interface's language */
+}
+
+/**
  * @class Operation
  * @description An operation: an amount spent, in its currency and at the rate to the euro it was logged at
  */
@@ -51,7 +63,8 @@ struct Operation: Codable, Identifiable, Equatable, Hashable {
     var name: String /*!< Its name, the merchant's */
     var description: String? /*!< A note about it, if any */
     var categoryId: String /*!< Its category's identifier */
-    var location: String? /*!< Where it happened, if somewhere physical */
+    var location: String? /*!< Where it happened, as written, if somewhere physical */
+    var place: PlaceReference? /*!< The city it happened in, checked by the server */
     var amount: Double /*!< The amount, in its currency */
     var currencyCode: String /*!< Its currency's code */
     var rateToEuro: Double /*!< The euros one unit of its currency cost that day, bank markup included */
@@ -68,7 +81,8 @@ struct Operation: Codable, Identifiable, Equatable, Hashable {
      * @param name Its name
      * @param description A note about it
      * @param categoryId Its category's identifier
-     * @param location Where it happened
+     * @param location Where it happened, as written
+     * @param place The city it happened in
      * @param amount The amount, in its currency
      * @param currencyCode Its currency's code
      * @param rateToEuro Its rate to the euro
@@ -83,6 +97,7 @@ struct Operation: Codable, Identifiable, Equatable, Hashable {
         description: String? = nil,
         categoryId: String,
         location: String? = nil,
+        place: PlaceReference? = nil,
         amount: Double,
         currencyCode: String = Currency.euro.code,
         rateToEuro: Double = 1,
@@ -96,6 +111,7 @@ struct Operation: Codable, Identifiable, Equatable, Hashable {
         self.description = description
         self.categoryId = categoryId
         self.location = location
+        self.place = place
         self.amount = amount
         self.currencyCode = currencyCode
         self.rateToEuro = rateToEuro
@@ -107,6 +123,8 @@ struct Operation: Codable, Identifiable, Equatable, Hashable {
     var isForeign: Bool { currencyCode != Currency.euro.code } /*!< Whether it was paid in another currency than the euro */
 
     var euroAmount: Double { amount * rateToEuro } /*!< The amount in euros */
+
+    var whereabouts: String { place?.name ?? (location ?? "").trimmingCharacters(in: .whitespaces) } /*!< Where it happened, as shown: its city in the interface's language, else the place as written before cities were checked, else nothing */
 }
 
 /**

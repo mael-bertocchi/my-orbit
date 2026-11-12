@@ -4,11 +4,15 @@ import Observation
 
 /**
  * @class Place
- * @description A city the server suggests
+ * @description A city the server suggests, named in each language, with its region and country
  */
 struct Place: Decodable, Hashable {
-    var name: String /*!< Its name, what the editor fills in */
-    var detail: String /*!< Its region and country, to tell two cities of the same name apart, empty when unknown */
+    var id: String /*!< Its identity */
+    var nameEn: String /*!< Its name in English */
+    var nameFr: String /*!< Its name in French */
+    var detail: String /*!< Its region and country in the interface's language, to tell two cities of the same name apart, empty when unknown */
+
+    var reference: PlaceReference { PlaceReference(id: id, nameEn: nameEn, nameFr: nameFr) } /*!< The city, as an operation names it */
 }
 
 /**
@@ -189,12 +193,12 @@ final class Places {
      * @method locateCity
      * @description Finds the city the device is in
      *
-     * @returns Its name. Throws a `PlacesError` or an `APIError` saying why it can't be found
+     * @returns The city. Throws a `PlacesError` or an `APIError` saying why it can't be found
      */
-    func locateCity() async throws -> String {
+    func locateCity() async throws -> PlaceReference {
         let location = try await finder.locate()
         do {
-            return try await api.locatePlace(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, language: language).name
+            return try await api.locatePlace(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, language: language).reference
         } catch APIError.notFound {
             throw PlacesError.noCity
         }

@@ -23,10 +23,10 @@ enum OperationEditorRoute: Identifiable {
 /**
  * @class OperationEditorSheet
  * @description The sheet logging or editing an operation: the amount in any currency with its euro equivalent at the
- * rate of its own day, the category, name, note, date and time, online or the place, and deleting it. As the name is typed,
- * the names of earlier operations matching it are offered; as the place is typed, the earlier places, then the cities the
- * server finds; Locate fills in the city the device is in. An occurrence of a recurring operation says so: changing it
- * changes that occurrence only
+ * rate of its own day, the category, name, note, date and time, online or the city, and deleting it. As the name is typed,
+ * the names of earlier operations matching it are offered; the city is picked from the suggestions or located, so that the
+ * server can check it and name it in each language. An occurrence of a recurring operation says so: changing it changes
+ * that occurrence only
  */
 struct OperationEditorSheet: View {
     let route: OperationEditorRoute /*!< What the sheet is open on */
@@ -34,7 +34,6 @@ struct OperationEditorSheet: View {
     @Environment(LocalStore.self) private var store /*!< The budget */
     @Environment(ExchangeRates.self) private var rates /*!< The exchange rates */
     @Environment(Preferences.self) private var preferences /*!< The device's settings, for the haptics and the last currency used */
-    @Environment(Places.self) private var places /*!< The cities, found by the server */
     @Environment(\.dismiss) private var dismiss /*!< Closes the sheet */
 
     @State private var amountText = "" /*!< The amount, as typed */
@@ -42,7 +41,9 @@ struct OperationEditorSheet: View {
     @State private var categoryId = "" /*!< The category picked */
     @State private var name = "" /*!< The name typed */
     @State private var description = "" /*!< The note typed */
-    @State private var location = "" /*!< The place typed */
+    @State private var location = "" /*!< The city as it reads in the field */
+    @State private var place: PlaceReference? /*!< The city picked, nil while one is being typed */
+    @State private var keptLocation: String? /*!< The place written before cities were checked, which may stay */
     @State private var date = Date.now /*!< When it happened */
     @State private var isOnline = false /*!< Whether it was paid online */
 
@@ -50,12 +51,8 @@ struct OperationEditorSheet: View {
     @State private var showDatePicker = false /*!< Whether the date picker is shown */
     @State private var showDeleteConfirmation = false /*!< Whether the deletion is being confirmed */
 
-    @State private var foundPlaces: [Place] = [] /*!< The cities the server found for the place typed */
-    @State private var foundQuery = "" /*!< The place they were found for */
-    @State private var isLocating = false /*!< Whether the city the device is in is being looked for */
-    @State private var locateError: String? /*!< Why it couldn't be found, nil when it could */
-
     @FocusState private var focus: Field? /*!< The field being typed in */
+    @FocusState private var isCityFocused: Bool /*!< Whether the city is being typed in */
 
     /**
      * @type Field
@@ -65,7 +62,6 @@ struct OperationEditorSheet: View {
         case amount /*!< The amount */
         case name /*!< The name */
         case description /*!< The note */
-        case location /*!< The place */
     }
 
     /**
@@ -143,14 +139,17 @@ struct OperationEditorSheet: View {
                 amountText = formatted
             }
         }
-        .task(id: locationQuery) {
-            await searchPlaces(locationQuery)
-        }
         .onChange(of: focus) { _, field in
-            guard field != nil, showDatePicker else {
+            guard field != nil else {
                 return
             }
-            withAnimation(.easeOut(duration: 0.2)) { showDatePicker = false }
+            closeDatePicker()
+        }
+        .onChange(of: isCityFocused) { _, isFocused in
+            guard isFocused else {
+                return
+            }
+            closeDatePicker()
         }
     }
 
@@ -250,7 +249,16 @@ struct OperationEditorSheet: View {
      * @description Whether the operation can be saved: an amount, a name, a category and a rate
      */
     private var isValid: Bool {
-        amount > 0 && !name.trimmingCharacters(in: .whitespaces).isEmpty && !categoryId.isEmpty && appliedRate != nil
+        amount > 0 && !name.trimmingCharacters(in: .whitespaces).isEmpty && !categoryId.isEmpty && appliedRate != nil && isPlaceValid
+    }
+
+    /**
+     * @method isPlaceValid
+     * @description Whether the city can be saved: none when paid online, otherwise empty, picked, or written before cities
+     * were checked
+     */
+    private var isPlaceValid: Bool {
+        isOnline || CityField.isChosen(location: location, place: place, kept: keptLocation)
     }
 
     /**
@@ -326,7 +334,7 @@ struct OperationEditorSheet: View {
 
     /**
      * @method fields
-     * @description The name, the note, the date and time, and the place
+     * @description The name, the note, the date and time, and the city
      */
     private var fields: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -359,6 +367,7 @@ struct OperationEditorSheet: View {
                 Button {
                     preferences.tap()
                     focus = nil
+                    isCityFocused = false
                     withAnimation(.easeOut(duration: 0.2)) {
                         showDatePicker.toggle()
                     }
@@ -393,66 +402,10 @@ struct OperationEditorSheet: View {
             onlineRow
 
             if !isOnline {
-                VStack(alignment: .leading, spacing: 6) {
-                    GlassField(label: String(appLocalized: "Location")) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "mappin")
-                                .font(.system(size: 14))
-                                .foregroundStyle(Theme.accent)
-                            TextField("", text: $location, prompt: Text("Berlin").foregroundStyle(Theme.faint))
-                                .focused($focus, equals: .location)
-                                .accessibilityLabel("Location")
-                                .onChange(of: location) { _, _ in
-                                    locateError = nil
-                                }
-                            locateButton
-                        }
-                    }
-
-                    if !cityOptions.isEmpty {
-                        SuggestionList(suggestions: cityOptions, onPick: pickLocation)
-                    }
-
-                    if let locateError {
-                        Text(locateError)
-                            .font(Theme.font(11))
-                            .foregroundStyle(Theme.warning)
-                    }
-                }
+                CityField(location: $location, place: $place, kept: keptLocation, isFocused: $isCityFocused)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-    }
-
-    /**
-     * @method locateButton
-     * @description The button at the end of the place, filling in the city the device is in
-     */
-    private var locateButton: some View {
-        Button {
-            preferences.tap()
-            Task {
-                await locate()
-            }
-        } label: {
-            HStack(spacing: 4) {
-                if isLocating {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .tint(Theme.accent)
-                } else {
-                    Image(systemName: "location")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                Text("Locate")
-                    .font(Theme.font(13))
-            }
-            .foregroundStyle(Theme.accent)
-            .expandedTapTarget(vertical: 10, horizontal: 6)
-        }
-        .buttonStyle(.plain)
-        .disabled(isLocating)
-        .accessibilityHint("Fill in the city you are in")
     }
 
     /**
@@ -467,99 +420,15 @@ struct OperationEditorSheet: View {
     }
 
     /**
-     * @method locationQuery
-     * @description The place typed, while it is being typed, which the server is asked about; empty otherwise
-     */
-    private var locationQuery: String {
-        focus == .location ? location.trimmingCharacters(in: .whitespaces) : ""
-    }
-
-    /**
-     * @method cityOptions
-     * @description The places to suggest for the place typed, while it is being typed: the earlier places first, then the
-     * cities the server found, each once
-     */
-    private var cityOptions: [Suggestion] {
-        guard !locationQuery.isEmpty else {
-            return []
-        }
-
-        let earlier = BudgetMath.locationSuggestions(store.operations, typed: locationQuery)
-        var seen = Set([BudgetMath.fold(locationQuery)] + earlier.map(BudgetMath.fold))
-        var options = earlier.map { Suggestion(value: $0) }
-        let fresh = foundQuery == locationQuery ? foundPlaces : []
-        for place in fresh where seen.insert(BudgetMath.fold(place.name)).inserted {
-            options.append(Suggestion(value: place.name, detail: place.detail))
-        }
-        return options
-    }
-
-    /**
-     * @method searchPlaces
-     * @description Asks the server for the cities matching the place typed, once typing pauses, from two letters
-     *
-     * @param query The place typed
-     */
-    private func searchPlaces(_ query: String) async {
-        guard query.count >= 2 else {
-            return
-        }
-        try? await Task.sleep(for: .milliseconds(250))
-        guard !Task.isCancelled else {
-            return
-        }
-        let found = await places.search(query)
-        guard !Task.isCancelled else {
-            return
-        }
-        foundPlaces = found
-        foundQuery = query
-    }
-
-    /**
      * @method pickName
      * @description Fills in a name suggested, and puts the keyboard away
      *
-     * @param value The name
+     * @param suggestion The name suggested
      */
-    private func pickName(_ value: String) {
+    private func pickName(_ suggestion: Suggestion) {
         preferences.tap()
-        name = value
+        name = suggestion.value
         focus = nil
-    }
-
-    /**
-     * @method pickLocation
-     * @description Fills in a place suggested, and puts the keyboard away
-     *
-     * @param value The place
-     */
-    private func pickLocation(_ value: String) {
-        preferences.tap()
-        location = value
-        focus = nil
-    }
-
-    /**
-     * @method locate
-     * @description Fills in the city the device is in, or says why it can't
-     */
-    private func locate() async {
-        isLocating = true
-        defer {
-            isLocating = false
-        }
-
-        do {
-            let city = try await places.locateCity()
-            focus = nil
-            location = city
-            locateError = nil
-        } catch is CancellationError {
-            return
-        } catch {
-            locateError = error.userMessage
-        }
     }
 
     /**
@@ -632,13 +501,14 @@ struct OperationEditorSheet: View {
     /**
      * @method loadValues
      * @description Fills the sheet with the operation edited, or the defaults of a new one: the last currency used, the
-     * first category, the latest place
+     * first category, the latest city
      */
     private func loadValues() {
         guard case .edit(let operationId) = route, let operation = store.operation(id: operationId) else {
             currencyCode = preferences.lastUsedCurrencyCode
             categoryId = store.categories.first?.id ?? ""
-            location = store.latestLocation ?? ""
+            place = store.latestPlace
+            location = store.latestPlace?.name ?? ""
             return
         }
         amountText = Formatting.amountInput(operation.amount)
@@ -646,7 +516,9 @@ struct OperationEditorSheet: View {
         categoryId = operation.categoryId
         name = operation.name
         description = operation.description ?? ""
-        location = operation.location ?? ""
+        place = operation.place
+        location = operation.whereabouts
+        keptLocation = operation.place == nil ? operation.location : nil
         date = operation.date
         isOnline = operation.isOnline
     }
@@ -657,6 +529,15 @@ struct OperationEditorSheet: View {
      */
     private func dismissEditing() {
         focus = nil
+        isCityFocused = false
+        closeDatePicker()
+    }
+
+    /**
+     * @method closeDatePicker
+     * @description Puts the date picker away, if it is shown
+     */
+    private func closeDatePicker() {
         guard showDatePicker else {
             return
         }
@@ -691,6 +572,7 @@ struct OperationEditorSheet: View {
             description: trimmedDescription.isEmpty ? nil : trimmedDescription,
             categoryId: categoryId,
             location: trimmedLocation.isEmpty ? nil : trimmedLocation,
+            place: isOnline ? nil : place,
             amount: amount,
             currencyCode: currencyCode,
             rateToEuro: appliedRate,

@@ -353,34 +353,51 @@ enum BudgetMath {
     }
 
     /**
-     * @method locationSuggestions
-     * @description The places of earlier operations matching what is typed, each once as last written, the best match
-     * first, then the most recent. The place typed in full is left out
+     * @method placeMatch
+     * @description How well a city matches what is typed, already folded, under either of its names: 0 when neither
+     * matches, and also when one is typed in full, as there is nothing left to complete
+     *
+     * @param place The city
+     * @param typed What is typed, folded
+     * @returns The rank
+     */
+    private static func placeMatch(_ place: PlaceReference, typed: String) -> Int {
+        guard fold(place.nameEn) != typed, fold(place.nameFr) != typed else {
+            return 0
+        }
+        return max(matchRank(place.nameEn, typed: typed), matchRank(place.nameFr, typed: typed))
+    }
+
+    /**
+     * @method recentPlaces
+     * @description The cities operations took place in, most recent first and each only once
+     *
+     * @param operations The operations
+     * @returns The cities
+     */
+    static func recentPlaces(_ operations: [Operation]) -> [PlaceReference] {
+        var seen: Set<String> = []
+        return operations.sorted { $0.date > $1.date }.compactMap(\.place).filter { seen.insert($0.id).inserted }
+    }
+
+    /**
+     * @method placeSuggestions
+     * @description The cities of earlier operations matching what is typed, under either of their names, the best match
+     * first, then the most recent
      *
      * @param operations The earlier operations
      * @param typed What is typed
      * @param limit How many to suggest at most
-     * @returns The places
+     * @returns The cities
      */
-    static func locationSuggestions(_ operations: [Operation], typed: String, limit: Int = 3) -> [String] {
+    static func placeSuggestions(_ operations: [Operation], typed: String, limit: Int = 3) -> [PlaceReference] {
         let folded = fold(typed)
         guard !folded.isEmpty else {
             return []
         }
 
-        var seen: Set<String> = [folded]
-        var matching: [(location: String, rank: Int)] = []
-        for operation in operations.sorted(by: { $0.date > $1.date }) {
-            let location = (operation.location ?? "").trimmingCharacters(in: .whitespaces)
-            let key = fold(location)
-            let rank = matchRank(location, typed: folded)
-            guard !key.isEmpty, rank > 0, seen.insert(key).inserted else {
-                continue
-            }
-            matching.append((location, rank))
-        }
-
-        let ranked = matching.enumerated().sorted { ($0.element.rank, -$0.offset) > ($1.element.rank, -$1.offset) }
-        return ranked.prefix(limit).map(\.element.location)
+        let ranked = recentPlaces(operations).enumerated().map { (place: $0.element, rank: placeMatch($0.element, typed: folded), order: $0.offset) }
+        let matching = ranked.filter { $0.rank > 0 }.sorted { ($0.rank, -$0.order) > ($1.rank, -$1.order) }
+        return matching.prefix(limit).map(\.place)
     }
 }
