@@ -79,6 +79,6 @@ export async function convertWrittenPlaces(context: PlacesContext): Promise<void
             context.logger.info({ converted }, 'Places written by hand given their city');
         }
     } catch (error: unknown) {
-        context.logger.error({ error }, 'Places written by hand could not be given their city');
+        context.logger.error({ err: error }, 'Places written by hand could not be given their city');
     }
 }

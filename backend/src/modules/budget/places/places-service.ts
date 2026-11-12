@@ -159,7 +159,7 @@ async function ask(context: PlacesContext, path: string, query: Record<string, s
             signal: AbortSignal.timeout(PLACES_TIMEOUT)
         });
     } catch (error: unknown) {
-        context.logger.error({ error, path }, 'Places provider unreachable');
+        context.logger.error({ err: error, path }, 'Places provider unreachable');
 
         throw new RequestError(StatusCodes.SERVICE_UNAVAILABLE, 'Places are unavailable');
     }

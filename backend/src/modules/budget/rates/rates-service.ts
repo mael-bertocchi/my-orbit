@@ -149,7 +149,7 @@ async function pullSnapshot(prisma: PrismaClient, logger: FastifyBaseLogger, day
         payload = await fetchProvider(day);
     } catch (error: unknown) {
         if (cached === null) {
-            logger.error({ error, day }, 'Rate provider unreachable and no snapshot stored');
+            logger.error({ err: error, day }, 'Rate provider unreachable and no snapshot stored');
 
             throw new RequestError(StatusCodes.SERVICE_UNAVAILABLE, 'Exchange rates are unavailable');
         }

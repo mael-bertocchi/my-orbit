@@ -80,7 +80,7 @@ async function ask<T extends z.ZodType>(variables: Variables, logger: FastifyBas
             signal: AbortSignal.timeout(CATALOG_TIMEOUT)
         });
     } catch (error: unknown) {
-        logger.error({ error, path }, 'Catalog unreachable');
+        logger.error({ err: error, path }, 'Catalog unreachable');
 
         throw new RequestError(StatusCodes.SERVICE_UNAVAILABLE, 'The catalog is unavailable');
     }
