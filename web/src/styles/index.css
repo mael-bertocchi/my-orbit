@@ -10,6 +10,15 @@
         scrollbar-gutter: stable;
     }
 
+    html:has(dialog[open]) {
+        overflow: hidden;
+    }
+
+    dialog[open],
+    dialog[open] * {
+        overscroll-behavior: contain;
+    }
+
     body {
         @apply bg-canvas font-sans text-ink;
         font-feature-settings: "ss01", "cv11";
