@@ -71,7 +71,7 @@ async function findOperation(transaction: Prisma.TransactionClient, id: string):
 export async function listTrash(prisma: PrismaClient): Promise<TrashedOperation[]> {
     const rows = await prisma.budgetOperation.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' }, include: WITH_PLACE });
 
-    return rows.flatMap((row) => (row.deletedAt === null ? [] : [trashedOf(row, row.deletedAt)]));
+    return rows.flatMap((row) => (row.deletedAt !== null ? [trashedOf(row, row.deletedAt)] : []));
 }
 
 /**

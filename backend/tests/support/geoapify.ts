@@ -22,7 +22,7 @@ export interface GeoapifyCity {
  * @returns {Record<string, unknown>} What it says.
  */
 export function resultOf(city: GeoapifyCity, language: string): Record<string, unknown> {
-    const name = language === 'fr' ? city.fr : city.en;
+    const name = language !== 'fr' ? city.en : city.fr;
     const number = Number(city.id.slice(1));
     const raw = { osm_type: city.id.slice(0, 1).toLowerCase(), osm_id: number };
 

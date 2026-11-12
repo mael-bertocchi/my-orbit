@@ -47,7 +47,7 @@ interface ConversionFixture {
  * @returns {ConversionFixture} The stand-in and what it records.
  */
 function conversionFixture(convertedAt: Maybe<Date>): ConversionFixture {
-    const updateOperations = vi.fn(({ where }: { where: { location: string } }) => Promise.resolve({ count: where.location === 'seoul' ? 3 : 0 }));
+    const updateOperations = vi.fn(({ where }: { where: { location: string } }) => Promise.resolve({ count: where.location !== 'seoul' ? 0 : 3 }));
     const upsertState = vi.fn((_write: StateWrite) => Promise.resolve({ revision: 2 }));
     const client = {
         budgetOperation: { findMany: vi.fn(() => Promise.resolve([{ location: 'seoul' }, { location: 'Chez Paul' }])), updateMany: updateOperations },

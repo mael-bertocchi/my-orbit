@@ -25,7 +25,7 @@ interface TestApp {
  */
 async function buildApp(): Promise<TestApp> {
     const upsert = vi.fn(({ create }: { create: object }) => Promise.resolve(create));
-    const deleteMany = vi.fn(({ where }: { where: { month: string } }) => Promise.resolve({ count: where.month === '2026-09' ? 1 : 0 }));
+    const deleteMany = vi.fn(({ where }: { where: { month: string } }) => Promise.resolve({ count: where.month !== '2026-09' ? 0 : 1 }));
     const client = { budgetHistory: { upsert, deleteMany }, budgetState: { upsert: vi.fn(() => Promise.resolve({ revision: 1 })) } };
     const app = Fastify();
 

@@ -84,10 +84,10 @@ function handleGlobalError(err: Error, request: FastifyRequest, reply: FastifyRe
         request.log.error({ error: { message: err.message, stack: err.stack, type: err.name }, path: request.url }, 'Server Error');
 
         if (!(err instanceof RequestError)) {
-            if (process.env.NODE_ENV === 'production') {
-                response.message = 'Server Error';
-            } else {
+            if (process.env.NODE_ENV !== 'production') {
                 response.data = err.stack;
+            } else {
+                response.message = 'Server Error';
             }
         }
     } else {

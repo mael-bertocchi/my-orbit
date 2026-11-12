@@ -25,7 +25,7 @@ function toEntry(row: WatchlistEntry): Entry {
         posterPath: row.posterPath,
         genreIds: row.genreIds,
         collectionId: row.collectionId,
-        collectionName: row.collectionNameEn === null || row.collectionNameFr === null ? null : { en: row.collectionNameEn, fr: row.collectionNameFr },
+        collectionName: row.collectionNameEn !== null && row.collectionNameFr !== null ? { en: row.collectionNameEn, fr: row.collectionNameFr } : null,
         runtime: row.runtime,
         seasons: row.seasons,
         addedAt: row.addedAt,
@@ -115,8 +115,8 @@ export async function updateEntry(prisma: PrismaClient, id: string, update: Entr
         throw new RequestError(StatusCodes.NOT_FOUND, 'Unknown title');
     }
 
-    const watchedAt = update.watchedAt === undefined ? row.watchedAt : update.watchedAt;
-    const startedAt = update.startedAt === undefined ? row.startedAt : update.startedAt;
+    const watchedAt = update.watchedAt !== undefined ? update.watchedAt : row.watchedAt;
+    const startedAt = update.startedAt !== undefined ? update.startedAt : row.startedAt;
     const isReviewing = (update.rating ?? null) !== null || (update.comment ?? null) !== null;
 
     if (watchedAt === null && startedAt === null) {
@@ -144,8 +144,8 @@ export async function updateEntry(prisma: PrismaClient, id: string, update: Entr
         data: {
             startedAt,
             watchedAt,
-            rating: update.rating === undefined ? row.rating : update.rating,
-            comment: update.comment === undefined ? row.comment : update.comment
+            rating: update.rating !== undefined ? update.rating : row.rating,
+            comment: update.comment !== undefined ? update.comment : row.comment
         }
     });
 

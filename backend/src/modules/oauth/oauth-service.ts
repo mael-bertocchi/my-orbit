@@ -187,7 +187,7 @@ export function closeAuthorization(code: string, clientId: string, redirectUri: 
 export async function listConnections(prisma: PrismaClient, userId: string): Promise<ConnectionSummary[]> {
     const sessions = await prisma.identityRefreshSession.findMany({ where: { userId, connectionId: { not: null }, expiresAt: { gt: new Date() } }, orderBy: { lastUsedAt: 'desc' } });
 
-    return sessions.flatMap((session) => (session.connectionId === null || session.clientName === null ? [] : [{ id: session.connectionId, name: session.clientName, connectedAt: session.connectedAt, lastUsedAt: session.lastUsedAt ?? session.connectedAt }]));
+    return sessions.flatMap((session) => (session.connectionId !== null && session.clientName !== null ? [{ id: session.connectionId, name: session.clientName, connectedAt: session.connectedAt, lastUsedAt: session.lastUsedAt ?? session.connectedAt }] : []));
 }
 
 /**

@@ -57,7 +57,7 @@ export type RecurringRow = Prisma.BudgetRecurringOperationGetPayload<{ include: 
  * @returns {Maybe<PlaceReference>} The city, or null.
  */
 export function placeReferenceOf(place: Maybe<BudgetPlace>): Maybe<PlaceReference> {
-    return place === null ? null : { id: place.id, nameEn: place.nameEn, nameFr: place.nameFr };
+    return place !== null ? { id: place.id, nameEn: place.nameEn, nameFr: place.nameFr } : null;
 }
 
 /**
@@ -70,11 +70,11 @@ export function placeReferenceOf(place: Maybe<BudgetPlace>): Maybe<PlaceReferenc
  * @returns {Maybe<string>} Its name, or null without a city.
  */
 export function placeNameOf(place: Maybe<BudgetPlace>, language: PlacesLanguage): Maybe<string> {
-    if (place === null) {
-        return null;
+    if (place !== null) {
+        return language !== 'fr' ? place.nameEn : place.nameFr;
     }
 
-    return language === 'fr' ? place.nameFr : place.nameEn;
+    return null;
 }
 
 /**
@@ -201,7 +201,7 @@ async function ask(context: PlacesContext, path: string, query: Record<string, s
  * @returns {string} The detail, empty when both are unknown.
  */
 function detailOf(name: string, state: Perhaps<string>, country: Perhaps<string>): string {
-    const parts = [state === name ? undefined : state, country];
+    const parts = [state !== name ? state : undefined, country];
 
     return parts.filter((part) => part !== undefined && part !== '').join(', ');
 }
@@ -228,7 +228,7 @@ const OSM_IN_PLACE_ID = /f001(0[1-3])f901([0-9a-f]{16})/;
  * @returns {Maybe<string>} The identity, such as `R2297418`, or null when it can't be read.
  */
 function osmIdOf(placeId: Perhaps<string>): Maybe<string> {
-    const found = placeId === undefined ? null : OSM_IN_PLACE_ID.exec(placeId.toLowerCase());
+    const found = placeId !== undefined ? OSM_IN_PLACE_ID.exec(placeId.toLowerCase()) : null;
 
     if (found === null) {
         return null;
@@ -270,7 +270,7 @@ function placeIdOf(result: GeoapifyResult): string {
 function cityNameOf(result: GeoapifyResult): Maybe<string> {
     const name = result.name ?? result.city;
 
-    return name === undefined || name.trim() === '' ? null : name;
+    return name !== undefined && name.trim() !== '' ? name : null;
 }
 
 /**
@@ -377,9 +377,9 @@ function cityAt(candidate: unknown): Maybe<string> {
         return null;
     }
 
-    const name = result.data.result_type === 'city' ? cityNameOf(result.data) : result.data.city;
+    const name = result.data.result_type !== 'city' ? result.data.city : cityNameOf(result.data);
 
-    return name === undefined || name === null || name.trim() === '' ? null : name;
+    return name !== undefined && name !== null && name.trim() !== '' ? name : null;
 }
 
 /**
@@ -401,8 +401,8 @@ export async function locatePlace(context: PlacesContext, latitude: number, long
 
     if (place === undefined) {
         const name = cityAt((await ask(context, '/reverse', { lat: String(latitude), lon: String(longitude), lang: language, limit: '1' }))[0]);
-        const cities = name === null ? [] : await findCities(context, '/autocomplete', { text: name, bias: `proximity:${longitude},${latitude}`, limit: '5' }, language);
-        const named = (city: Place): string => (language === 'fr' ? city.nameFr : city.nameEn);
+        const cities = name !== null ? await findCities(context, '/autocomplete', { text: name, bias: `proximity:${longitude},${latitude}`, limit: '5' }, language) : [];
+        const named = (city: Place): string => (language !== 'fr' ? city.nameEn : city.nameFr);
 
         place = cities.find((city) => name !== null && foldName(named(city)) === foldName(name)) ?? cities[0] ?? null;
         positions.set(key, place);
@@ -455,7 +455,7 @@ export async function checkPlace(context: PlacesContext, id: string, hint: Maybe
     }
 
     const query = hint?.trim() ?? '';
-    const found = query === '' ? [] : await findCities(context, '/autocomplete', { text: query, limit: '12' }, 'fr');
+    const found = query !== '' ? await findCities(context, '/autocomplete', { text: query, limit: '12' }, 'fr') : [];
     const match = found.find((city) => city.id === id);
 
     if (match === undefined) {
@@ -498,7 +498,7 @@ export async function findPlaceNamed(context: PlacesContext, text: string): Prom
     const found = await findCities(context, '/autocomplete', { text: text.trim(), limit: '12' }, 'fr');
     const match = found.find((city) => foldName(city.nameFr) === folded || foldName(city.nameEn) === folded);
 
-    return match === undefined ? null : await keepPlace(context.prisma, { id: match.id, nameEn: match.nameEn, nameFr: match.nameFr });
+    return match !== undefined ? await keepPlace(context.prisma, { id: match.id, nameEn: match.nameEn, nameFr: match.nameFr }) : null;
 }
 
 /**
@@ -518,11 +518,11 @@ export async function placeFor(context: PlacesContext, placeId: Perhaps<Maybe<st
         return await checkPlace(context, placeId, location ?? null);
     }
 
-    if (placeId === undefined && location === undefined) {
-        return undefined;
+    if (placeId !== undefined || location !== undefined) {
+        return location !== undefined && location !== null ? await matchPlace(context, location) : null;
     }
 
-    return location === undefined || location === null ? null : await matchPlace(context, location);
+    return undefined;
 }
 
 /**
@@ -552,9 +552,9 @@ export async function withPlace<T extends PlacedFields>(context: PlacesContext, 
         return body;
     }
 
-    if (place === null) {
-        return { ...body, placeId: null };
+    if (place !== null) {
+        return { ...body, placeId: place.id, location: body.location ?? place.nameFr };
     }
 
-    return { ...body, placeId: place.id, location: body.location ?? place.nameFr };
+    return { ...body, placeId: null };
 }

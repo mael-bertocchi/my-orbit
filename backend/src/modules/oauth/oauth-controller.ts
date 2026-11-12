@@ -171,7 +171,7 @@ async function authorize(request: FastifyRequest<AuthorizationRequest>, reply: F
  */
 function tokenResponse(request: FastifyRequest, tokens: IdentityTokens): Record<string, unknown> {
     const decoded = request.server.jwt.decode<{ exp: number }>(tokens.accessToken);
-    const expiresIn = decoded === null ? undefined : Math.max(0, decoded.exp - Math.floor(Date.now() / 1000));
+    const expiresIn = decoded !== null ? Math.max(0, decoded.exp - Math.floor(Date.now() / 1000)) : undefined;
 
     return { access_token: tokens.accessToken, token_type: 'Bearer', expires_in: expiresIn, refresh_token: tokens.refreshToken, scope: SCOPE };
 }

@@ -169,11 +169,11 @@ function byRelease(first: CatalogTitle, second: CatalogTitle): number {
         return 1;
     }
 
-    if (second.releaseDate === null) {
-        return -1;
+    if (second.releaseDate !== null) {
+        return first.releaseDate < second.releaseDate ? -1 : 1;
     }
 
-    return first.releaseDate < second.releaseDate ? -1 : 1;
+    return -1;
 }
 
 /**
@@ -207,20 +207,20 @@ export async function searchCatalog(variables: Variables, logger: FastifyBaseLog
 
         const title = result.data;
 
-        found.push(title.media_type === 'movie' ? {
-            tmdbId: title.id,
-            mediaType: 'movie',
-            title: title.title,
-            originalTitle: title.original_title,
-            releaseDate: title.release_date,
-            posterPath: title.poster_path ?? null,
-            overview: title.overview
-        } : {
+        found.push(title.media_type !== 'movie' ? {
             tmdbId: title.id,
             mediaType: 'tv',
             title: title.name,
             originalTitle: title.original_name,
             releaseDate: title.first_air_date,
+            posterPath: title.poster_path ?? null,
+            overview: title.overview
+        } : {
+            tmdbId: title.id,
+            mediaType: 'movie',
+            title: title.title,
+            originalTitle: title.original_title,
+            releaseDate: title.release_date,
             posterPath: title.poster_path ?? null,
             overview: title.overview
         });
@@ -258,24 +258,7 @@ export async function titleDetails(variables: Variables, logger: FastifyBaseLogg
     const offers = (): Promise<CatalogOffers> => ask(variables, logger, `/${mediaType}/${tmdbId}/watch/providers`, {}, TmdbProvidersPayloadSchema).then(offersIn);
     let found: CatalogDetails;
 
-    if (mediaType === 'movie') {
-        const [movie, movieOffers] = await Promise.all([ask(variables, logger, `/movie/${tmdbId}`, query, TmdbMovieSchema), offers()]);
-
-        found = {
-            tmdbId: movie.id,
-            mediaType,
-            title: movie.title,
-            originalTitle: movie.original_title,
-            releaseDate: movie.release_date,
-            posterPath: movie.poster_path ?? null,
-            overview: movie.overview,
-            genres: movie.genres,
-            runtime: movie.runtime ?? null,
-            seasons: null,
-            collection: movie.belongs_to_collection ?? null,
-            offers: movieOffers
-        };
-    } else {
+    if (mediaType !== 'movie') {
         const [show, showOffers] = await Promise.all([ask(variables, logger, `/tv/${tmdbId}`, query, TmdbShowSchema), offers()]);
 
         found = {
@@ -291,6 +274,23 @@ export async function titleDetails(variables: Variables, logger: FastifyBaseLogg
             seasons: show.number_of_seasons ?? null,
             collection: null,
             offers: showOffers
+        };
+    } else {
+        const [movie, movieOffers] = await Promise.all([ask(variables, logger, `/movie/${tmdbId}`, query, TmdbMovieSchema), offers()]);
+
+        found = {
+            tmdbId: movie.id,
+            mediaType,
+            title: movie.title,
+            originalTitle: movie.original_title,
+            releaseDate: movie.release_date,
+            posterPath: movie.poster_path ?? null,
+            overview: movie.overview,
+            genres: movie.genres,
+            runtime: movie.runtime ?? null,
+            seasons: null,
+            collection: movie.belongs_to_collection ?? null,
+            offers: movieOffers
         };
     }
 

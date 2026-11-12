@@ -85,7 +85,7 @@ class EntriesTable {
 
     findUnique = vi.fn(({ where }: { where: { id?: string; mediaType_tmdbId?: { mediaType: string; tmdbId: number } } }) => {
         const key = where.mediaType_tmdbId;
-        const found = this.rows.find((row) => (key === undefined ? row.id === where.id : row.mediaType === key.mediaType && row.tmdbId === key.tmdbId));
+        const found = this.rows.find((row) => (key !== undefined ? row.mediaType === key.mediaType && row.tmdbId === key.tmdbId : row.id === where.id));
 
         return Promise.resolve(found ?? null);
     });

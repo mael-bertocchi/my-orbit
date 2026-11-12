@@ -51,7 +51,7 @@ async function buildApp(): Promise<TestApp> {
         budgetCategory: { findMany: vi.fn(() => Promise.resolve([{ id: 'groceries', name: 'Groceries', monthlyLimit: 400 }])) },
         budgetState: { upsert: vi.fn(() => Promise.resolve({ revision: 2 })) },
         budgetRecurringOperation: { findMany: vi.fn(() => Promise.resolve([])) },
-        identityRefreshSession: { updateMany: vi.fn(({ where }: { where: { connectionId: string } }) => Promise.resolve({ count: where.connectionId === LIVE_CONNECTION ? 1 : 0 })) },
+        identityRefreshSession: { updateMany: vi.fn(({ where }: { where: { connectionId: string } }) => Promise.resolve({ count: where.connectionId !== LIVE_CONNECTION ? 0 : 1 })) },
         $transaction: <T>(work: (transaction: unknown) => Promise<T>): Promise<T> => work(prisma)
     };
     const app = Fastify();

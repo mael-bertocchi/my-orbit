@@ -179,7 +179,7 @@ export type PasskeyParams = z.infer<typeof PasskeyParamsSchema>;
  * spaces) to go back to the name its authenticator gives it.
  */
 export const PasskeyUpdateSchema = z.object({
-    name: z.string().trim().max(64).transform((name) => (name === '' ? null : name)).nullable()
+    name: z.string().trim().max(64).transform((name) => (name !== '' ? name : null)).nullable()
 });
 
 /**

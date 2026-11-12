@@ -45,7 +45,7 @@ export const TMDB_LANGUAGES: Record<CatalogLanguage, string> = {
  * @constant TmdbDateSchema
  * @description Zod schema for a date as the catalog writes it: YYYY-MM-DD, or an empty string when it is unknown.
  */
-const TmdbDateSchema = z.string().optional().transform((value) => (value === undefined || value === '' ? null : value));
+const TmdbDateSchema = z.string().optional().transform((value) => (value !== undefined && value !== '' ? value : null));
 
 /**
  * @constant TmdbGenreSchema

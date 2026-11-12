@@ -78,7 +78,7 @@ interface SessionFilter {
  * @description Whether a stored session passes a filter.
  */
 function matches(session: StoredSession, where: SessionFilter): boolean {
-    const connection = where.connectionId === undefined || (typeof where.connectionId === 'string' ? session.connectionId === where.connectionId : session.connectionId !== null);
+    const connection = where.connectionId === undefined || (typeof where.connectionId !== 'string' ? session.connectionId !== null : session.connectionId === where.connectionId);
     const live = where.expiresAt === undefined || session.expiresAt > where.expiresAt.gt;
 
     return (where.id === undefined || session.id === where.id) && (where.userId === undefined || session.userId === where.userId) && connection && live;
@@ -221,7 +221,7 @@ async function buildApp(enrollmentToken = TOKEN): Promise<TestApp> {
  * @description Posts a JSON body, with a bearer token when one is given.
  */
 async function post(app: FastifyInstance, url: string, payload: object = {}, accessToken?: string): Promise<LightMyRequestResponse> {
-    return await app.inject({ method: 'POST', url, payload, headers: accessToken === undefined ? {} : { authorization: `Bearer ${accessToken}` } });
+    return await app.inject({ method: 'POST', url, payload, headers: accessToken !== undefined ? { authorization: `Bearer ${accessToken}` } : {} });
 }
 
 /**

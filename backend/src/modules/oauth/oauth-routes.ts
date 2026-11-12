@@ -28,7 +28,7 @@ function parseForm(body: string): Record<string, string> {
  */
 export default function (fastify: FastifyInstance): void {
     fastify.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_request, body, done) => {
-        done(null, parseForm(typeof body === 'string' ? body : body.toString('utf8')));
+        done(null, parseForm(typeof body !== 'string' ? body.toString('utf8') : body));
     });
 
     fastify.get('/.well-known/oauth-protected-resource', oauthController.resourceMetadata);

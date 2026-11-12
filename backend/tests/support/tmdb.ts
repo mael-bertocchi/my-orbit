@@ -127,7 +127,7 @@ export function stubCatalog(base: string, failures: Record<string, number> = {})
 
         const answers = url.searchParams.get('language') === 'en-US' && path in TMDB_ENGLISH_ANSWERS ? TMDB_ENGLISH_ANSWERS : TMDB_ANSWERS;
         const status = failures[path] ?? (path in answers ? 200 : 404);
-        const body = status === 200 ? answers[path] : { status_message: 'The resource you requested could not be found.' };
+        const body = status !== 200 ? { status_message: 'The resource you requested could not be found.' } : answers[path];
 
         return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
     }));

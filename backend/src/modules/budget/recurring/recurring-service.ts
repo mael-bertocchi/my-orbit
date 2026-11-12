@@ -256,7 +256,7 @@ export async function updateRecurring(prisma: PrismaClient, logger: FastifyBaseL
     }
 
     const firstDate = body.firstDate ?? existing.firstDate;
-    const endDate = body.endDate === undefined ? existing.endDate : body.endDate;
+    const endDate = body.endDate !== undefined ? body.endDate : existing.endDate;
 
     if (endDate !== null && endDate < firstDate) {
         throw new RequestError(StatusCodes.BAD_REQUEST, 'The end date comes before the first one');

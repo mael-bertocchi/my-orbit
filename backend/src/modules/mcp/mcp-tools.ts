@@ -228,14 +228,14 @@ export const searchOperations: ServerTool = {
             where: {
                 deletedAt: null,
                 categoryId,
-                date: { gte: from === undefined ? undefined : new Date(`${from}T00:00:00.000Z`), lte: to === undefined ? undefined : new Date(`${to}T23:59:59.999Z`) },
-                OR: query === undefined ? undefined : [
+                date: { gte: from !== undefined ? new Date(`${from}T00:00:00.000Z`) : undefined, lte: to !== undefined ? new Date(`${to}T23:59:59.999Z`) : undefined },
+                OR: query !== undefined ? [
                     { name: { contains: query, mode: 'insensitive' } },
                     { description: { contains: query, mode: 'insensitive' } },
                     { location: { contains: query, mode: 'insensitive' } },
                     { place: { nameEn: { contains: query, mode: 'insensitive' } } },
                     { place: { nameFr: { contains: query, mode: 'insensitive' } } }
-                ]
+                ] : undefined
             },
             orderBy: { date: 'desc' },
             take: SEARCH_SCAN_MAX,
@@ -292,7 +292,7 @@ export const monthSummary: ServerTool = {
             context.prisma.budgetHistory.findUnique({ where: { month: parsed.data.month } }),
             context.prisma.budgetState.findUnique({ where: { id: OWNER_ID } })
         ]);
-        const limits = frozen === null ? Object.fromEntries(categories.map((category) => [category.id, category.monthlyLimit])) : StoredCategoryLimitsSchema.parse(frozen.categoryLimits);
+        const limits = frozen !== null ? StoredCategoryLimitsSchema.parse(frozen.categoryLimits) : Object.fromEntries(categories.map((category) => [category.id, category.monthlyLimit]));
         const monthlyLimit = frozen?.monthlyLimit ?? state?.monthlyLimit ?? DEFAULT_MONTHLY_LIMIT;
         const spent = new Map<string, number>();
 
@@ -355,7 +355,7 @@ function statusOf(row: WatchlistEntry): 'toWatch' | 'watching' | 'watched' {
         return 'watched';
     }
 
-    return row.startedAt === null ? 'toWatch' : 'watching';
+    return row.startedAt !== null ? 'watching' : 'toWatch';
 }
 
 /**
@@ -390,14 +390,14 @@ export const searchWatchlist: ServerTool = {
             orderBy: { addedAt: 'desc' }
         });
         const needle = query?.toLocaleLowerCase();
-        const matches = needle === undefined ? rows : rows.filter((row) => [row.titleEn, row.titleFr, row.originalTitle].some((title) => title.toLocaleLowerCase().includes(needle)));
+        const matches = needle !== undefined ? rows.filter((row) => [row.titleEn, row.titleFr, row.originalTitle].some((title) => title.toLocaleLowerCase().includes(needle))) : rows;
 
         return {
             result: {
                 count: matches.length,
                 titles: matches.slice(0, limit).map((row) => ({
                     id: row.id,
-                    title: context.language === 'fr' ? row.titleFr : row.titleEn,
+                    title: context.language !== 'fr' ? row.titleEn : row.titleFr,
                     mediaType: row.mediaType,
                     releaseDate: row.releaseDate,
                     runtime: row.runtime,
@@ -434,7 +434,7 @@ const OTHER_MATCHES = 4;
  * @returns {Maybe<string>} Its year, or null.
  */
 function yearOf(date: Maybe<string>): Maybe<string> {
-    return date === null || date === '' ? null : date.slice(0, 4);
+    return date !== null && date !== '' ? date.slice(0, 4) : null;
 }
 
 /**
@@ -783,7 +783,7 @@ export const updateOperationTool: ServerTool = {
             return refusal;
         }
 
-        const moment = date === undefined ? undefined : momentOf(date, context.today);
+        const moment = date !== undefined ? momentOf(date, context.today) : undefined;
 
         if (date !== undefined && moment === undefined) {
             return { result: { error: 'The day is still to come: an operation is dated on the day it happened or before' } };
@@ -903,9 +903,9 @@ export const rateTitleTool: ServerTool = {
         }
 
         try {
-            const entry = await updateEntry(context.prisma, parsed.data.entryId, { watchedAt: moment, rating: parsed.data.rating, comment: parsed.data.comment === '' ? null : parsed.data.comment ?? null });
+            const entry = await updateEntry(context.prisma, parsed.data.entryId, { watchedAt: moment, rating: parsed.data.rating, comment: parsed.data.comment !== '' ? parsed.data.comment ?? null : null });
 
-            return { result: { status: 'Rated', title: context.language === 'fr' ? entry.title.fr : entry.title.en, rating: entry.rating, comment: entry.comment } };
+            return { result: { status: 'Rated', title: context.language !== 'fr' ? entry.title.en : entry.title.fr, rating: entry.rating, comment: entry.comment } };
         } catch (error: unknown) {
             return failed(error);
         }
@@ -950,7 +950,7 @@ export const addTitleTool: ServerTool = {
         try {
             const entry = await addEntry(context.prisma, context.variables, context.logger, parsed.data);
 
-            return { result: { status: 'Added', entryId: entry.id, title: context.language === 'fr' ? entry.title.fr : entry.title.en } };
+            return { result: { status: 'Added', entryId: entry.id, title: context.language !== 'fr' ? entry.title.en : entry.title.fr } };
         } catch (error: unknown) {
             return failed(error);
         }

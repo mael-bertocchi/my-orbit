@@ -120,7 +120,7 @@ function isStale(snapshot: BudgetExchangeRateSnapshot, day: string, settled: boo
         return false;
     }
 
-    const window = snapshot.quoteDate === day ? REFRESH_AFTER : PENDING_REFRESH_AFTER;
+    const window = snapshot.quoteDate !== day ? PENDING_REFRESH_AFTER : REFRESH_AFTER;
 
     return Date.now() - snapshot.fetchedAt.getTime() >= window;
 }
@@ -233,5 +233,5 @@ export async function rateToEuroOn(prisma: PrismaClient, logger: FastifyBaseLogg
     const snapshot = await pullRatesForDay(prisma, logger, day);
     const reference = snapshot.rates[code];
 
-    return reference === undefined ? undefined : reference * (1 + BANK_MARKUP);
+    return reference !== undefined ? reference * (1 + BANK_MARKUP) : undefined;
 }

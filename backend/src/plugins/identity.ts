@@ -141,7 +141,7 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
         const refreshToken = fastify.jwt.sign({ id: userId, type: 'refresh', sid, cid }, { expiresIn: fastify.variables.JWT_REFRESH_EXPIRY });
         const decoded = fastify.jwt.decode<{ exp: number }>(refreshToken);
         const expiresAt = decoded !== null ? new Date(decoded.exp * 1000) : new Date();
-        const connectionData = connection === null ? {} : { connectionId: connection.id, clientName: connection.name, connectedAt: connection.connectedAt, lastUsedAt: new Date() };
+        const connectionData = connection !== null ? { connectionId: connection.id, clientName: connection.name, connectedAt: connection.connectedAt, lastUsedAt: new Date() } : {};
 
         await fastify.prisma.identityRefreshSession.create({ data: { id: sid, userId, expiresAt, ...connectionData } });
 
@@ -155,7 +155,7 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
      * @description Opens a session, starting a connection when a client the owner just authorized is named.
      */
     const issueTokens = async (userId: string, clientName?: Perhaps<string>): Promise<IdentityTokens> => {
-        const connection = clientName === undefined ? null : { id: randomUUID(), name: clientName, connectedAt: new Date() };
+        const connection = clientName !== undefined ? { id: randomUUID(), name: clientName, connectedAt: new Date() } : null;
 
         return await openSession(userId, connection);
     };
@@ -214,7 +214,7 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
 
             await fastify.prisma.identityRefreshSession.delete({ where: { id: sid } });
 
-            const connection = session.connectionId === null || session.clientName === null ? null : { id: session.connectionId, name: session.clientName, connectedAt: session.connectedAt };
+            const connection = session.connectionId !== null && session.clientName !== null ? { id: session.connectionId, name: session.clientName, connectedAt: session.connectedAt } : null;
 
             return await openSession(id, connection);
         },

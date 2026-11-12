@@ -26,7 +26,7 @@ interface TestApp {
  */
 async function buildApp(): Promise<TestApp> {
     const upsert = vi.fn(({ create }: { create: object }) => Promise.resolve(create));
-    const deleteMany = vi.fn(({ where }: { where: { id: string } }) => Promise.resolve({ count: where.id === 'groceries' ? 1 : 0 }));
+    const deleteMany = vi.fn(({ where }: { where: { id: string } }) => Promise.resolve({ count: where.id !== 'groceries' ? 0 : 1 }));
     const bump = vi.fn(() => Promise.resolve({ id: 'owner', monthlyLimit: 3000, revision: 1 }));
     const client = { budgetCategory: { upsert, deleteMany }, budgetState: { upsert: bump } };
     const app = Fastify();

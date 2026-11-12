@@ -67,7 +67,7 @@ export const EntryUpdateSchema = z.object({
     startedAt: z.coerce.date().nullable().optional(),
     watchedAt: z.coerce.date().nullable().optional(),
     rating: z.number().int().min(1).max(RATING_MAX).nullable().optional(),
-    comment: z.string().trim().max(COMMENT_MAX).nullable().optional().transform((value) => (value === '' ? null : value))
+    comment: z.string().trim().max(COMMENT_MAX).nullable().optional().transform((value) => (value !== '' ? value : null))
 });
 
 /**
