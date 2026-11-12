@@ -272,4 +272,115 @@ enum BudgetMath {
             .map { DayGroup(date: $0.key, operations: $0.value.sorted { $0.date > $1.date }) }
             .sorted { $0.date > $1.date }
     }
+
+    /**
+     * @method fold
+     * @description Reduces a text for matching what is typed against it: trimmed, regardless of case and accents
+     *
+     * @param text The text
+     * @returns The text reduced
+     */
+    static func fold(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil).trimmingCharacters(in: .whitespaces)
+    }
+
+    /**
+     * @method matchRank
+     * @description How well a text matches what is typed, already folded: 2 when it starts with it, 1 when one of its
+     * other words does, 0 when it doesn't match
+     *
+     * @param text The text
+     * @param typed What is typed, folded
+     * @returns The rank
+     */
+    static func matchRank(_ text: String, typed: String) -> Int {
+        let folded = fold(text)
+        if folded.hasPrefix(typed) {
+            return 2
+        }
+        let words = folded.split { $0.isWhitespace || "'’-".contains($0) }
+        return words.contains { $0.hasPrefix(typed) } ? 1 : 0
+    }
+
+    /**
+     * @class NameUse
+     * @description How an operation name has been used, to rank it among the suggestions
+     */
+    private struct NameUse {
+        var name: String /*!< The name, as last written */
+        var rank: Int /*!< How well it matches what is typed */
+        var count: Int /*!< How many operations bear it */
+        var latest: Date /*!< When it was last used */
+    }
+
+    /**
+     * @method nameSuggestions
+     * @description The names of earlier operations matching what is typed, each once as last written, the best match, the
+     * most used and the latest first. The name typed in full is left out: there is nothing left to complete
+     *
+     * @param operations The earlier operations
+     * @param typed What is typed
+     * @param limit How many to suggest at most
+     * @returns The names
+     */
+    static func nameSuggestions(_ operations: [Operation], typed: String, limit: Int = 5) -> [String] {
+        let folded = fold(typed)
+        guard !folded.isEmpty else {
+            return []
+        }
+
+        var uses: [String: NameUse] = [:]
+        for operation in operations {
+            let key = fold(operation.name)
+            let rank = matchRank(operation.name, typed: folded)
+            guard key != folded, rank > 0 else {
+                continue
+            }
+            guard var use = uses[key] else {
+                uses[key] = NameUse(name: operation.name.trimmingCharacters(in: .whitespaces), rank: rank, count: 1, latest: operation.date)
+                continue
+            }
+            use.count += 1
+            if operation.date > use.latest {
+                use.latest = operation.date
+                use.name = operation.name.trimmingCharacters(in: .whitespaces)
+            }
+            uses[key] = use
+        }
+
+        let ranked = uses.values.sorted { ($0.rank, $0.count, $0.latest) > ($1.rank, $1.count, $1.latest) }
+        return ranked.prefix(limit).map(\.name)
+    }
+
+    /**
+     * @method locationSuggestions
+     * @description The places of earlier operations matching what is typed, each once as last written, the best match
+     * first, then the most recent. The place typed in full is left out
+     *
+     * @param operations The earlier operations
+     * @param typed What is typed
+     * @param limit How many to suggest at most
+     * @returns The places
+     */
+    static func locationSuggestions(_ operations: [Operation], typed: String, limit: Int = 3) -> [String] {
+        let folded = fold(typed)
+        guard !folded.isEmpty else {
+            return []
+        }
+
+        var seen: Set<String> = [folded]
+        var matching: [(location: String, rank: Int)] = []
+        for operation in operations.sorted(by: { $0.date > $1.date }) {
+            let location = (operation.location ?? "").trimmingCharacters(in: .whitespaces)
+            let key = fold(location)
+            let rank = matchRank(location, typed: folded)
+            guard !key.isEmpty, rank > 0, seen.insert(key).inserted else {
+                continue
+            }
+            matching.append((location, rank))
+        }
+
+        let ranked = matching.enumerated().sorted { ($0.element.rank, -$0.offset) > ($1.element.rank, -$1.offset) }
+        return ranked.prefix(limit).map(\.element.location)
+    }
 }

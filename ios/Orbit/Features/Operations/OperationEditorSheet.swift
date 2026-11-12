@@ -23,8 +23,10 @@ enum OperationEditorRoute: Identifiable {
 /**
  * @class OperationEditorSheet
  * @description The sheet logging or editing an operation: the amount in any currency with its euro equivalent at the
- * rate of its own day, the category, name, note, date and time, online or the place, and deleting it. An occurrence of a
- * recurring operation says so: changing it changes that occurrence only
+ * rate of its own day, the category, name, note, date and time, online or the place, and deleting it. As the name is typed,
+ * the names of earlier operations matching it are offered; as the place is typed, the earlier places, then the cities the
+ * server finds; Locate fills in the city the device is in. An occurrence of a recurring operation says so: changing it
+ * changes that occurrence only
  */
 struct OperationEditorSheet: View {
     let route: OperationEditorRoute /*!< What the sheet is open on */
@@ -32,6 +34,7 @@ struct OperationEditorSheet: View {
     @Environment(LocalStore.self) private var store /*!< The budget */
     @Environment(ExchangeRates.self) private var rates /*!< The exchange rates */
     @Environment(Preferences.self) private var preferences /*!< The device's settings, for the haptics and the last currency used */
+    @Environment(Places.self) private var places /*!< The cities, found by the server */
     @Environment(\.dismiss) private var dismiss /*!< Closes the sheet */
 
     @State private var amountText = "" /*!< The amount, as typed */
@@ -46,6 +49,11 @@ struct OperationEditorSheet: View {
     @State private var showCurrencyPicker = false /*!< Whether the currency picker is open */
     @State private var showDatePicker = false /*!< Whether the date picker is shown */
     @State private var showDeleteConfirmation = false /*!< Whether the deletion is being confirmed */
+
+    @State private var foundPlaces: [Place] = [] /*!< The cities the server found for the place typed */
+    @State private var foundQuery = "" /*!< The place they were found for */
+    @State private var isLocating = false /*!< Whether the city the device is in is being looked for */
+    @State private var locateError: String? /*!< Why it couldn't be found, nil when it could */
 
     @FocusState private var focus: Field? /*!< The field being typed in */
 
@@ -134,6 +142,9 @@ struct OperationEditorSheet: View {
             if formatted != typed {
                 amountText = formatted
             }
+        }
+        .task(id: locationQuery) {
+            await searchPlaces(locationQuery)
         }
         .onChange(of: focus) { _, field in
             guard field != nil, showDatePicker else {
@@ -319,10 +330,16 @@ struct OperationEditorSheet: View {
      */
     private var fields: some View {
         VStack(alignment: .leading, spacing: 12) {
-            GlassField(label: String(appLocalized: "Name")) {
-                TextField("", text: $name, prompt: Text("Whole Foods").foregroundStyle(Theme.faint))
-                    .focused($focus, equals: .name)
-                    .accessibilityLabel("Name")
+            VStack(alignment: .leading, spacing: 6) {
+                GlassField(label: String(appLocalized: "Name")) {
+                    TextField("", text: $name, prompt: Text("Whole Foods").foregroundStyle(Theme.faint))
+                        .focused($focus, equals: .name)
+                        .accessibilityLabel("Name")
+                }
+
+                if !nameOptions.isEmpty {
+                    SuggestionList(suggestions: nameOptions, onPick: pickName)
+                }
             }
 
             GlassField(label: String(appLocalized: "Description")) {
@@ -376,18 +393,172 @@ struct OperationEditorSheet: View {
             onlineRow
 
             if !isOnline {
-                GlassField(label: String(appLocalized: "Location")) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "mappin")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Theme.accent)
-                        TextField("", text: $location, prompt: Text("Berlin Mitte").foregroundStyle(Theme.faint))
-                            .focused($focus, equals: .location)
-                            .accessibilityLabel("Location")
+                VStack(alignment: .leading, spacing: 6) {
+                    GlassField(label: String(appLocalized: "Location")) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "mappin")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Theme.accent)
+                            TextField("", text: $location, prompt: Text("Berlin").foregroundStyle(Theme.faint))
+                                .focused($focus, equals: .location)
+                                .accessibilityLabel("Location")
+                                .onChange(of: location) { _, _ in
+                                    locateError = nil
+                                }
+                            locateButton
+                        }
+                    }
+
+                    if !cityOptions.isEmpty {
+                        SuggestionList(suggestions: cityOptions, onPick: pickLocation)
+                    }
+
+                    if let locateError {
+                        Text(locateError)
+                            .font(Theme.font(11))
+                            .foregroundStyle(Theme.warning)
                     }
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
+        }
+    }
+
+    /**
+     * @method locateButton
+     * @description The button at the end of the place, filling in the city the device is in
+     */
+    private var locateButton: some View {
+        Button {
+            preferences.tap()
+            Task {
+                await locate()
+            }
+        } label: {
+            HStack(spacing: 4) {
+                if isLocating {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .tint(Theme.accent)
+                } else {
+                    Image(systemName: "location")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                Text("Locate")
+                    .font(Theme.font(13))
+            }
+            .foregroundStyle(Theme.accent)
+            .expandedTapTarget(vertical: 10, horizontal: 6)
+        }
+        .buttonStyle(.plain)
+        .disabled(isLocating)
+        .accessibilityHint("Fill in the city you are in")
+    }
+
+    /**
+     * @method nameOptions
+     * @description The names of earlier operations matching the name typed, while it is being typed
+     */
+    private var nameOptions: [Suggestion] {
+        guard focus == .name else {
+            return []
+        }
+        return BudgetMath.nameSuggestions(store.operations, typed: name).map { Suggestion(value: $0) }
+    }
+
+    /**
+     * @method locationQuery
+     * @description The place typed, while it is being typed, which the server is asked about; empty otherwise
+     */
+    private var locationQuery: String {
+        focus == .location ? location.trimmingCharacters(in: .whitespaces) : ""
+    }
+
+    /**
+     * @method cityOptions
+     * @description The places to suggest for the place typed, while it is being typed: the earlier places first, then the
+     * cities the server found, each once
+     */
+    private var cityOptions: [Suggestion] {
+        guard !locationQuery.isEmpty else {
+            return []
+        }
+
+        let earlier = BudgetMath.locationSuggestions(store.operations, typed: locationQuery)
+        var seen = Set([BudgetMath.fold(locationQuery)] + earlier.map(BudgetMath.fold))
+        var options = earlier.map { Suggestion(value: $0) }
+        let fresh = foundQuery == locationQuery ? foundPlaces : []
+        for place in fresh where seen.insert(BudgetMath.fold(place.name)).inserted {
+            options.append(Suggestion(value: place.name, detail: place.detail))
+        }
+        return options
+    }
+
+    /**
+     * @method searchPlaces
+     * @description Asks the server for the cities matching the place typed, once typing pauses, from two letters
+     *
+     * @param query The place typed
+     */
+    private func searchPlaces(_ query: String) async {
+        guard query.count >= 2 else {
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(250))
+        guard !Task.isCancelled else {
+            return
+        }
+        let found = await places.search(query)
+        guard !Task.isCancelled else {
+            return
+        }
+        foundPlaces = found
+        foundQuery = query
+    }
+
+    /**
+     * @method pickName
+     * @description Fills in a name suggested, and puts the keyboard away
+     *
+     * @param value The name
+     */
+    private func pickName(_ value: String) {
+        preferences.tap()
+        name = value
+        focus = nil
+    }
+
+    /**
+     * @method pickLocation
+     * @description Fills in a place suggested, and puts the keyboard away
+     *
+     * @param value The place
+     */
+    private func pickLocation(_ value: String) {
+        preferences.tap()
+        location = value
+        focus = nil
+    }
+
+    /**
+     * @method locate
+     * @description Fills in the city the device is in, or says why it can't
+     */
+    private func locate() async {
+        isLocating = true
+        defer {
+            isLocating = false
+        }
+
+        do {
+            let city = try await places.locateCity()
+            focus = nil
+            location = city
+            locateError = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            locateError = error.userMessage
         }
     }
 

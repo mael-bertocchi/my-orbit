@@ -397,6 +397,33 @@ final class APIClient {
     }
 
     /**
+     * @method searchPlaces
+     * @description Finds the cities whose name starts with what is typed
+     *
+     * @param query What is typed, two letters at least
+     * @param language The language to name them in, `en` or `fr`
+     * @returns The cities, the likeliest first
+     */
+    func searchPlaces(_ query: String, language: String) async throws -> [Place] {
+        try await send("/v1/budget/places/search", method: "GET", query: [URLQueryItem(name: "query", value: query), URLQueryItem(name: "language", value: language)])
+    }
+
+    /**
+     * @method locatePlace
+     * @description Finds the city at a position, which the server rounds to about a kilometre. Throws `notFound` out of
+     * any city
+     *
+     * @param latitude The latitude
+     * @param longitude The longitude
+     * @param language The language to name it in, `en` or `fr`
+     * @returns The city
+     */
+    func locatePlace(latitude: Double, longitude: Double, language: String) async throws -> Place {
+        let position = [URLQueryItem(name: "latitude", value: String(format: "%.2f", latitude)), URLQueryItem(name: "longitude", value: String(format: "%.2f", longitude))]
+        return try await send("/v1/budget/places/locate", method: "GET", query: position + [URLQueryItem(name: "language", value: language)])
+    }
+
+    /**
      * @method getState
      * @description Reads the whole budget and its revision
      *
@@ -582,19 +609,21 @@ final class APIClient {
      * @param method The HTTP method
      * @param body The body, if any
      * @param authorized Whether to send the access token
+     * @param query The query's parameters, if any
      * @returns The answer's data
      */
     private func send<Response: Decodable>(
         _ path: String,
         method: String,
         body: Encodable? = nil,
-        authorized: Bool = true
+        authorized: Bool = true,
+        query: [URLQueryItem] = []
     ) async throws -> Response {
         do {
-            return try await perform(path, method: method, body: body, authorized: authorized)
+            return try await perform(path, method: method, body: body, authorized: authorized, query: query)
         } catch APIError.unauthorized where authorized {
             try await refreshTokens()
-            return try await perform(path, method: method, body: body, authorized: true)
+            return try await perform(path, method: method, body: body, authorized: true, query: query)
         }
     }
 
@@ -624,15 +653,17 @@ final class APIClient {
      * @param method The HTTP method
      * @param body The body, if any
      * @param authorized Whether to send the access token
+     * @param query The query's parameters, if any
      * @returns The answer's data
      */
     private func perform<Response: Decodable>(
         _ path: String,
         method: String,
         body: Encodable?,
-        authorized: Bool
+        authorized: Bool,
+        query: [URLQueryItem] = []
     ) async throws -> Response {
-        let data = try await exchange(path, method: method, body: body, authorized: authorized)
+        let data = try await exchange(path, method: method, body: body, authorized: authorized, query: query)
 
         do {
             return try JSONCoding.decoder.decode(Envelope<Response>.self, from: data).data
@@ -649,19 +680,26 @@ final class APIClient {
      * @param method The HTTP method
      * @param body The body, if any
      * @param authorized Whether to send the access token
+     * @param query The query's parameters, if any
      * @returns The answer's body
      */
     private func exchange(
         _ path: String,
         method: String,
         body: Encodable?,
-        authorized: Bool
+        authorized: Bool,
+        query: [URLQueryItem] = []
     ) async throws -> Data {
         guard let baseURL else {
             throw APIError.notConfigured
         }
 
-        var request = URLRequest(url: baseURL.appending(path: path))
+        var url = baseURL.appending(path: path)
+        if !query.isEmpty {
+            url.append(queryItems: query)
+        }
+
+        var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 

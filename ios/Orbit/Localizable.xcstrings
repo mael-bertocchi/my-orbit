@@ -1843,6 +1843,76 @@
           }
         }
       }
+    },
+    "Locate" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Localiser"
+          }
+        }
+      }
+    },
+    "Fill in the city you are in" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remplir la ville où vous êtes"
+          }
+        }
+      }
+    },
+    "Location access is turned off for Orbit." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’accès à la position est désactivé pour Orbit."
+          }
+        }
+      }
+    },
+    "Your position couldn't be found." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de trouver votre position."
+          }
+        }
+      }
+    },
+    "No city found where you are." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune ville trouvée là où vous êtes."
+          }
+        }
+      }
+    },
+    "Berlin" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paris"
+          }
+        }
+      }
+    },
+    "Suggestions" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggestions"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

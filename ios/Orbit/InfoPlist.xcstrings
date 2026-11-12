@@ -1,0 +1,24 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSLocationWhenInUseUsageDescription" : {
+      "comment" : "Privacy - Location When In Use Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Orbit uses your position, only when you tap Locate, to fill in the city of an operation."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orbit utilise votre position, seulement quand vous touchez Localiser, pour remplir la ville d’une opération."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

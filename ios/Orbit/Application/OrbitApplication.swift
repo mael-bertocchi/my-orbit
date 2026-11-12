@@ -2,12 +2,14 @@ import SwiftUI
 
 /**
  * @class OrbitApplication
- * @description The app: it builds the store, the rates, the settings and the session once, and hands them to every view
+ * @description The app: it builds the store, the rates, the places, the settings and the session once, and hands them to
+ * every view
  */
 @main
 struct OrbitApplication: App {
     @State private var store: LocalStore /*!< The budget, saved on the device */
     @State private var rates: ExchangeRates /*!< The exchange rates */
+    @State private var places: Places /*!< The cities, found by the server */
     @State private var preferences: Preferences /*!< The device's settings */
     @State private var session: ApplicationSession /*!< The session with the server, and the sync */
 
@@ -22,6 +24,7 @@ struct OrbitApplication: App {
         let rates = ExchangeRates(api: api)
         _store = State(initialValue: store)
         _rates = State(initialValue: rates)
+        _places = State(initialValue: Places(api: api))
         _preferences = State(initialValue: Preferences())
         _session = State(initialValue: ApplicationSession(store: store, rates: rates, tokens: tokens, api: api))
     }
@@ -44,6 +47,7 @@ struct OrbitApplication: App {
             RootView()
                 .environment(store)
                 .environment(rates)
+                .environment(places)
                 .environment(preferences)
                 .environment(session)
                 .environment(\.locale, interfaceLocale)
