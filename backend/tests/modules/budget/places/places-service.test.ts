@@ -8,8 +8,8 @@ import type { Maybe, Perhaps } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { PhotonCity } from '../../../support/photon';
-import { stubCities, stubPhoton } from '../../../support/photon';
+import type { GeoapifyCity } from '../../../support/geoapify';
+import { stubCities, stubGeoapify } from '../../../support/geoapify';
 import { standIn } from '../../../support/stand-in';
 import { testVariables } from '../../../support/variables';
 
@@ -17,13 +17,13 @@ import { testVariables } from '../../../support/variables';
  * @constant SEOUL
  * @description A city named differently in English and in French
  */
-const SEOUL: PhotonCity = { id: 'R2297418', en: 'Seoul', fr: 'Séoul', country: 'Corée du Sud' };
+const SEOUL: GeoapifyCity = { id: 'R2297418', en: 'Seoul', fr: 'Séoul', country: 'Corée du Sud' };
 
 /**
  * @constant LYON
  * @description A city named alike in both languages
  */
-const LYON: PhotonCity = { id: 'R120965', en: 'Lyon', fr: 'Lyon', state: 'Auvergne-Rhône-Alpes', country: 'France' };
+const LYON: GeoapifyCity = { id: 'R120965', en: 'Lyon', fr: 'Lyon', state: 'Auvergne-Rhône-Alpes', country: 'France' };
 
 /**
  * @class PlacesTable
@@ -85,7 +85,7 @@ describe('searchPlaces', () => {
 
         expect(places).toEqual([{ id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul', detail: 'Corée du Sud' }, { id: 'R120965', nameEn: 'Lyon', nameFr: 'Lyon', detail: 'Auvergne-Rhône-Alpes, France' }]);
         expect(calls.map((call) => call.searchParams.get('lang'))).toEqual(expect.arrayContaining(['en', 'fr']));
-        expect(calls.every((call) => call.origin === 'https://places.example.fr' && call.searchParams.get('layer') === 'city')).toBe(true);
+        expect(calls.every((call) => call.origin === 'https://places.example.fr' && call.pathname === '/autocomplete' && call.searchParams.get('type') === 'city' && call.searchParams.get('apiKey') === 'a-test-places-key')).toBe(true);
     });
 
     it('keeps an answer for a while', async () => {
@@ -98,28 +98,42 @@ describe('searchPlaces', () => {
         expect(calls).toHaveLength(2);
     });
 
-    it('answers 503 when Photon fails', async () => {
-        stubPhoton(() => [], 500);
+    it('answers 503 without asking when the server has no key', async () => {
+        const calls = stubCities([LYON]);
+        const context = { ...contextWith(new PlacesTable()), variables: testVariables({ GEOAPIFY_API_KEY: '' }) };
+
+        expect(await statusOf(searchPlaces(context, 'ly', 'fr'))).toBe(StatusCodes.SERVICE_UNAVAILABLE);
+        expect(calls).toHaveLength(0);
+    });
+
+    it('answers 503 when Geoapify fails', async () => {
+        stubGeoapify(() => [], 500);
 
         expect(await statusOf(searchPlaces(contextWith(new PlacesTable()), 'par', 'fr'))).toBe(StatusCodes.SERVICE_UNAVAILABLE);
     });
 });
 
 describe('locatePlace', () => {
-    it('names the city of the street nearest to the position, found again around it in both languages', async () => {
-        const calls = stubCities([SEOUL], [{ name: '세종대로', type: 'street', city: 'Séoul', country: 'Corée du Sud' }]);
+    it('names the city at the position in both languages', async () => {
+        const calls = stubCities([], [SEOUL]);
         const place = await locatePlace(contextWith(new PlacesTable()), 37.57, 126.98, 'fr');
 
         expect(place).toEqual({ id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul', detail: 'Corée du Sud' });
-        expect(calls[0].pathname).toBe('/reverse');
-        expect(calls[1].searchParams.get('q')).toBe('Séoul');
-        expect(calls[1].searchParams.get('lat')).toBe('37.57');
+        expect(calls.every((call) => call.pathname === '/reverse' && call.searchParams.get('lat') === '37.57')).toBe(true);
     });
 
     it('answers 404 when the position is in no city', async () => {
-        stubCities([], [{ name: 'Mer Méditerranée', type: 'other' }]);
+        stubGeoapify(() => [{ name: 'Mer Méditerranée', result_type: 'other', lat: 40, lon: 5 }]);
 
         expect(await statusOf(locatePlace(contextWith(new PlacesTable()), 40, 5, 'fr'))).toBe(StatusCodes.NOT_FOUND);
+    });
+});
+
+describe('city identity', () => {
+    it('names a city by its position when Geoapify gives no OpenStreetMap identity', async () => {
+        stubGeoapify((url) => [{ name: url.searchParams.get('lang') === 'fr' ? 'Séoul' : 'Seoul', result_type: 'city', lat: 37.566667, lon: 126.978056 }]);
+
+        expect(await searchPlaces(contextWith(new PlacesTable()), 'seo', 'fr')).toEqual([{ id: 'G37.56667,126.97806', nameEn: 'Seoul', nameFr: 'Séoul', detail: '' }]);
     });
 });
 
@@ -154,8 +168,8 @@ describe('matchPlace', () => {
         expect(await matchPlace(context, 'Seo')).toBeNull();
     });
 
-    it('gives none when Photon can\'t be reached', async () => {
-        stubPhoton(() => [], 500);
+    it('gives none when Geoapify can\'t be reached', async () => {
+        stubGeoapify(() => [], 500);
 
         expect(await matchPlace(contextWith(new PlacesTable()), 'Séoul')).toBeNull();
     });

@@ -1,8 +1,8 @@
 import type { FastifyBaseLogger, FastifyRequest } from 'fastify';
 import { StatusCodes } from 'http-status-codes';
 import type { BudgetPlace, Prisma, PrismaClient } from 'prisma/generated/prisma/client';
-import type { Place, PlaceReference, PlacesLanguage } from 'src/modules/budget/places/places-models';
-import { PhotonPayloadSchema, PhotonPropertiesSchema } from 'src/modules/budget/places/places-models';
+import type { GeoapifyResult, Place, PlaceReference, PlacesLanguage } from 'src/modules/budget/places/places-models';
+import { GeoapifyPayloadSchema, GeoapifyResultSchema } from 'src/modules/budget/places/places-models';
 import type { Variables } from 'src/plugins/environment';
 import { ExpiringCache } from 'src/shared/expiring-cache';
 import type { Maybe, Perhaps } from 'src/shared/models';
@@ -14,7 +14,7 @@ import { RequestError } from 'src/shared/models';
  */
 export interface PlacesContext {
     prisma: PrismaClient; /*!< The database client, holding the cities already checked */
-    variables: Variables; /*!< The environment, holding Photon's address */
+    variables: Variables; /*!< The environment, holding Geoapify's address and key */
     logger: FastifyBaseLogger; /*!< The request logger */
 }
 
@@ -79,7 +79,7 @@ export function placeNameOf(place: Maybe<BudgetPlace>, language: PlacesLanguage)
 
 /**
  * @interface CityName
- * @description A city as Photon names it in one language.
+ * @description A city as Geoapify names it in one language.
  */
 interface CityName {
     name: string; /*!< Its name */
@@ -88,7 +88,7 @@ interface CityName {
 
 /**
  * @constant PLACES_TIMEOUT
- * @description How long to wait on Photon before calling it unavailable: a suggestion that comes late is no help.
+ * @description How long to wait on Geoapify before calling it unavailable: a suggestion that comes late is no help.
  */
 const PLACES_TIMEOUT = 5 * 1000;
 
@@ -113,7 +113,7 @@ const positions = new ExpiringCache<Maybe<Place>>(24 * 60 * 60 * 1000, 200);
 /**
  * @constant served
  * @description The cities the server suggested lately, by identity: an operation naming one of them is taken as checked,
- * without asking Photon again.
+ * without asking Geoapify again.
  */
 const served = new ExpiringCache<PlaceReference>(7 * 24 * 60 * 60 * 1000, 5000);
 
@@ -141,20 +141,29 @@ export function foldName(name: string): string {
 
 /**
  * @function ask
- * @description Asks Photon, a key-free geocoder built on OpenStreetMap, one question. The server asks it, so it never
- * learns who asks.
+ * @description Asks Geoapify, a geocoder built on OpenStreetMap, one question, in JSON, for cities only. The server asks
+ * it with its own key, so it never learns who asks.
  *
  * @param {PlacesContext} context What it works with.
- * @param {string} path The endpoint, from Photon's address.
+ * @param {string} path The endpoint, from Geoapify's address.
  * @param {Record<string, string>} query Its parameters.
  *
- * @returns {Promise<unknown[]>} What Photon says of each place found. Rejects with 503 when it can't help.
+ * @returns {Promise<unknown[]>} What Geoapify says of each place found. Rejects with 503 when it can't help.
  */
 async function ask(context: PlacesContext, path: string, query: Record<string, string>): Promise<unknown[]> {
+    const key = context.variables.GEOAPIFY_API_KEY;
+
+    if (key === '') {
+        context.logger.error({ path }, 'Places provider has no key');
+
+        throw new RequestError(StatusCodes.SERVICE_UNAVAILABLE, 'Places are unavailable');
+    }
+
+    const parameters = new URLSearchParams({ ...query, type: 'city', format: 'json', apiKey: key });
     let response: Response;
 
     try {
-        response = await fetch(`${context.variables.BUDGET_PLACES_URL}${path}?${new URLSearchParams(query).toString()}`, {
+        response = await fetch(`${context.variables.BUDGET_PLACES_URL}${path}?${parameters.toString()}`, {
             headers: { Accept: 'application/json' },
             signal: AbortSignal.timeout(PLACES_TIMEOUT)
         });
@@ -170,7 +179,7 @@ async function ask(context: PlacesContext, path: string, query: Record<string, s
         throw new RequestError(StatusCodes.SERVICE_UNAVAILABLE, 'Places are unavailable');
     }
 
-    const parsed = PhotonPayloadSchema.safeParse(await response.json().catch(() => null));
+    const parsed = GeoapifyPayloadSchema.safeParse(await response.json().catch(() => null));
 
     if (!parsed.success) {
         context.logger.error({ issues: parsed.error.issues, path }, 'Places provider answered in an unexpected shape');
@@ -178,7 +187,7 @@ async function ask(context: PlacesContext, path: string, query: Record<string, s
         throw new RequestError(StatusCodes.SERVICE_UNAVAILABLE, 'Places are unavailable');
     }
 
-    return parsed.data.features.map((feature) => feature.properties);
+    return parsed.data.results;
 }
 
 /**
@@ -198,11 +207,45 @@ function detailOf(name: string, state: Perhaps<string>, country: Perhaps<string>
 }
 
 /**
- * @function citiesOf
- * @description The cities among the places Photon found, by identity, in the order it ranks them. A place without an
- * identity or a name is left out.
+ * @function placeIdOf
+ * @description A city's identity: its OpenStreetMap kind and number when Geoapify gives them, else its position to five
+ * decimals, which is the same whichever language it is named in.
  *
- * @param {unknown[]} found What Photon says of each place.
+ * @param {GeoapifyResult} result What Geoapify says of the city.
+ *
+ * @returns {string} Its identity, such as `R71525` or `G37.56667,126.97806`.
+ */
+function placeIdOf(result: GeoapifyResult): string {
+    const raw = result.datasource?.raw;
+    const kind = raw?.osm_type?.slice(0, 1).toUpperCase();
+
+    if (kind !== undefined && ['N', 'W', 'R'].includes(kind) && raw?.osm_id !== undefined) {
+        return `${kind}${Math.abs(raw.osm_id)}`;
+    }
+
+    return `G${result.lat.toFixed(5)},${result.lon.toFixed(5)}`;
+}
+
+/**
+ * @function cityNameOf
+ * @description The name of a city Geoapify found: its name, else the city it says it is.
+ *
+ * @param {GeoapifyResult} result What Geoapify says of the city.
+ *
+ * @returns {Maybe<string>} Its name, or null when it has none.
+ */
+function cityNameOf(result: GeoapifyResult): Maybe<string> {
+    const name = result.name ?? result.city;
+
+    return name === undefined || name.trim() === '' ? null : name;
+}
+
+/**
+ * @function citiesOf
+ * @description The cities among the places Geoapify found, by identity, in the order it ranks them. A place of another
+ * kind, or without a name, is left out.
+ *
+ * @param {unknown[]} found What Geoapify says of each place.
  *
  * @returns {Map<string, CityName>} The cities.
  */
@@ -210,22 +253,17 @@ function citiesOf(found: unknown[]): Map<string, CityName> {
     const cities = new Map<string, CityName>();
 
     for (const candidate of found) {
-        const properties = PhotonPropertiesSchema.safeParse(candidate);
+        const result = GeoapifyResultSchema.safeParse(candidate);
 
-        if (!properties.success) {
+        if (!result.success || (result.data.result_type !== undefined && result.data.result_type !== 'city')) {
             continue;
         }
 
-        const { osm_type: kind, osm_id: number, name, state, country } = properties.data;
+        const name = cityNameOf(result.data);
+        const id = placeIdOf(result.data);
 
-        if (kind === undefined || number === undefined || name === undefined || name === '') {
-            continue;
-        }
-
-        const id = `${kind}${number}`;
-
-        if (!cities.has(id)) {
-            cities.set(id, { name, detail: detailOf(name, state, country) });
+        if (name !== null && !cities.has(id)) {
+            cities.set(id, { name, detail: detailOf(name, result.data.state, result.data.country) });
         }
     }
 
@@ -234,18 +272,18 @@ function citiesOf(found: unknown[]): Map<string, CityName> {
 
 /**
  * @function findCities
- * @description Asks Photon for cities, towns and villages in both of the portal's languages at once, so each comes
+ * @description Asks Geoapify for cities, towns and villages in both of the portal's languages at once, so each comes
  * named in both, its region and country in the language asked, each name and detail only once.
  *
  * @param {PlacesContext} context What it works with.
+ * @param {string} path The endpoint: `/autocomplete` for a name, `/reverse` for a position.
  * @param {Record<string, string>} query What to ask, the language aside.
  * @param {PlacesLanguage} language The language of the details, whose ranking is kept.
  *
  * @returns {Promise<Place[]>} The cities, the likeliest first.
  */
-async function findCities(context: PlacesContext, query: Record<string, string>, language: PlacesLanguage): Promise<Place[]> {
-    const asked = { ...query, layer: 'city' };
-    const [english, french] = await Promise.all([ask(context, '/api', { ...asked, lang: 'en' }), ask(context, '/api', { ...asked, lang: 'fr' })]);
+async function findCities(context: PlacesContext, path: string, query: Record<string, string>, language: PlacesLanguage): Promise<Place[]> {
+    const [english, french] = await Promise.all([ask(context, path, { ...query, lang: 'en' }), ask(context, path, { ...query, lang: 'fr' })]);
     const named = { en: citiesOf(english), fr: citiesOf(french) };
     const places: Place[] = [];
     const seen = new Set<string>();
@@ -283,7 +321,7 @@ export async function searchPlaces(context: PlacesContext, query: string, langua
         return cached;
     }
 
-    const places = (await findCities(context, { q: query, limit: String(SEARCH_RESULTS * 2) }, language)).slice(0, SEARCH_RESULTS);
+    const places = (await findCities(context, '/autocomplete', { text: query, limit: String(SEARCH_RESULTS * 2) }, language)).slice(0, SEARCH_RESULTS);
 
     searches.set(key, places);
 
@@ -291,30 +329,8 @@ export async function searchPlaces(context: PlacesContext, query: string, langua
 }
 
 /**
- * @function cityNameOf
- * @description The name of the city a place found near a position lies in: the place itself when it is a city, else the
- * city it names, as a street or a building does.
- *
- * @param {unknown} candidate What Photon says of the place.
- *
- * @returns {Maybe<string>} The city's name, or null when it names none.
- */
-function cityNameOf(candidate: unknown): Maybe<string> {
-    const properties = PhotonPropertiesSchema.safeParse(candidate);
-
-    if (!properties.success) {
-        return null;
-    }
-
-    const name = properties.data.type === 'city' ? properties.data.name : properties.data.city;
-
-    return name === undefined || name === '' ? null : name;
-}
-
-/**
  * @function locatePlace
- * @description Finds the city at a position: the place nearest to it is a street or a building, which names the city it
- * is in, or the city itself; that name is then looked up around the position, for the city's identity and its names.
+ * @description Finds the city at a position, named in both languages.
  *
  * @param {PlacesContext} context What it works with.
  * @param {number} latitude The latitude, already rounded.
@@ -328,12 +344,9 @@ export async function locatePlace(context: PlacesContext, latitude: number, long
     let place = positions.get(key);
 
     if (place === undefined) {
-        const position = { lat: String(latitude), lon: String(longitude) };
-        const name = cityNameOf((await ask(context, '/reverse', { ...position, lang: language, limit: '1' }))[0]);
-        const cities = name === null ? [] : await findCities(context, { ...position, q: name, limit: '5' }, language);
-        const named = (city: Place): string => (language === 'fr' ? city.nameFr : city.nameEn);
+        const cities = await findCities(context, '/reverse', { lat: String(latitude), lon: String(longitude), limit: '1' }, language);
 
-        place = cities.find((city) => name !== null && foldName(named(city)) === foldName(name)) ?? cities[0] ?? null;
+        place = cities[0] ?? null;
         positions.set(key, place);
     }
 
@@ -362,7 +375,7 @@ async function keepPlace(prisma: PrismaClient, place: PlaceReference): Promise<P
 /**
  * @function checkPlace
  * @description Checks the city an operation names: one already stored, or one the server suggested lately, or else one
- * Photon finds again under the name the operation gives it. Its names always come from the server, never from the request.
+ * Geoapify finds again under the name the operation gives it. Its names always come from the server, never from the request.
  *
  * @param {PlacesContext} context What it works with.
  * @param {string} id The city's identity.
@@ -384,7 +397,7 @@ export async function checkPlace(context: PlacesContext, id: string, hint: Maybe
     }
 
     const query = hint?.trim() ?? '';
-    const found = query === '' ? [] : await findCities(context, { q: query, limit: '12' }, 'fr');
+    const found = query === '' ? [] : await findCities(context, '/autocomplete', { text: query, limit: '12' }, 'fr');
     const match = found.find((city) => city.id === id);
 
     if (match === undefined) {
@@ -396,7 +409,7 @@ export async function checkPlace(context: PlacesContext, id: string, hint: Maybe
 
 /**
  * @function matchPlace
- * @description The city a place written by hand names, as findPlaceNamed finds it; none when Photon can't be reached.
+ * @description The city a place written by hand names, as findPlaceNamed finds it; none when Geoapify can't be reached.
  *
  * @param {PlacesContext} context What it works with.
  * @param {string} text The place, as written.
@@ -409,13 +422,13 @@ export async function matchPlace(context: PlacesContext, text: string): Promise<
 
 /**
  * @function findPlaceNamed
- * @description The city a place written by hand names, when Photon knows a city of exactly that name in either language,
+ * @description The city a place written by hand names, when Geoapify knows a city of exactly that name in either language,
  * accents and case aside. The likeliest such city is taken; none when there is no such city.
  *
  * @param {PlacesContext} context What it works with.
  * @param {string} text The place, as written.
  *
- * @returns {Promise<Maybe<PlaceReference>>} The city, stored, or null; rejects when Photon can't be reached.
+ * @returns {Promise<Maybe<PlaceReference>>} The city, stored, or null; rejects when Geoapify can't be reached.
  */
 export async function findPlaceNamed(context: PlacesContext, text: string): Promise<Maybe<PlaceReference>> {
     const folded = foldName(text);
@@ -424,7 +437,7 @@ export async function findPlaceNamed(context: PlacesContext, text: string): Prom
         return null;
     }
 
-    const found = await findCities(context, { q: text.trim(), limit: '12' }, 'fr');
+    const found = await findCities(context, '/autocomplete', { text: text.trim(), limit: '12' }, 'fr');
     const match = found.find((city) => foldName(city.nameFr) === folded || foldName(city.nameEn) === folded);
 
     return match === undefined ? null : await keepPlace(context.prisma, { id: match.id, nameEn: match.nameEn, nameFr: match.nameFr });

@@ -6,7 +6,7 @@ import { PlacesLocateQuerySchema, PlacesSearchQuerySchema } from 'src/modules/bu
 /**
  * @function placesRoutes
  * @description Defines the places routes of the budget: the cities matching what is typed, and the city at a position,
- * which the operation editor suggests. They come from Photon, which the server asks so it never learns who asks.
+ * which the operation editor suggests. They come from Geoapify, which the server asks so it never learns who asks.
  */
 export default function (fastify: FastifyInstance): void {
     fastify.get<PlacesSearchRequest>('/search', {

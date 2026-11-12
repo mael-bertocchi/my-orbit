@@ -142,7 +142,7 @@ private final class PositionFinder: NSObject, CLLocationManagerDelegate {
 /**
  * @class Places
  * @description The cities the operation editor suggests: those the server finds for what is typed, and the one the device
- * is in. The server asks Photon, so Photon never learns who asks
+ * is in. The server asks Geoapify, so Geoapify never learns who asks
  */
 @MainActor
 @Observable

@@ -34,33 +34,35 @@ export const PlacesLocateQuerySchema = z.object({
 });
 
 /**
- * @constant PhotonPropertiesSchema
- * @description Zod schema for what Photon says of a place: its OpenStreetMap identity, its name, its kind, and the city,
- * region and country it lies in.
+ * @constant GeoapifyResultSchema
+ * @description Zod schema for what Geoapify says of a city: its OpenStreetMap identity when it gives it, its position,
+ * its name, its kind, and the region and country it lies in.
  */
-export const PhotonPropertiesSchema = z.object({
-    osm_type: z.string().optional(),
-    osm_id: z.number().int().optional(),
+export const GeoapifyResultSchema = z.object({
     name: z.string().optional(),
-    type: z.string().optional(),
     city: z.string().optional(),
     state: z.string().optional(),
-    country: z.string().optional()
+    country: z.string().optional(),
+    result_type: z.string().optional(),
+    lat: z.number().finite(),
+    lon: z.number().finite(),
+    datasource: z.object({ raw: z.object({ osm_type: z.string().optional(), osm_id: z.number().int().optional() }).optional() }).optional()
 });
 
 /**
- * @constant PhotonPayloadSchema
- * @description Zod schema for Photon's answer, a GeoJSON collection of places, read loosely: each place is checked on its own.
+ * @constant GeoapifyPayloadSchema
+ * @description Zod schema for Geoapify's answer, a list of places, read loosely: each place is checked on its own.
  */
-export const PhotonPayloadSchema = z.object({
-    features: z.array(z.object({ properties: z.unknown() }))
+export const GeoapifyPayloadSchema = z.object({
+    results: z.array(z.unknown())
 });
 
 /**
  * @constant PlaceIdSchema
- * @description Zod schema for a city's identity: its OpenStreetMap kind (N, W or R) and number, such as `R71525`.
+ * @description Zod schema for a city's identity: its OpenStreetMap kind (N, W or R) and number, such as `R71525`, or,
+ * when the geocoder doesn't give it, G and its position to five decimals, such as `G37.56667,126.97806`.
  */
-export const PlaceIdSchema = z.string().regex(/^[NWR]\d{1,15}$/);
+export const PlaceIdSchema = z.string().regex(/^([NWR]\d{1,15}|G-?\d{1,3}\.\d{5},-?\d{1,3}\.\d{5})$/);
 
 /**
  * @constant PlaceReferenceSchema
@@ -78,7 +80,7 @@ export const PlaceReferenceSchema = z.object({
  * @description The city an operation took place in, named in each of the portal's languages.
  */
 export interface PlaceReference {
-    id: string; /*!< Its OpenStreetMap identity, such as `R71525` */
+    id: string; /*!< Its identity, such as `R71525` */
     nameEn: string; /*!< Its name in English */
     nameFr: string; /*!< Its name in French */
 }
@@ -118,7 +120,7 @@ export interface PlacesLocateRequest extends RequestGenericInterface {
 export type PlacesLanguage = z.infer<typeof PlacesLanguageSchema>;
 
 /**
- * @type PhotonProperties
- * @description Inferred type for what Photon says of a place.
+ * @type GeoapifyResult
+ * @description Inferred type for what Geoapify says of a city.
  */
-export type PhotonProperties = z.infer<typeof PhotonPropertiesSchema>;
+export type GeoapifyResult = z.infer<typeof GeoapifyResultSchema>;

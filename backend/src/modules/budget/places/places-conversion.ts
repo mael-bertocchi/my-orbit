@@ -5,7 +5,7 @@ import { OWNER_ID } from 'src/plugins/identity';
 
 /**
  * @constant CONVERSION_PAUSE
- * @description How long to wait between two places looked up, in milliseconds, so Photon, a free public service that
+ * @description How long to wait between two places looked up, in milliseconds, so Geoapify, a free public service that
  * turns away the servers asking it too much, is never asked in a burst.
  */
 const CONVERSION_PAUSE = 2 * 1000;
@@ -63,14 +63,14 @@ async function isConverted(context: PlacesContext): Promise<boolean> {
 /**
  * @function convertWrittenPlaces
  * @description Gives a city to the operations, and the recurring ones, whose place was written by hand before cities were
- * checked, when that place names a city Photon knows, one place at a time. It runs once: when every place was looked up,
- * the budget remembers it, and a place naming no city keeps its text for good. When Photon can't be reached, it stops at
+ * checked, when that place names a city Geoapify knows, one place at a time. It runs once: when every place was looked up,
+ * the budget remembers it, and a place naming no city keeps its text for good. When Geoapify can't be reached, it stops at
  * once rather than insist, and starts over at the next start. The revision moves on once anything changed, so the apps
  * read the cities. Run as the server starts, it never stops it: a failure is only logged.
  *
  * @param {PlacesContext} context What it works with.
  *
- * @returns {Promise<void>} Resolves once every place was tried, or Photon couldn't be reached.
+ * @returns {Promise<void>} Resolves once every place was tried, or Geoapify couldn't be reached.
  */
 export async function convertWrittenPlaces(context: PlacesContext): Promise<void> {
     try {

@@ -23,6 +23,7 @@ export function testVariables(overrides: Partial<Variables> = {}): Variables {
         WATCHLIST_TMDB_TOKEN: 'a-test-tmdb-token',
         WATCHLIST_TMDB_URL: 'https://tmdb.example.fr/3',
         BUDGET_PLACES_URL: 'https://places.example.fr',
+        GEOAPIFY_API_KEY: 'a-test-places-key',
         ...overrides
     };
 }

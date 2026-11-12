@@ -11,8 +11,8 @@ import type { Maybe } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { PhotonCity } from '../../../support/photon';
-import { stubCities } from '../../../support/photon';
+import type { GeoapifyCity } from '../../../support/geoapify';
+import { stubCities } from '../../../support/geoapify';
 import { standIn } from '../../../support/stand-in';
 import { testVariables } from '../../../support/variables';
 
@@ -157,9 +157,9 @@ const newOperation = {
 
 /**
  * @constant GENEVA
- * @description The city the stand-in Photon finds
+ * @description The city the stand-in Geoapify finds
  */
-const GENEVA: PhotonCity = { id: 'R1685488', en: 'Geneva', fr: 'Genève', country: 'Suisse' };
+const GENEVA: GeoapifyCity = { id: 'R1685488', en: 'Geneva', fr: 'Genève', country: 'Suisse' };
 
 beforeEach(() => {
     forgetPlaces();

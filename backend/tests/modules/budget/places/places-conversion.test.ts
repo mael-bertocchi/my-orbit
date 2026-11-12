@@ -6,7 +6,7 @@ import type { Maybe } from 'src/shared/models';
 import type { Mock } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { stubCities, stubPhoton } from '../../../support/photon';
+import { stubCities, stubGeoapify } from '../../../support/geoapify';
 import { standIn } from '../../../support/stand-in';
 import { testVariables } from '../../../support/variables';
 
@@ -90,7 +90,7 @@ describe('convertWrittenPlaces', () => {
     });
 
     it('does nothing once the places were all looked up', async () => {
-        const calls = stubPhoton(() => []);
+        const calls = stubGeoapify(() => []);
         const { prisma, updateOperations, upsertState } = conversionFixture(new Date());
 
         await runConversion(prisma);
@@ -100,8 +100,8 @@ describe('convertWrittenPlaces', () => {
         expect(upsertState).not.toHaveBeenCalled();
     });
 
-    it('stops at the first place when Photon turns it away, and tries again later', async () => {
-        const calls = stubPhoton(() => [], 503);
+    it('stops at the first place when Geoapify turns it away, and tries again later', async () => {
+        const calls = stubGeoapify(() => [], 503);
         const { prisma, updateOperations, upsertState } = conversionFixture(null);
 
         await runConversion(prisma);

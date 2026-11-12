@@ -8,50 +8,33 @@ import type { IdentityService } from 'src/plugins/identity';
 import { RequestError } from 'src/shared/models';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { GeoapifyCity } from '../../../support/geoapify';
+import { stubCities } from '../../../support/geoapify';
 import { standIn } from '../../../support/stand-in';
 import { testVariables } from '../../../support/variables';
 
 /**
- * @function stubStreet
- * @description Replaces `fetch` with a Photon stand-in finding a street of Paris near any position, and Paris itself
- * for any search, and records the addresses asked.
- *
- * @returns {URL[]} The addresses asked.
+ * @constant PARIS
+ * @description The city the Geoapify stand-in finds, near any position and for any search
  */
-function stubStreet(): URL[] {
-    const calls: URL[] = [];
-
-    vi.stubGlobal('fetch', vi.fn((input: string) => {
-        const url = new URL(input);
-
-        calls.push(url);
-
-        const street = { name: 'Rue de Rivoli', type: 'street', city: 'Paris', country: 'France' };
-        const city = { osm_type: 'R', osm_id: 71525, name: 'Paris', type: 'city', country: 'France' };
-        const body = { features: [{ properties: url.pathname.endsWith('/reverse') ? street : city }] };
-
-        return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
-    }));
-
-    return calls;
-}
+const PARIS: GeoapifyCity = { id: 'R71525', en: 'Paris', fr: 'Paris', country: 'France' };
 
 /**
  * @interface TestApp
- * @description A server carrying the places routes, and the addresses its Photon stand-in was asked.
+ * @description A server carrying the places routes, and the addresses its Geoapify stand-in was asked.
  */
 interface TestApp {
     app: FastifyInstance; /*!< The server */
-    calls: URL[]; /*!< The addresses asked of Photon */
+    calls: URL[]; /*!< The addresses asked of Geoapify */
 }
 
 /**
  * @function buildApp
  * @description Builds an instance carrying just what the places routes depend on, answering errors as the server does,
- * with a Photon stand-in finding Paris.
+ * with a Geoapify stand-in finding Paris.
  */
 async function buildApp(authenticate: () => Promise<void> = () => Promise.resolve()): Promise<TestApp> {
-    const calls = stubStreet();
+    const calls = stubCities([PARIS], [PARIS]);
     const app = Fastify();
 
     app.setValidatorCompiler(validatorCompiler);
