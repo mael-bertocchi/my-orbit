@@ -1,6 +1,8 @@
 import { StatusCodes } from 'http-status-codes';
-import type { BudgetOperation, Prisma, PrismaClient } from 'prisma/generated/prisma/client';
+import type { Prisma, PrismaClient } from 'prisma/generated/prisma/client';
 import type { Operation, OperationCreate, OperationUpdate, TrashedOperation } from 'src/modules/budget/operations/operations-models';
+import type { OperationRow } from 'src/modules/budget/places/places-service';
+import { placeReferenceOf, WITH_PLACE } from 'src/modules/budget/places/places-service';
 import { bumpRevision } from 'src/modules/budget/state/state-service';
 import type { Maybe } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
@@ -9,11 +11,11 @@ import { RequestError } from 'src/shared/models';
  * @function operationOf
  * @description An operation as the routes send it, from its stored row.
  *
- * @param {BudgetOperation} row The stored row.
+ * @param {OperationRow} row The stored row.
  *
  * @returns {Operation} The operation.
  */
-export function operationOf(row: BudgetOperation): Operation {
+export function operationOf(row: OperationRow): Operation {
     return {
         id: row.id,
         date: row.date,
@@ -21,6 +23,8 @@ export function operationOf(row: BudgetOperation): Operation {
         description: row.description,
         categoryId: row.categoryId,
         location: row.location,
+        placeId: row.placeId,
+        place: placeReferenceOf(row.place),
         amount: row.amount,
         currencyCode: row.currencyCode,
         rateToEuro: row.rateToEuro,
@@ -34,12 +38,12 @@ export function operationOf(row: BudgetOperation): Operation {
  * @function trashedOf
  * @description An operation in the trash as the routes send it, from its stored row.
  *
- * @param {BudgetOperation} row The stored row, deleted.
+ * @param {OperationRow} row The stored row, deleted.
  * @param {Date} deletedAt When it was deleted.
  *
  * @returns {TrashedOperation} The operation and when it was deleted.
  */
-function trashedOf(row: BudgetOperation, deletedAt: Date): TrashedOperation {
+function trashedOf(row: OperationRow, deletedAt: Date): TrashedOperation {
     return { ...operationOf(row), deletedAt };
 }
 
@@ -50,10 +54,10 @@ function trashedOf(row: BudgetOperation, deletedAt: Date): TrashedOperation {
  * @param {Prisma.TransactionClient} transaction The open transaction.
  * @param {string} id The operation's id.
  *
- * @returns {Promise<Maybe<BudgetOperation>>} Its row, or null when there is none.
+ * @returns {Promise<Maybe<OperationRow>>} Its row, or null when there is none.
  */
-async function findOperation(transaction: Prisma.TransactionClient, id: string): Promise<Maybe<BudgetOperation>> {
-    return await transaction.budgetOperation.findUnique({ where: { id } });
+async function findOperation(transaction: Prisma.TransactionClient, id: string): Promise<Maybe<OperationRow>> {
+    return await transaction.budgetOperation.findUnique({ where: { id }, include: WITH_PLACE });
 }
 
 /**
@@ -65,7 +69,7 @@ async function findOperation(transaction: Prisma.TransactionClient, id: string):
  * @returns {Promise<TrashedOperation[]>} The deleted operations.
  */
 export async function listTrash(prisma: PrismaClient): Promise<TrashedOperation[]> {
-    const rows = await prisma.budgetOperation.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' } });
+    const rows = await prisma.budgetOperation.findMany({ where: { deletedAt: { not: null } }, orderBy: { deletedAt: 'desc' }, include: WITH_PLACE });
 
     return rows.flatMap((row) => (row.deletedAt === null ? [] : [trashedOf(row, row.deletedAt)]));
 }
@@ -87,7 +91,8 @@ export async function createOperation(prisma: PrismaClient, body: OperationCreat
         }
 
         const row = await transaction.budgetOperation.create({
-            data: { ...body, description: body.description ?? null, location: body.location ?? null }
+            data: { ...body, description: body.description ?? null, location: body.location ?? null, placeId: body.placeId ?? null },
+            include: WITH_PLACE
         });
 
         await bumpRevision(transaction);
@@ -115,7 +120,7 @@ export async function updateOperation(prisma: PrismaClient, id: string, body: Op
             throw new RequestError(StatusCodes.NOT_FOUND, 'Unknown operation');
         }
 
-        const row = await transaction.budgetOperation.update({ where: { id }, data: body });
+        const row = await transaction.budgetOperation.update({ where: { id }, data: body, include: WITH_PLACE });
 
         await bumpRevision(transaction);
 
@@ -172,7 +177,7 @@ export async function restoreOperation(prisma: PrismaClient, id: string): Promis
             return operationOf(existing);
         }
 
-        const row = await transaction.budgetOperation.update({ where: { id }, data: { deletedAt: null } });
+        const row = await transaction.budgetOperation.update({ where: { id }, data: { deletedAt: null }, include: WITH_PLACE });
 
         await bumpRevision(transaction);
 

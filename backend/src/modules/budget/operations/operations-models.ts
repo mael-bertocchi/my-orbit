@@ -6,9 +6,9 @@ import { z } from 'zod';
 /**
  * @constant OperationCreateSchema
  * @description Zod schema for logging an operation. The client mints its id, so a retried creation names the same one;
- * the server owns the update stamp, and links an operation to the recurring one it is an occurrence of.
+ * the server owns the update stamp, links an operation to the recurring one it is an occurrence of, and names its city.
  */
-export const OperationCreateSchema = OperationSchema.omit({ updatedAt: true, recurringId: true });
+export const OperationCreateSchema = OperationSchema.omit({ updatedAt: true, recurringId: true, place: true });
 
 /**
  * @constant OperationUpdateSchema

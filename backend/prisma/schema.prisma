@@ -51,46 +51,63 @@ model BudgetCategory {
 }
 
 model BudgetOperation {
-  id           String    @id
+  id           String       @id
   date         DateTime
   name         String
   description  String?
-  categoryId   String    @map("category_id")
+  categoryId   String       @map("category_id")
   location     String?
+  placeId      String?      @map("place_id")
+  place        BudgetPlace? @relation(fields: [placeId], references: [id])
   amount       Float
-  currencyCode String    @default("EUR") @map("currency_code")
-  rateToEuro   Float     @default(1) @map("rate_to_euro")
-  isOnline     Boolean   @default(false) @map("is_online")
-  recurringId  String?   @map("recurring_id")
-  deletedAt    DateTime? @map("deleted_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  currencyCode String       @default("EUR") @map("currency_code")
+  rateToEuro   Float        @default(1) @map("rate_to_euro")
+  isOnline     Boolean      @default(false) @map("is_online")
+  recurringId  String?      @map("recurring_id")
+  deletedAt    DateTime?    @map("deleted_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
 
   @@index([date])
   @@index([categoryId])
   @@index([deletedAt])
   @@index([recurringId])
+  @@index([placeId])
   @@map("budget_operations")
 }
 
 model BudgetRecurringOperation {
-  id               String   @id
+  id               String       @id
   name             String
   description      String?
-  categoryId       String   @map("category_id")
+  categoryId       String       @map("category_id")
   location         String?
+  placeId          String?      @map("place_id")
+  place            BudgetPlace? @relation(fields: [placeId], references: [id])
   amount           Float
-  currencyCode     String   @default("EUR") @map("currency_code")
-  isOnline         Boolean  @default(false) @map("is_online")
-  firstDate        String   @map("first_date")
-  intervalMonths   Int      @default(1) @map("interval_months")
-  endDate          String?  @map("end_date")
-  isPaused         Boolean  @default(false) @map("is_paused")
-  generatedThrough String?  @map("generated_through")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  currencyCode     String       @default("EUR") @map("currency_code")
+  isOnline         Boolean      @default(false) @map("is_online")
+  firstDate        String       @map("first_date")
+  intervalMonths   Int          @default(1) @map("interval_months")
+  endDate          String?      @map("end_date")
+  isPaused         Boolean      @default(false) @map("is_paused")
+  generatedThrough String?      @map("generated_through")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
 
   @@map("budget_recurring_operations")
+}
+
+model BudgetPlace {
+  id         String                     @id
+  nameEn     String                     @map("name_en")
+  nameFr     String                     @map("name_fr")
+  createdAt  DateTime                   @default(now()) @map("created_at")
+  updatedAt  DateTime                   @updatedAt @map("updated_at")
+  operations BudgetOperation[]
+  recurring  BudgetRecurringOperation[]
+
+  @@map("budget_places")
 }
 
 model BudgetHistory {

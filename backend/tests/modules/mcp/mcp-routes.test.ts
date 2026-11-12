@@ -43,7 +43,7 @@ interface RpcAnswer {
 async function buildApp(): Promise<TestApp> {
     const operations = {
         findUnique: vi.fn(() => Promise.resolve(null)),
-        create: vi.fn(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ ...data, deletedAt: null, updatedAt: new Date() })),
+        create: vi.fn(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ ...data, place: null, deletedAt: null, updatedAt: new Date() })),
         update: vi.fn()
     };
     const prisma = {

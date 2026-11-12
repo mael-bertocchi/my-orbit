@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { hasZodFastifySchemaValidationErrors, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { StatusCodes } from 'http-status-codes';
 import type { PrismaClient } from 'prisma/generated/prisma/client';
+import type { PlaceReference } from 'src/modules/budget/places/places-models';
 import recurringRoutes from 'src/modules/budget/recurring/recurring-routes';
 import type { IdentityService } from 'src/plugins/identity';
 import type { Maybe } from 'src/shared/models';
@@ -27,6 +28,8 @@ interface RecurringRow {
     description: Maybe<string>; /*!< Its note */
     categoryId: string; /*!< Its category */
     location: Maybe<string>; /*!< Where it is paid */
+    placeId: Maybe<string>; /*!< The city it is paid in */
+    place: Maybe<PlaceReference>; /*!< That city, named in each language */
     amount: number; /*!< How much, in its currency */
     currencyCode: string; /*!< Its currency */
     isOnline: boolean; /*!< Whether it is paid online */
@@ -55,7 +58,7 @@ interface OperationRow {
  * @description A monthly rent, logged through October
  */
 function rentRow(): RecurringRow {
-    return { id: RENT_ID, name: 'Loyer', description: null, categoryId: 'housing', location: null, amount: 900, currencyCode: 'EUR', isOnline: true, firstDate: '2026-09-05', intervalMonths: 1, endDate: null, isPaused: false, generatedThrough: '2026-10-05', createdAt: new Date('2026-09-01T00:00:00Z'), updatedAt: new Date('2026-09-01T00:00:00Z') };
+    return { id: RENT_ID, name: 'Loyer', description: null, categoryId: 'housing', location: null, placeId: null, place: null, amount: 900, currencyCode: 'EUR', isOnline: true, firstDate: '2026-09-05', intervalMonths: 1, endDate: null, isPaused: false, generatedThrough: '2026-10-05', createdAt: new Date('2026-09-01T00:00:00Z'), updatedAt: new Date('2026-09-01T00:00:00Z') };
 }
 
 /**
@@ -69,8 +72,8 @@ class Database {
     budgetRecurringOperation = {
         findMany: vi.fn(() => Promise.resolve(this.recurring)),
         findUnique: vi.fn(({ where }: { where: { id: string } }) => Promise.resolve(this.recurring.find((row) => row.id === where.id) ?? null)),
-        create: vi.fn(({ data }: { data: Omit<RecurringRow, 'generatedThrough' | 'createdAt' | 'updatedAt'> }) => {
-            const row: RecurringRow = { ...data, generatedThrough: null, createdAt: new Date(), updatedAt: new Date() };
+        create: vi.fn(({ data }: { data: Omit<RecurringRow, 'generatedThrough' | 'createdAt' | 'updatedAt' | 'place'> }) => {
+            const row: RecurringRow = { ...data, place: null, generatedThrough: null, createdAt: new Date(), updatedAt: new Date() };
 
             this.recurring.push(row);
 
@@ -197,7 +200,7 @@ describe('GET /v1/budget/recurring', () => {
         expect(first.statusCode).toBe(StatusCodes.OK);
         expect(first.json<{ data: { id: string; nextDate: string }[] }>().data).toMatchObject([{ id: RENT_ID, nextDate: '2026-12-05' }]);
         expect(second.statusCode).toBe(StatusCodes.OK);
-        expect(database.operations).toEqual([{ id: `${RENT_ID}-20261105`, date: new Date('2026-11-05T12:00:00.000Z'), name: 'Loyer', description: null, categoryId: 'housing', location: null, amount: 900, currencyCode: 'EUR', rateToEuro: 1, isOnline: true, recurringId: RENT_ID }]);
+        expect(database.operations).toEqual([{ id: `${RENT_ID}-20261105`, date: new Date('2026-11-05T12:00:00.000Z'), name: 'Loyer', description: null, categoryId: 'housing', location: null, placeId: null, amount: 900, currencyCode: 'EUR', rateToEuro: 1, isOnline: true, recurringId: RENT_ID }]);
         expect(database.recurring[0]?.generatedThrough).toBe('2026-11-05');
         expect(database.budgetState.upsert).toHaveBeenCalledOnce();
 

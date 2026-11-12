@@ -13,7 +13,8 @@ import { testVariables } from '../../../support/variables';
 
 /**
  * @function stubStreet
- * @description Replaces `fetch` with a Photon stand-in finding one street of Paris, and records the addresses asked.
+ * @description Replaces `fetch` with a Photon stand-in finding a street of Paris near any position, and Paris itself
+ * for any search, and records the addresses asked.
  *
  * @returns {URL[]} The addresses asked.
  */
@@ -21,9 +22,13 @@ function stubStreet(): URL[] {
     const calls: URL[] = [];
 
     vi.stubGlobal('fetch', vi.fn((input: string) => {
-        calls.push(new URL(input));
+        const url = new URL(input);
 
-        const body = { features: [{ properties: { name: 'Rue de Rivoli', type: 'street', city: 'Paris', country: 'France' } }] };
+        calls.push(url);
+
+        const street = { name: 'Rue de Rivoli', type: 'street', city: 'Paris', country: 'France' };
+        const city = { osm_type: 'R', osm_id: 71525, name: 'Paris', type: 'city', country: 'France' };
+        const body = { features: [{ properties: url.pathname.endsWith('/reverse') ? street : city }] };
 
         return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
     }));
@@ -43,7 +48,7 @@ interface TestApp {
 /**
  * @function buildApp
  * @description Builds an instance carrying just what the places routes depend on, answering errors as the server does,
- * with a Photon stand-in finding one street of Paris.
+ * with a Photon stand-in finding Paris.
  */
 async function buildApp(authenticate: () => Promise<void> = () => Promise.resolve()): Promise<TestApp> {
     const calls = stubStreet();
@@ -91,10 +96,10 @@ afterEach(() => {
 describe('GET /v1/budget/places/search', () => {
     it('serves the cities inside the standard envelope', async () => {
         const { app } = await buildApp();
-        const response = await app.inject({ method: 'GET', url: '/v1/budget/places/search?query=riv' });
+        const response = await app.inject({ method: 'GET', url: '/v1/budget/places/search?query=par' });
 
         expect(response.statusCode).toBe(StatusCodes.OK);
-        expect(response.json<{ data: unknown[] }>().data).toEqual([{ name: 'Rue de Rivoli', detail: 'France' }]);
+        expect(response.json<{ data: unknown[] }>().data).toEqual([{ id: 'R71525', nameEn: 'Paris', nameFr: 'Paris', detail: 'France' }]);
 
         await app.close();
     });
@@ -126,7 +131,7 @@ describe('GET /v1/budget/places/locate', () => {
         const response = await app.inject({ method: 'GET', url: '/v1/budget/places/locate?latitude=48.856613&longitude=2.352222' });
 
         expect(response.statusCode).toBe(StatusCodes.OK);
-        expect(response.json<{ data: { name: string } }>().data.name).toBe('Paris');
+        expect(response.json<{ data: { nameFr: string } }>().data.nameFr).toBe('Paris');
         expect(calls[0].searchParams.get('lat')).toBe('48.86');
         expect(calls[0].searchParams.get('lon')).toBe('2.35');
 

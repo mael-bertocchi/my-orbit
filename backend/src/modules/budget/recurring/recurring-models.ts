@@ -1,4 +1,6 @@
 import type { RequestGenericInterface } from 'fastify';
+import type { PlaceReference } from 'src/modules/budget/places/places-models';
+import { PlaceIdSchema } from 'src/modules/budget/places/places-models';
 import { IsoDaySchema } from 'src/modules/budget/rates/rates-models';
 import { isRealDay } from 'src/modules/budget/recurring/recurring-schedule';
 import type { Maybe } from 'src/shared/models';
@@ -26,6 +28,7 @@ const RecurringFieldsSchema = z.object({
     description: z.string().trim().max(500).nullish(),
     categoryId: IdSchema,
     location: z.string().trim().max(200).nullish(),
+    placeId: PlaceIdSchema.nullish(),
     amount: z.number().positive().max(1_000_000_000),
     currencyCode: z.string().min(1).max(8),
     isOnline: z.boolean().default(false),
@@ -120,7 +123,9 @@ export interface RecurringOperation {
     name: string; /*!< The name each occurrence is logged under */
     description: Maybe<string>; /*!< A note each occurrence carries */
     categoryId: string; /*!< Its category */
-    location: Maybe<string>; /*!< Where it is paid */
+    location: Maybe<string>; /*!< Where it is paid, as written */
+    placeId: Maybe<string>; /*!< The city it is paid in, if checked */
+    place: Maybe<PlaceReference>; /*!< That city, named in each language */
     amount: number; /*!< The amount, in its currency */
     currencyCode: string; /*!< Its currency */
     isOnline: boolean; /*!< Whether it is paid online */

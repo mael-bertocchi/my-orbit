@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from 'prisma/generated/prisma/client';
+import { placeReferenceOf, WITH_PLACE } from 'src/modules/budget/places/places-service';
 import type { StoredStateBody } from 'src/modules/budget/state/state-models';
 import { StoredCategoryLimitsSchema } from 'src/modules/budget/state/state-models';
 import { OWNER_ID } from 'src/plugins/identity';
@@ -21,7 +22,7 @@ export const DEFAULT_MONTHLY_LIMIT = 3000;
 export async function pullState(prisma: PrismaClient): Promise<StoredStateBody> {
     const [categories, operations, history, state] = await Promise.all([
         prisma.budgetCategory.findMany({ orderBy: { position: 'asc' } }),
-        prisma.budgetOperation.findMany({ where: { deletedAt: null }, orderBy: { date: 'desc' } }),
+        prisma.budgetOperation.findMany({ where: { deletedAt: null }, orderBy: { date: 'desc' }, include: WITH_PLACE }),
         prisma.budgetHistory.findMany({ orderBy: { month: 'asc' } }),
         prisma.budgetState.findUnique({ where: { id: OWNER_ID } })
     ]);
@@ -41,6 +42,8 @@ export async function pullState(prisma: PrismaClient): Promise<StoredStateBody> 
             description: operation.description,
             categoryId: operation.categoryId,
             location: operation.location,
+            placeId: operation.placeId,
+            place: placeReferenceOf(operation.place),
             amount: operation.amount,
             currencyCode: operation.currencyCode,
             rateToEuro: operation.rateToEuro,

@@ -16,7 +16,7 @@ describe('pullState', () => {
 
         const state = await pullState(prisma);
 
-        expect(findMany.mock.calls[1]).toEqual([{ where: { deletedAt: null }, orderBy: { date: 'desc' } }]);
+        expect(findMany.mock.calls[1]).toEqual([{ where: { deletedAt: null }, orderBy: { date: 'desc' }, include: { place: true } }]);
         expect(state).toMatchObject({ budget: { monthlyLimit: 2500 }, revision: 7 });
     });
 });

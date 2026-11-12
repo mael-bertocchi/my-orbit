@@ -1,3 +1,4 @@
+import { PlaceIdSchema, PlaceReferenceSchema } from 'src/modules/budget/places/places-models';
 import { ColorSchema, IdSchema } from 'src/shared/schemas';
 import { z } from 'zod';
 
@@ -22,6 +23,8 @@ export const CategorySchema = z.object({
 /**
  * @constant OperationSchema
  * @description Zod schema for one logged operation. The client-supplied `updatedAt` is accepted but the server owns the persisted value.
+ * `placeId` names the city it took place in, which the server checks and sends back named in each language as `place`;
+ * `location` stays the place as written, for an operation logged before cities were checked.
  */
 export const OperationSchema = z.object({
     id: IdSchema,
@@ -30,6 +33,8 @@ export const OperationSchema = z.object({
     description: z.string().max(500).nullish(),
     categoryId: IdSchema,
     location: z.string().max(200).nullish(),
+    placeId: PlaceIdSchema.nullish(),
+    place: PlaceReferenceSchema.nullish(),
     amount: z.number().min(0).max(1_000_000_000),
     currencyCode: z.string().min(1).max(8),
     rateToEuro: z.number().min(0).max(1_000_000),

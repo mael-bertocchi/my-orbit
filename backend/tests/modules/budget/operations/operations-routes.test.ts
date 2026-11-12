@@ -4,12 +4,17 @@ import { hasZodFastifySchemaValidationErrors, serializerCompiler, validatorCompi
 import { StatusCodes } from 'http-status-codes';
 import type { PrismaClient } from 'prisma/generated/prisma/client';
 import operationsRoutes from 'src/modules/budget/operations/operations-routes';
+import type { PlaceReference } from 'src/modules/budget/places/places-models';
+import { forgetPlaces } from 'src/modules/budget/places/places-service';
 import type { IdentityService } from 'src/plugins/identity';
 import type { Maybe } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { PhotonCity } from '../../../support/photon';
+import { stubCities } from '../../../support/photon';
 import { standIn } from '../../../support/stand-in';
+import { testVariables } from '../../../support/variables';
 
 /**
  * @constant OPERATION_ID
@@ -28,6 +33,8 @@ interface Row {
     description: Maybe<string>; /*!< What was said about it */
     categoryId: string; /*!< Its category */
     location: Maybe<string>; /*!< Where it happened */
+    placeId: Maybe<string>; /*!< The city it happened in */
+    place: Maybe<PlaceReference>; /*!< That city, named in each language */
     amount: number; /*!< How much, in its currency */
     currencyCode: string; /*!< Its currency */
     rateToEuro: number; /*!< Euros per unit of its currency */
@@ -48,6 +55,8 @@ function groceriesRow(): Row {
         description: null,
         categoryId: 'groceries',
         location: 'Berlin Mitte',
+        placeId: null,
+        place: null,
         amount: 54.2,
         currencyCode: 'USD',
         rateToEuro: 0.92,
@@ -68,8 +77,8 @@ class OperationsTable {
 
     findUnique = vi.fn(({ where }: { where: { id: string } }) => Promise.resolve(this.rows.find((row) => row.id === where.id) ?? null));
 
-    create = vi.fn(({ data }: { data: Omit<Row, 'deletedAt' | 'updatedAt'> }) => {
-        const row: Row = { ...data, deletedAt: null, updatedAt: new Date() };
+    create = vi.fn(({ data }: { data: Omit<Row, 'deletedAt' | 'updatedAt' | 'place'> }) => {
+        const row: Row = { ...data, place: null, deletedAt: null, updatedAt: new Date() };
 
         this.rows.push(row);
 
@@ -103,7 +112,8 @@ interface TestApp {
 async function buildApp(authenticate: () => Promise<void> = () => Promise.resolve()): Promise<TestApp> {
     const table = new OperationsTable();
     const upsert = vi.fn(() => Promise.resolve({ id: 'owner', monthlyLimit: 3000, revision: 1 }));
-    const client = { budgetOperation: table, budgetState: { upsert } };
+    const places = { findUnique: vi.fn(() => Promise.resolve(null)), upsert: vi.fn(() => Promise.resolve(null)) };
+    const client = { budgetOperation: table, budgetState: { upsert }, budgetPlace: places };
     const app = Fastify();
 
     app.setValidatorCompiler(validatorCompiler);
@@ -111,6 +121,7 @@ async function buildApp(authenticate: () => Promise<void> = () => Promise.resolv
 
     app.decorate('prisma', standIn<PrismaClient>({ ...client, $transaction: async (work: (transaction: typeof client) => Promise<unknown>) => await work(client) }));
     app.decorate('identity', standIn<IdentityService>({ authenticate }));
+    app.decorate('variables', testVariables());
 
     app.setErrorHandler((error: Error, _request, reply) => {
         let code = StatusCodes.INTERNAL_SERVER_ERROR;
@@ -144,6 +155,21 @@ const newOperation = {
     rateToEuro: 1.06
 };
 
+/**
+ * @constant GENEVA
+ * @description The city the stand-in Photon finds
+ */
+const GENEVA: PhotonCity = { id: 'R1685488', en: 'Geneva', fr: 'Genève', country: 'Suisse' };
+
+beforeEach(() => {
+    forgetPlaces();
+    stubCities([GENEVA]);
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
+
 describe('POST /v1/budget/operations', () => {
     it('logs an operation under the id the client minted and moves the revision on', async () => {
         const { app, table, upsert } = await buildApp();
@@ -153,6 +179,26 @@ describe('POST /v1/budget/operations', () => {
         expect(response.json<{ data: { id: string; isOnline: boolean; description: Maybe<string> } }>().data).toMatchObject({ id: newOperation.id, isOnline: false, description: null });
         expect(table.rows).toHaveLength(2);
         expect(upsert).toHaveBeenCalledOnce();
+
+        await app.close();
+    });
+
+    it('gives a place written by hand the city it names, named in each language', async () => {
+        const { app, table } = await buildApp();
+        const response = await app.inject({ method: 'POST', url: '/v1/budget/operations', payload: newOperation });
+
+        expect(response.statusCode).toBe(StatusCodes.CREATED);
+        expect(table.rows[1]).toMatchObject({ location: 'Genève', placeId: 'R1685488' });
+
+        await app.close();
+    });
+
+    it('refuses a city it can\'t find', async () => {
+        const { app, table } = await buildApp();
+        const response = await app.inject({ method: 'POST', url: '/v1/budget/operations', payload: { ...newOperation, placeId: 'R1' } });
+
+        expect(response.statusCode).toBe(StatusCodes.UNPROCESSABLE_ENTITY);
+        expect(table.create).not.toHaveBeenCalled();
 
         await app.close();
     });

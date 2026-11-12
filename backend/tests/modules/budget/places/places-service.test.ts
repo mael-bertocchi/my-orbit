@@ -1,46 +1,52 @@
 import type { FastifyBaseLogger } from 'fastify';
 import { StatusCodes } from 'http-status-codes';
-import { forgetPlaces, locatePlace, searchPlaces } from 'src/modules/budget/places/places-service';
+import type { PrismaClient } from 'prisma/generated/prisma/client';
+import type { PlaceReference } from 'src/modules/budget/places/places-models';
+import type { PlacesContext } from 'src/modules/budget/places/places-service';
+import { checkPlace, forgetPlaces, locatePlace, matchPlace, searchPlaces, withPlace } from 'src/modules/budget/places/places-service';
+import type { Maybe, Perhaps } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { PhotonCity } from '../../../support/photon';
+import { stubCities, stubPhoton } from '../../../support/photon';
 import { standIn } from '../../../support/stand-in';
 import { testVariables } from '../../../support/variables';
 
 /**
- * @constant variables
- * @description The environment Photon is asked with
+ * @constant SEOUL
+ * @description A city named differently in English and in French
  */
-const variables = testVariables();
+const SEOUL: PhotonCity = { id: 'R2297418', en: 'Seoul', fr: 'Séoul', country: 'Corée du Sud' };
 
 /**
- * @constant logger
- * @description A logger that keeps quiet
+ * @constant LYON
+ * @description A city named alike in both languages
  */
-const logger = standIn<FastifyBaseLogger>({ error: vi.fn(), warn: vi.fn() });
+const LYON: PhotonCity = { id: 'R120965', en: 'Lyon', fr: 'Lyon', state: 'Auvergne-Rhône-Alpes', country: 'France' };
 
 /**
- * @function stubPhoton
- * @description Replaces `fetch` with a Photon stand-in answering every question with the given places, and records the
- * addresses asked.
- *
- * @param {unknown[]} places What Photon says of each place found.
- * @param {number} status The status it answers with.
- *
- * @returns {URL[]} The addresses asked, filled in as they are asked.
+ * @class PlacesTable
+ * @description A stand-in for the table of the cities checked
  */
-function stubPhoton(places: unknown[], status: number = 200): URL[] {
-    const calls: URL[] = [];
+class PlacesTable {
+    rows: PlaceReference[] = []; /*!< The cities stored */
 
-    vi.stubGlobal('fetch', vi.fn((input: string) => {
-        calls.push(new URL(input));
+    findUnique = vi.fn(({ where }: { where: { id: string } }) => Promise.resolve(this.rows.find((row) => row.id === where.id) ?? null));
 
-        const body = { type: 'FeatureCollection', features: places.map((properties) => ({ type: 'Feature', properties })) };
+    upsert = vi.fn(({ create }: { create: PlaceReference }) => {
+        this.rows = [...this.rows.filter((row) => row.id !== create.id), create];
 
-        return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
-    }));
+        return Promise.resolve(create);
+    });
+}
 
-    return calls;
+/**
+ * @function contextWith
+ * @description What the places work with, around a stand-in table.
+ */
+function contextWith(table: PlacesTable): PlacesContext {
+    return { prisma: standIn<PrismaClient>({ budgetPlace: table }), variables: testVariables(), logger: standIn<FastifyBaseLogger>({ error: vi.fn(), warn: vi.fn() }) };
 }
 
 /**
@@ -56,6 +62,14 @@ async function statusOf(call: Promise<unknown>): Promise<number> {
     }
 }
 
+/**
+ * @function idOf
+ * @description The identity of the city a request ends up naming.
+ */
+function idOf(body: { placeId?: Maybe<string>; location?: Maybe<string> }): Perhaps<Maybe<string>> {
+    return body.placeId;
+}
+
 beforeEach(() => {
     forgetPlaces();
 });
@@ -65,64 +79,102 @@ afterEach(() => {
 });
 
 describe('searchPlaces', () => {
-    it('asks for cities only, in the language asked, and names each one once with its region and country', async () => {
-        const calls = stubPhoton([
-            { name: 'Lyon', type: 'city', state: 'Auvergne-Rhône-Alpes', country: 'France' },
-            { name: 'Lyon', type: 'city', state: 'Auvergne-Rhône-Alpes', country: 'France' },
-            { name: 'Lyons', type: 'city', state: 'Colorado', country: 'États-Unis' },
-            { type: 'city', country: 'France' }
-        ]);
-        const places = await searchPlaces(variables, logger, 'lyo', 'fr');
+    it('asks for cities in both languages, and names each one in both, with its region and country in the language asked', async () => {
+        const calls = stubCities([SEOUL, LYON, LYON]);
+        const places = await searchPlaces(contextWith(new PlacesTable()), 'seo', 'fr');
 
-        expect(places).toEqual([{ name: 'Lyon', detail: 'Auvergne-Rhône-Alpes, France' }, { name: 'Lyons', detail: 'Colorado, États-Unis' }]);
-        expect(calls[0].origin).toBe('https://places.example.fr');
-        expect(calls[0].pathname).toBe('/api');
-        expect(calls[0].searchParams.get('layer')).toBe('city');
-        expect(calls[0].searchParams.get('lang')).toBe('fr');
-    });
-
-    it('leaves out a region named like the city', async () => {
-        stubPhoton([{ name: 'Berlin', type: 'city', state: 'Berlin', country: 'Allemagne' }]);
-
-        expect(await searchPlaces(variables, logger, 'berl', 'fr')).toEqual([{ name: 'Berlin', detail: 'Allemagne' }]);
+        expect(places).toEqual([{ id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul', detail: 'Corée du Sud' }, { id: 'R120965', nameEn: 'Lyon', nameFr: 'Lyon', detail: 'Auvergne-Rhône-Alpes, France' }]);
+        expect(calls.map((call) => call.searchParams.get('lang'))).toEqual(expect.arrayContaining(['en', 'fr']));
+        expect(calls.every((call) => call.origin === 'https://places.example.fr' && call.searchParams.get('layer') === 'city')).toBe(true);
     });
 
     it('keeps an answer for a while', async () => {
-        const calls = stubPhoton([{ name: 'Paris', type: 'city', country: 'France' }]);
+        const calls = stubCities([LYON]);
+        const context = contextWith(new PlacesTable());
 
-        await searchPlaces(variables, logger, 'Par', 'fr');
-        await searchPlaces(variables, logger, 'par', 'fr');
+        await searchPlaces(context, 'Ly', 'fr');
+        await searchPlaces(context, 'ly', 'fr');
 
-        expect(calls).toHaveLength(1);
+        expect(calls).toHaveLength(2);
     });
 
     it('answers 503 when Photon fails', async () => {
-        stubPhoton([], 500);
+        stubPhoton(() => [], 500);
 
-        expect(await statusOf(searchPlaces(variables, logger, 'par', 'fr'))).toBe(StatusCodes.SERVICE_UNAVAILABLE);
+        expect(await statusOf(searchPlaces(contextWith(new PlacesTable()), 'par', 'fr'))).toBe(StatusCodes.SERVICE_UNAVAILABLE);
     });
 });
 
 describe('locatePlace', () => {
-    it('names the city of the street nearest to the position', async () => {
-        const calls = stubPhoton([{ name: 'Rue de Rivoli', type: 'street', city: 'Paris', state: 'Île-de-France', country: 'France' }]);
-        const place = await locatePlace(variables, logger, 48.86, 2.35, 'fr');
+    it('names the city of the street nearest to the position, found again around it in both languages', async () => {
+        const calls = stubCities([SEOUL], [{ name: '세종대로', type: 'street', city: 'Séoul', country: 'Corée du Sud' }]);
+        const place = await locatePlace(contextWith(new PlacesTable()), 37.57, 126.98, 'fr');
 
-        expect(place).toEqual({ name: 'Paris', detail: 'Île-de-France, France' });
+        expect(place).toEqual({ id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul', detail: 'Corée du Sud' });
         expect(calls[0].pathname).toBe('/reverse');
-        expect(calls[0].searchParams.get('lat')).toBe('48.86');
-        expect(calls[0].searchParams.get('lon')).toBe('2.35');
-    });
-
-    it('names the place itself when it is a city', async () => {
-        stubPhoton([{ name: 'Annecy', type: 'city', country: 'France' }]);
-
-        expect((await locatePlace(variables, logger, 45.9, 6.13, 'fr')).name).toBe('Annecy');
+        expect(calls[1].searchParams.get('q')).toBe('Séoul');
+        expect(calls[1].searchParams.get('lat')).toBe('37.57');
     });
 
     it('answers 404 when the position is in no city', async () => {
-        stubPhoton([{ name: 'Mer Méditerranée', type: 'other' }]);
+        stubCities([], [{ name: 'Mer Méditerranée', type: 'other' }]);
 
-        expect(await statusOf(locatePlace(variables, logger, 40, 5, 'fr'))).toBe(StatusCodes.NOT_FOUND);
+        expect(await statusOf(locatePlace(contextWith(new PlacesTable()), 40, 5, 'fr'))).toBe(StatusCodes.NOT_FOUND);
+    });
+});
+
+describe('checkPlace', () => {
+    it('takes a city the server suggested lately, and stores it with the names the server knows', async () => {
+        stubCities([SEOUL]);
+        const table = new PlacesTable();
+        const context = contextWith(table);
+
+        await searchPlaces(context, 'seo', 'en');
+        vi.unstubAllGlobals();
+
+        expect(await checkPlace(context, 'R2297418', 'anything')).toEqual({ id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul' });
+        expect(table.rows).toHaveLength(1);
+    });
+
+    it('finds a city again under the name given, and refuses one it can\'t find', async () => {
+        stubCities([SEOUL]);
+        const context = contextWith(new PlacesTable());
+
+        expect((await checkPlace(context, 'R2297418', 'Séoul')).nameEn).toBe('Seoul');
+        expect(await statusOf(checkPlace(context, 'R1', 'Séoul'))).toBe(StatusCodes.UNPROCESSABLE_ENTITY);
+    });
+});
+
+describe('matchPlace', () => {
+    it('gives the city a place written by hand names in either language, accents and case aside', async () => {
+        stubCities([SEOUL]);
+        const context = contextWith(new PlacesTable());
+
+        expect((await matchPlace(context, 'seoul'))?.id).toBe('R2297418');
+        expect(await matchPlace(context, 'Seo')).toBeNull();
+    });
+
+    it('gives none when Photon can\'t be reached', async () => {
+        stubPhoton(() => [], 500);
+
+        expect(await matchPlace(contextWith(new PlacesTable()), 'Séoul')).toBeNull();
+    });
+});
+
+describe('withPlace', () => {
+    it('keeps the stored city when the request changes no place, and drops it when the place goes', async () => {
+        const context = contextWith(new PlacesTable());
+
+        expect(idOf(await withPlace(context, { description: 'Café', location: undefined }))).toBeUndefined();
+        expect(idOf(await withPlace(context, { location: null }))).toBeNull();
+    });
+
+    it('writes a city named without a place under its French name', async () => {
+        stubCities([SEOUL]);
+        const context = contextWith(new PlacesTable());
+
+        await searchPlaces(context, 'seo', 'en');
+
+        expect(await withPlace(context, { placeId: 'R2297418' })).toEqual({ placeId: 'R2297418', location: 'Séoul' });
     });
 });

@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { StatusCodes } from 'http-status-codes';
+import { placesContextOf, withPlace } from 'src/modules/budget/places/places-service';
 import type { RecurringCreateRequest, RecurringTargetRequest, RecurringUpdateRequest } from 'src/modules/budget/recurring/recurring-models';
 import { createRecurring, deleteRecurring, listRecurring, updateRecurring } from 'src/modules/budget/recurring/recurring-service';
 
@@ -22,7 +23,7 @@ async function list(request: FastifyRequest, reply: FastifyReply): Promise<void>
  * @returns {Promise<void>} Resolves when the stored recurring operation is sent.
  */
 async function create(request: FastifyRequest<RecurringCreateRequest>, reply: FastifyReply): Promise<void> {
-    const recurring = await createRecurring(request.server.prisma, request.log, request.body);
+    const recurring = await createRecurring(request.server.prisma, request.log, await withPlace(placesContextOf(request), request.body));
 
     reply.status(StatusCodes.CREATED).send({ data: recurring });
 }
@@ -34,7 +35,7 @@ async function create(request: FastifyRequest<RecurringCreateRequest>, reply: Fa
  * @returns {Promise<void>} Resolves when the stored recurring operation is sent.
  */
 async function update(request: FastifyRequest<RecurringUpdateRequest>, reply: FastifyReply): Promise<void> {
-    const recurring = await updateRecurring(request.server.prisma, request.log, request.params.recurringId, request.body);
+    const recurring = await updateRecurring(request.server.prisma, request.log, request.params.recurringId, await withPlace(placesContextOf(request), request.body));
 
     reply.status(StatusCodes.OK).send({ data: recurring });
 }

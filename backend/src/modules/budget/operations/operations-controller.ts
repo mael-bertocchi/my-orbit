@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { StatusCodes } from 'http-status-codes';
 import type { OperationCreateRequest, OperationTargetRequest, OperationUpdateRequest } from 'src/modules/budget/operations/operations-models';
 import { createOperation, deleteOperation, listTrash, restoreOperation, updateOperation } from 'src/modules/budget/operations/operations-service';
+import { placesContextOf, withPlace } from 'src/modules/budget/places/places-service';
 
 /**
  * @function trash
@@ -22,7 +23,7 @@ async function trash(request: FastifyRequest, reply: FastifyReply): Promise<void
  * @returns {Promise<void>} Resolves when the stored operation is sent.
  */
 async function create(request: FastifyRequest<OperationCreateRequest>, reply: FastifyReply): Promise<void> {
-    const operation = await createOperation(request.server.prisma, request.body);
+    const operation = await createOperation(request.server.prisma, await withPlace(placesContextOf(request), request.body));
 
     reply.status(StatusCodes.CREATED).send({ data: operation });
 }
@@ -34,7 +35,7 @@ async function create(request: FastifyRequest<OperationCreateRequest>, reply: Fa
  * @returns {Promise<void>} Resolves when the stored operation is sent.
  */
 async function update(request: FastifyRequest<OperationUpdateRequest>, reply: FastifyReply): Promise<void> {
-    const operation = await updateOperation(request.server.prisma, request.params.operationId, request.body);
+    const operation = await updateOperation(request.server.prisma, request.params.operationId, await withPlace(placesContextOf(request), request.body));
 
     reply.status(StatusCodes.OK).send({ data: operation });
 }

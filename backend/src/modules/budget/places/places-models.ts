@@ -35,9 +35,12 @@ export const PlacesLocateQuerySchema = z.object({
 
 /**
  * @constant PhotonPropertiesSchema
- * @description Zod schema for what Photon says of a place: its name, its kind, and the city, region and country it lies in.
+ * @description Zod schema for what Photon says of a place: its OpenStreetMap identity, its name, its kind, and the city,
+ * region and country it lies in.
  */
 export const PhotonPropertiesSchema = z.object({
+    osm_type: z.string().optional(),
+    osm_id: z.number().int().optional(),
     name: z.string().optional(),
     type: z.string().optional(),
     city: z.string().optional(),
@@ -54,12 +57,38 @@ export const PhotonPayloadSchema = z.object({
 });
 
 /**
+ * @constant PlaceIdSchema
+ * @description Zod schema for a city's identity: its OpenStreetMap kind (N, W or R) and number, such as `R71525`.
+ */
+export const PlaceIdSchema = z.string().regex(/^[NWR]\d{1,15}$/);
+
+/**
+ * @constant PlaceReferenceSchema
+ * @description Zod schema for the city an operation took place in: its identity and its name in each of the portal's
+ * languages, so the apps show it in the one picked.
+ */
+export const PlaceReferenceSchema = z.object({
+    id: PlaceIdSchema,
+    nameEn: z.string(),
+    nameFr: z.string()
+});
+
+/**
+ * @interface PlaceReference
+ * @description The city an operation took place in, named in each of the portal's languages.
+ */
+export interface PlaceReference {
+    id: string; /*!< Its OpenStreetMap identity, such as `R71525` */
+    nameEn: string; /*!< Its name in English */
+    nameFr: string; /*!< Its name in French */
+}
+
+/**
  * @interface Place
  * @description A city, as the operation editor suggests it.
  */
-export interface Place {
-    name: string; /*!< The city's name, what the editor fills in */
-    detail: string; /*!< Its region and country, to tell two cities of the same name apart, empty when unknown */
+export interface Place extends PlaceReference {
+    detail: string; /*!< Its region and country in the language asked, to tell two cities of the same name apart, empty when unknown */
 }
 
 /**

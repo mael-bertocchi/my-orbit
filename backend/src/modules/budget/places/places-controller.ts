@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { StatusCodes } from 'http-status-codes';
 import type { PlacesLocateRequest, PlacesSearchRequest } from 'src/modules/budget/places/places-models';
-import { locatePlace, searchPlaces } from 'src/modules/budget/places/places-service';
+import { locatePlace, placesContextOf, searchPlaces } from 'src/modules/budget/places/places-service';
 
 /**
  * @function search
@@ -10,7 +10,7 @@ import { locatePlace, searchPlaces } from 'src/modules/budget/places/places-serv
  * @returns {Promise<void>} Resolves when the cities are sent.
  */
 async function search(request: FastifyRequest<PlacesSearchRequest>, reply: FastifyReply): Promise<void> {
-    const places = await searchPlaces(request.server.variables, request.log, request.query.query, request.query.language);
+    const places = await searchPlaces(placesContextOf(request), request.query.query, request.query.language);
 
     reply.status(StatusCodes.OK).send({ data: places });
 }
@@ -22,7 +22,7 @@ async function search(request: FastifyRequest<PlacesSearchRequest>, reply: Fasti
  * @returns {Promise<void>} Resolves when the city is sent.
  */
 async function locate(request: FastifyRequest<PlacesLocateRequest>, reply: FastifyReply): Promise<void> {
-    const place = await locatePlace(request.server.variables, request.log, request.query.latitude, request.query.longitude, request.query.language);
+    const place = await locatePlace(placesContextOf(request), request.query.latitude, request.query.longitude, request.query.language);
 
     reply.status(StatusCodes.OK).send({ data: place });
 }

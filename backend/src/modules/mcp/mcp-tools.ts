@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyBaseLogger } from 'fastify';
 import type { BudgetOperation, Prisma, PrismaClient, WatchlistEntry } from 'prisma/generated/prisma/client';
 import { createOperation, deleteOperation, updateOperation } from 'src/modules/budget/operations/operations-service';
+import { placeNameOf, withPlace, WITH_PLACE } from 'src/modules/budget/places/places-service';
 import { CurrencyCodeSchema } from 'src/modules/budget/rates/rates-models';
 import { rateToEuroOn } from 'src/modules/budget/rates/rates-service';
 import { StoredCategoryLimitsSchema } from 'src/modules/budget/state/state-models';
@@ -231,18 +232,21 @@ export const searchOperations: ServerTool = {
                 OR: query === undefined ? undefined : [
                     { name: { contains: query, mode: 'insensitive' } },
                     { description: { contains: query, mode: 'insensitive' } },
-                    { location: { contains: query, mode: 'insensitive' } }
+                    { location: { contains: query, mode: 'insensitive' } },
+                    { place: { nameEn: { contains: query, mode: 'insensitive' } } },
+                    { place: { nameFr: { contains: query, mode: 'insensitive' } } }
                 ]
             },
             orderBy: { date: 'desc' },
-            take: SEARCH_SCAN_MAX
+            take: SEARCH_SCAN_MAX,
+            include: WITH_PLACE
         });
 
         return {
             result: {
                 count: rows.length,
                 totalEuros: euros(rows.reduce((total, row) => total + row.amount * row.rateToEuro, 0)),
-                operations: rows.slice(0, limit).map((row) => ({ ...summaryOf(row), description: row.description, location: row.location, isOnline: row.isOnline, recurringId: row.recurringId }))
+                operations: rows.slice(0, limit).map((row) => ({ ...summaryOf(row), description: row.description, location: placeNameOf(row.place, context.language) ?? row.location, isOnline: row.isOnline, recurringId: row.recurringId }))
             }
         };
     }
@@ -699,7 +703,8 @@ export const createOperationTool: ServerTool = {
                 return { result: { error: `No exchange rate for ${draft.currencyCode}` } };
             }
 
-            const operation = await createOperation(context.prisma, { ...draft, id: randomUUID().toUpperCase(), date: moment, description: description ?? null, location: location ?? null, rateToEuro });
+            const placed = await withPlace(context, { location: location ?? null });
+            const operation = await createOperation(context.prisma, { ...draft, ...placed, id: randomUUID().toUpperCase(), date: moment, description: description ?? null, rateToEuro });
 
             return { result: { status: 'Logged', operation: { ...operation, euroAmount: euros(operation.amount * operation.rateToEuro) } } };
         } catch (error: unknown) {
@@ -793,7 +798,8 @@ export const updateOperationTool: ServerTool = {
                 return { result: { error: `No exchange rate for ${code}` } };
             }
 
-            const operation = await updateOperation(context.prisma, existing.id, { ...changes, date: moment, rateToEuro });
+            const placed = await withPlace(context, changes);
+            const operation = await updateOperation(context.prisma, existing.id, { ...placed, date: moment, rateToEuro });
 
             return { result: { status: 'Changed', operation: { ...operation, euroAmount: euros(operation.amount * operation.rateToEuro) } } };
         } catch (error: unknown) {

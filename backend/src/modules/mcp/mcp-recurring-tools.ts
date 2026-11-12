@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { withPlace } from 'src/modules/budget/places/places-service';
 import { CurrencyCodeSchema } from 'src/modules/budget/rates/rates-models';
 import { INTERVALS } from 'src/modules/budget/recurring/recurring-models';
 import type { RecurringOperation } from 'src/modules/budget/recurring/recurring-models';
@@ -129,7 +130,7 @@ export const createRecurringTool: ServerTool = {
         }
 
         try {
-            const recurring = await createRecurring(context.prisma, context.logger, { ...parsed.data, id: randomUUID().toUpperCase(), isPaused: false });
+            const recurring = await createRecurring(context.prisma, context.logger, { ...await withPlace(context, parsed.data), id: randomUUID().toUpperCase(), isPaused: false });
 
             return { result: { status: 'Created', recurring } };
         } catch (error: unknown) {
@@ -212,7 +213,7 @@ export const updateRecurringTool: ServerTool = {
         }
 
         try {
-            const recurring = await updateRecurring(context.prisma, context.logger, parsed.data.recurringId, parsed.data.changes);
+            const recurring = await updateRecurring(context.prisma, context.logger, parsed.data.recurringId, await withPlace(context, parsed.data.changes));
 
             return { result: { status: 'Changed', recurring } };
         } catch (error: unknown) {
