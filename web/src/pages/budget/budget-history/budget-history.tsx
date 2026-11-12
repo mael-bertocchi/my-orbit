@@ -52,13 +52,13 @@ function isListed(document: BudgetDocument, operation: Operation, categoryIds: r
  * @description The date filter in the address: the days from one to the other, or the only one that reads as a day.
  */
 function rangeOf(from: Maybe<string>, to: Maybe<string>): Maybe<DayRange> {
-    const start = from === null ? null : parseDayKey(from);
-    const end = to === null ? null : parseDayKey(to);
+    const start = from !== null ? parseDayKey(from) : null;
+    const end = to !== null ? parseDayKey(to) : null;
 
     if (start === null || end === null) {
         const only = start ?? end;
 
-        return only === null ? null : { start: only, end: only };
+        return only !== null ? { start: only, end: only } : null;
     }
 
     return dayRange(start, end);
@@ -157,10 +157,10 @@ function BudgetHistoryComponent(): JSX.Element {
         const next = new URLSearchParams(params);
 
         Object.entries(changes).forEach(([key, value]) => {
-            if (value === null || value === '') {
-                next.delete(key);
-            } else {
+            if (value !== null && value !== '') {
                 next.set(key, value);
+            } else {
+                next.delete(key);
             }
         });
 
@@ -172,7 +172,7 @@ function BudgetHistoryComponent(): JSX.Element {
      * @description Puts a date filter in the address, or takes it out.
      */
     const filterDates = (picked: Maybe<DayRange>): void => {
-        update({ from: picked === null ? null : dayKey(picked.start), to: picked === null ? null : dayKey(picked.end) });
+        update({ from: picked !== null ? dayKey(picked.start) : null, to: picked !== null ? dayKey(picked.end) : null });
         setIsPickingDates(false);
     };
 
@@ -190,7 +190,7 @@ function BudgetHistoryComponent(): JSX.Element {
         <>
             <button type='button' aria-haspopup='dialog' onClick={() => setIsPickingDates(true)} className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-medium transition ${range !== null ? 'bg-ink text-white' : 'bg-white text-ink shadow-control hover:bg-fill'}`}>
                 <CalendarDays size={15} />
-                {range === null ? t('history.date') : rangeTitle(range)}
+                {range !== null ? rangeTitle(range) : t('history.date')}
             </button>
             <span aria-hidden='true' className='my-1.5 w-px shrink-0 bg-hairline' />
         </>

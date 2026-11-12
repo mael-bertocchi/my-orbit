@@ -139,7 +139,7 @@ function historyWrites(before: Readonly<Record<string, MonthlyBudget>>, after: R
  * @returns {BudgetWrite[]} The writes, in the order to send them
  */
 export function diffDocuments(before: BudgetDocument, after: BudgetDocument): BudgetWrite[] {
-    const settings: BudgetWrite[] = before.budget.monthlyLimit === after.budget.monthlyLimit ? [] : [{ kind: 'storeSettings', monthlyLimit: after.budget.monthlyLimit }];
+    const settings: BudgetWrite[] = before.budget.monthlyLimit !== after.budget.monthlyLimit ? [{ kind: 'storeSettings', monthlyLimit: after.budget.monthlyLimit }] : [];
 
     return [
         ...categoryWrites(before.categories, after.categories),

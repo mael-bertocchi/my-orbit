@@ -225,8 +225,8 @@ function MonthBarsComponent(props: MonthBarsComponentProps): JSX.Element {
         setHovered(null);
     };
 
-    const shown = hovered === null ? null : props.bars[hovered] ?? null;
-    const tooltipLeft = hovered === null ? 0 : Math.min(Math.max(centre(hovered) - 85, 0), Math.max(0, width - 170));
+    const shown = hovered !== null ? props.bars[hovered] ?? null : null;
+    const tooltipLeft = hovered !== null ? Math.min(Math.max(centre(hovered) - 85, 0), Math.max(0, width - 170)) : 0;
 
     return (
         <div>
@@ -247,7 +247,7 @@ function MonthBarsComponent(props: MonthBarsComponentProps): JSX.Element {
                         ))}
                         {props.bars.map((bar, index) => (
                             <g key={bar.key} onPointerEnter={() => setHovered(index)} onClick={() => setHovered(index)}>
-                                <rect x={centre(index) - slot / 2} y={PADDING.top} width={slot} height={plotHeight + PADDING.bottom} fill={hovered === index ? '#F2F2F4' : 'transparent'} rx='8' />
+                                <rect x={centre(index) - slot / 2} y={PADDING.top} width={slot} height={plotHeight + PADDING.bottom} fill={hovered !== index ? 'transparent' : '#F2F2F4'} rx='8' />
                                 <path d={barPath(centre(index) - barWidth / 2, y(bar.value), barWidth, bottom)} fill={ACCENT} fillOpacity={bar.isPartial ? 0.4 : 1} />
                                 {bar.marker !== null && <line x1={centre(index) - barWidth / 2 - 3} x2={centre(index) + barWidth / 2 + 3} y1={y(bar.marker)} y2={y(bar.marker)} stroke={MARKER} strokeWidth='2' strokeLinecap='round' />}
                                 {(props.bars.length - 1 - index) % labelEvery === 0 && <text x={centre(index)} y={HEIGHT - 6} textAnchor='middle' fontSize='11' fill={MUTED}>{bar.label}</text>}

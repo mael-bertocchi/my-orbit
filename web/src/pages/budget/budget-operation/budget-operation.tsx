@@ -145,7 +145,7 @@ function initialCity(existing: Maybe<Operation>, operations: readonly Operation[
 
     const place = latestPlace(operations);
 
-    return { location: place === null ? '' : placeName(place), place };
+    return { location: place !== null ? placeName(place) : '', place };
 }
 
 /**
@@ -176,7 +176,7 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
     const categories = categoriesOf(document.categories);
     const now = new Date();
 
-    const [amountText, setAmountText] = useState(existing === null ? '' : amountInputOf(existing.amount));
+    const [amountText, setAmountText] = useState(existing !== null ? amountInputOf(existing.amount) : '');
     const [currencyCode, setCurrencyCode] = useState(existing?.currencyCode ?? defaultCurrency());
     const [categoryId, setCategoryId] = useState(existing?.categoryId ?? categories[0]?.id ?? '');
     const [name, setName] = useState(existing?.name ?? '');
@@ -309,7 +309,7 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
                                 {euroPrecise(amount * appliedRate)}
                             </p>
                         )}
-                        <p className={`text-[12px] ${appliedRate === null ? 'text-warning-text' : 'text-ink-tertiary'}`}>
+                        <p className={`text-[12px] ${appliedRate !== null ? 'text-ink-tertiary' : 'text-warning-text'}`}>
                             {rateLine}
                         </p>
                     </div>
@@ -372,7 +372,7 @@ function BudgetOperationComponent(props: BudgetOperationComponentProps): JSX.Ele
     const { store } = useBudgetContext();
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const [canSave, setCanSave] = useState(false);
-    const existing = route?.kind === 'edit' ? document.operations.find((operation) => operation.id === route.id) ?? null : null;
+    const existing = route?.kind !== 'edit' ? null : document.operations.find((operation) => operation.id === route.id) ?? null;
     const isMissing = route?.kind === 'edit' && existing === null;
 
     /**
@@ -394,17 +394,17 @@ function BudgetOperationComponent(props: BudgetOperationComponentProps): JSX.Ele
      */
     const footer = isMissing ? undefined : (
         <button type='submit' form={FORM_ID} disabled={!canSave} className='button-primary'>
-            {route?.kind === 'edit' ? t('operation.saveChanges') : t('operation.save')}
+            {route?.kind !== 'edit' ? t('operation.save') : t('operation.saveChanges')}
         </button>
     );
 
     return (
         <>
-            <SheetComponent open={route !== null} title={route?.kind === 'edit' ? t('operation.edit') : t('operation.new')} onClose={props.onClose} isFull footer={footer}>
+            <SheetComponent open={route !== null} title={route?.kind !== 'edit' ? t('operation.new') : t('operation.edit')} onClose={props.onClose} isFull footer={footer}>
                 {isMissing
                     ? <p className='py-10 text-center text-[15px] text-ink-secondary'>{t('operation.missing')}</p>
                     : (
-                        <OperationFormComponent key={route?.kind === 'edit' ? route.id : 'new'} existing={existing} onDone={props.onClose} onDelete={() => setIsConfirmingDelete(true)} onValidityChange={setCanSave} />
+                        <OperationFormComponent key={route?.kind !== 'edit' ? 'new' : route.id} existing={existing} onDone={props.onClose} onDelete={() => setIsConfirmingDelete(true)} onValidityChange={setCanSave} />
                     )}
             </SheetComponent>
             <AlertComponent open={isConfirmingDelete} title={t('operation.confirmDelete')} message={t('common.irreversible')} action={t('operation.deleteAction')} onConfirm={confirmDelete} onCancel={() => setIsConfirmingDelete(false)} />

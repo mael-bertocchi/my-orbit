@@ -42,9 +42,9 @@ describe('budgetService', () => {
         const changed = calls[2]?.[1].body;
         const category = calls[4]?.[1].body;
 
-        expect(typeof created === 'string' ? JSON.parse(created) : null).toMatchObject({ id: 'A/B', description: null, date: '2026-10-28T12:30:00.000Z' });
-        expect(typeof created === 'string' ? JSON.parse(created) : null).not.toHaveProperty('updatedAt');
-        expect(typeof changed === 'string' ? JSON.parse(changed) : null).not.toHaveProperty('id');
-        expect(typeof category === 'string' ? JSON.parse(category) : null).toEqual({ name: 'Groceries', symbol: 'cart', colorHex: 0x3ecf8e, monthlyLimit: 400, position: 2 });
+        expect(typeof created !== 'string' ? null : JSON.parse(created)).toMatchObject({ id: 'A/B', description: null, date: '2026-10-28T12:30:00.000Z' });
+        expect(typeof created !== 'string' ? null : JSON.parse(created)).not.toHaveProperty('updatedAt');
+        expect(typeof changed !== 'string' ? null : JSON.parse(changed)).not.toHaveProperty('id');
+        expect(typeof category !== 'string' ? null : JSON.parse(category)).toEqual({ name: 'Groceries', symbol: 'cart', colorHex: 0x3ecf8e, monthlyLimit: 400, position: 2 });
     });
 });

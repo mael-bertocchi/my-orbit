@@ -40,9 +40,7 @@ function BudgetGlanceComponent(): JSX.Element {
     if (document === null) {
         return (
             <div className='flex h-[118px] items-center justify-center'>
-                {status === 'syncing' ? (
-                    <SpinnerComponent />
-                ) : <p className='text-[14px] text-ink-secondary'>{t('layout.loadFailed')}</p>}
+                {status !== 'syncing' ? <p className='text-[14px] text-ink-secondary'>{t('layout.loadFailed')}</p> : <SpinnerComponent />}
             </div>
         );
     }

@@ -45,7 +45,7 @@ export function localized(text: LocalizedText): string {
  * @returns {Maybe<string>} Its year, or null when it is unknown
  */
 export function releaseYear(releaseDate: Maybe<string>): Maybe<string> {
-    return releaseDate === null ? null : releaseDate.slice(0, 4);
+    return releaseDate !== null ? releaseDate.slice(0, 4) : null;
 }
 
 /**
@@ -56,7 +56,7 @@ export function releaseYear(releaseDate: Maybe<string>): Maybe<string> {
  * @returns {string} "Film" or "Series", in the page's language
  */
 export function kindName(mediaType: MediaType): string {
-    return mediaType === 'movie' ? t('watchlist.movie') : t('watchlist.series');
+    return mediaType !== 'movie' ? t('watchlist.series') : t('watchlist.movie');
 }
 
 /**
@@ -158,11 +158,11 @@ export function titleFacts(title: TitleFactsSource): string {
  * @returns {string} The rating, written out
  */
 export function ratingText(rating: Maybe<number>): string {
-    if (rating === null) {
-        return t('watchlist.notRated');
+    if (rating !== null) {
+        return t('watchlist.stars', { stars: starsText(rating) });
     }
 
-    return t('watchlist.stars', { stars: starsText(rating) });
+    return t('watchlist.notRated');
 }
 
 /**

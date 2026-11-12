@@ -24,7 +24,7 @@ interface AppTileComponentProps {
  * @constant TILES
  * @description Every app's tile, in the order of the apps.
  */
-const TILES: readonly AppTileComponentProps[] = APPS.map((app) => ({ app, Widget: app.loadWidget === undefined ? undefined : lazy(app.loadWidget) }));
+const TILES: readonly AppTileComponentProps[] = APPS.map((app) => ({ app, Widget: app.loadWidget !== undefined ? lazy(app.loadWidget) : undefined }));
 
 /**
  * @function greetingKey
@@ -110,7 +110,7 @@ function HomePage(): JSX.Element {
             <div className='animate-rise'>
                 <p className='eyebrow'>{today(now)}</p>
                 <h1 className='mt-1 text-[28px] font-semibold leading-tight tracking-tight sm:text-[34px]'>
-                    {account === null ? t('home.welcome') : t(greetingKey(now), { name: account.name })}
+                    {account !== null ? t(greetingKey(now), { name: account.name }) : t('home.welcome')}
                 </h1>
 
                 <div className='mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3'>

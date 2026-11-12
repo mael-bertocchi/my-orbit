@@ -57,7 +57,7 @@ interface RecurringFormComponentProps {
  */
 function RecurringFormComponent(props: RecurringFormComponentProps): JSX.Element {
     const { route, onValidityChange } = props;
-    const existing = route.kind === 'edit' ? route.recurring : null;
+    const existing = route.kind !== 'edit' ? null : route.recurring;
 
     const document = useDocument();
     const rates = useRates();
@@ -66,12 +66,12 @@ function RecurringFormComponent(props: RecurringFormComponentProps): JSX.Element
     const categories = categoriesOf(document.categories);
     const today = dayKey(new Date());
 
-    const [amountText, setAmountText] = useState(existing === null ? '' : amountInputOf(existing.amount));
+    const [amountText, setAmountText] = useState(existing !== null ? amountInputOf(existing.amount) : '');
     const [currencyCode, setCurrencyCode] = useState(existing?.currencyCode ?? defaultCurrency());
     const [categoryId, setCategoryId] = useState(existing?.categoryId ?? categories[0]?.id ?? '');
     const [name, setName] = useState(existing?.name ?? '');
     const [description, setDescription] = useState(existing?.description ?? '');
-    const [city, setCity] = useState<CityValue>({ location: existing === null ? '' : whereabouts(existing), place: existing?.place ?? null });
+    const [city, setCity] = useState<CityValue>({ location: existing !== null ? whereabouts(existing) : '', place: existing?.place ?? null });
     const [isOnline, setIsOnline] = useState(existing?.isOnline ?? false);
     const [firstDate, setFirstDate] = useState(existing?.firstDate ?? today);
     const [intervalMonths, setIntervalMonths] = useState(existing?.intervalMonths ?? 1);
@@ -119,7 +119,7 @@ function RecurringFormComponent(props: RecurringFormComponentProps): JSX.Element
         props.onSavingChange(true);
 
         try {
-            const stored = existing === null ? await budgetService.createRecurring(fields) : await budgetService.updateRecurring(existing.id, fields);
+            const stored = existing !== null ? await budgetService.updateRecurring(existing.id, fields) : await budgetService.createRecurring(fields);
 
             await store.refresh();
             props.onSaved(stored);
@@ -295,7 +295,7 @@ function BudgetRecurringComponent(props: BudgetRecurringComponentProps): JSX.Ele
     return (
         <>
             <SheetComponent open={route !== null} title={isEdit ? t('recurring.edit') : t('recurring.new')} onClose={props.onClose} isFull footer={footer}>
-                {route !== null && <RecurringFormComponent key={route.kind === 'edit' ? route.recurring.id : 'new'} route={route} onSaved={props.onSaved} onDelete={startDelete} onValidityChange={setCanSave} onSavingChange={setIsSaving} />}
+                {route !== null && <RecurringFormComponent key={route.kind !== 'edit' ? 'new' : route.recurring.id} route={route} onSaved={props.onSaved} onDelete={startDelete} onValidityChange={setCanSave} onSavingChange={setIsSaving} />}
             </SheetComponent>
             <AlertComponent open={isConfirmingDelete} title={t('recurring.confirmDelete')} message={t('recurring.deleteMessage')} action={t('recurring.deleteAction')} onConfirm={runDelete} onCancel={() => setIsConfirmingDelete(false)} />
         </>

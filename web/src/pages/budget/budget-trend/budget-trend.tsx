@@ -63,8 +63,8 @@ interface TrendBadgeComponentProps {
  */
 function TrendBadgeComponent(props: TrendBadgeComponentProps): JSX.Element {
     const trend = trendOf(props.change);
-    const Icon = trend === 'down' ? TrendingDown : trend === 'up' ? TrendingUp : Minus;
-    const label = props.change === null ? t('analysis.new') : `${props.change > 0 ? '+' : ''}${percent(props.change)}`;
+    const Icon = trend === 'down' ? TrendingDown : trend !== 'up' ? Minus : TrendingUp;
+    const label = props.change !== null ? `${props.change > 0 ? '+' : ''}${percent(props.change)}` : t('analysis.new');
 
     return (
         <span className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-semibold tabular-nums ${TREND_STYLES[trend]}`}>

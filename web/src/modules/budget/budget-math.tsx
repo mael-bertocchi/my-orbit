@@ -373,11 +373,11 @@ export function nameSuggestions(operations: readonly Operation[], typed: string,
  * and also when one is typed in full, as there is nothing left to complete.
  */
 function placeMatch(place: PlaceReference, typed: string): number {
-    if (foldText(place.nameEn) === typed || foldText(place.nameFr) === typed) {
-        return 0;
+    if (foldText(place.nameEn) !== typed && foldText(place.nameFr) !== typed) {
+        return Math.max(rankMatch(place.nameEn, typed), rankMatch(place.nameFr, typed));
     }
 
-    return Math.max(rankMatch(place.nameEn, typed), rankMatch(place.nameFr, typed));
+    return 0;
 }
 
 /**

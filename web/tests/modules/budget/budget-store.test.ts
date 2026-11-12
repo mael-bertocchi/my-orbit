@@ -68,7 +68,7 @@ function server(initial: BudgetDocument): FakeServer {
                 return Promise.reject(new RequestError(404, 'Unknown operation'));
             }
 
-            return write(`updateOperation ${changed.id}`, (current) => ({ ...current, operations: current.operations.map((entry) => (entry.id === changed.id ? changed : entry)) }));
+            return write(`updateOperation ${changed.id}`, (current) => ({ ...current, operations: current.operations.map((entry) => (entry.id !== changed.id ? entry : changed)) }));
         }),
         deleteOperation: vi.fn((id: string) => write(`deleteOperation ${id}`, (current) => ({ ...current, operations: current.operations.filter((entry) => entry.id !== id) }))),
         storeSettings: vi.fn((monthlyLimit: number) => write('storeSettings', (current) => ({ ...current, budget: { monthlyLimit } }))),

@@ -132,11 +132,11 @@ export function isNotable(comparison: CategoryComparison): boolean {
         return false;
     }
 
-    if (comparison.change === null) {
-        return comparison.spent >= NOTABLE_AMOUNT;
+    if (comparison.change !== null) {
+        return Math.abs(comparison.change) >= NOTABLE_CHANGE && Math.abs(comparison.spent - comparison.usual) >= NOTABLE_AMOUNT;
     }
 
-    return Math.abs(comparison.change) >= NOTABLE_CHANGE && Math.abs(comparison.spent - comparison.usual) >= NOTABLE_AMOUNT;
+    return comparison.spent >= NOTABLE_AMOUNT;
 }
 
 /**

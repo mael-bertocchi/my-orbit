@@ -29,7 +29,7 @@ function RingComponent(props: RingComponentProps): JSX.Element {
         <div className='relative' style={{ width: size, height: size }}>
             <svg width={size} height={size} className='-rotate-90' aria-hidden='true'>
                 <circle cx={size / 2} cy={size / 2} r={radius} fill='none' stroke='#EDEDF0' strokeWidth={stroke} />
-                <circle cx={size / 2} cy={size / 2} r={radius} fill='none' stroke={props.color} strokeWidth={stroke} strokeLinecap='round' strokeDasharray={circumference} strokeDashoffset={circumference * (1 - filled)} style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), stroke 0.3s' }} opacity={filled === 0 ? 0 : 1} />
+                <circle cx={size / 2} cy={size / 2} r={radius} fill='none' stroke={props.color} strokeWidth={stroke} strokeLinecap='round' strokeDasharray={circumference} strokeDashoffset={circumference * (1 - filled)} style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), stroke 0.3s' }} opacity={filled !== 0 ? 1 : 0} />
             </svg>
             <div className='absolute inset-0 flex flex-col items-center justify-center text-center'>
                 {props.children}

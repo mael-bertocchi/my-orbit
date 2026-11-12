@@ -48,7 +48,7 @@ const COMPARED_MONTHS = 3;
  * @returns {number} The euros spent.
  */
 function spentOf(total: MonthTotal, categoryId: Maybe<string>): number {
-    return categoryId === null ? total.spent : total.byCategory[categoryId] ?? 0;
+    return categoryId !== null ? total.byCategory[categoryId] ?? 0 : total.spent;
 }
 
 /**
@@ -60,7 +60,7 @@ function spentOf(total: MonthTotal, categoryId: Maybe<string>): number {
  * @returns {Maybe<number>} Their average, or null without any.
  */
 function average(values: readonly number[]): Maybe<number> {
-    return values.length === 0 ? null : values.reduce((total, value) => total + value, 0) / values.length;
+    return values.length !== 0 ? values.reduce((total, value) => total + value, 0) / values.length : null;
 }
 
 /**
@@ -157,8 +157,8 @@ function TrendsCardComponent(props: TrendsCardComponentProps): JSX.Element {
     const change = recent !== null && before !== null && before > 0 ? recent / before - 1 : null;
     const labels: MonthBarsLabels = { spent: t('analysis.spent'), budget: t('analysis.limit'), average: t('analysis.average'), partial: t('analysis.partial') };
     const bars: MonthBar[] = props.totals.map((total) => ({ key: total.month.toISOString(), label: monthShort(total.month), title: monthWithYear(total.month), value: spentOf(total, categoryId), marker: categoryId === null && total.limit > 0 ? total.limit : null, isPartial: total.isCurrent }));
-    const trend = change === null ? '•' : `${change > 0 ? '+' : ''}${percent(change)}`;
-    const costliestNote = costliest === null ? undefined : monthWithYear(costliest.month);
+    const trend = change !== null ? `${change > 0 ? '+' : ''}${percent(change)}` : '•';
+    const costliestNote = costliest !== null ? monthWithYear(costliest.month) : undefined;
     const trendNote = recent !== null && before !== null ? t('analysis.lastThreeNote', { recent: euro(recent), before: euro(before) }) : t('analysis.notEnough');
 
     return (
@@ -172,8 +172,8 @@ function TrendsCardComponent(props: TrendsCardComponentProps): JSX.Element {
             </div>
 
             <div className='mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-3'>
-                <FigureComponent label={t('analysis.monthlyAverage')} value={mean === null ? '•' : euro(mean)} />
-                <FigureComponent label={t('analysis.costliest')} value={costliest === null ? '•' : euro(spentOf(costliest, categoryId))} note={costliestNote} />
+                <FigureComponent label={t('analysis.monthlyAverage')} value={mean !== null ? euro(mean) : '•'} />
+                <FigureComponent label={t('analysis.costliest')} value={costliest !== null ? euro(spentOf(costliest, categoryId)) : '•'} note={costliestNote} />
                 <FigureComponent label={t('analysis.lastThree')} value={trend} note={trendNote} />
             </div>
         </section>
@@ -201,7 +201,7 @@ interface RecurringRowComponentProps {
 function RecurringRowComponent(props: RecurringRowComponentProps): JSX.Element {
     const { recurring, category, monthly } = props;
     const next = dayOf(recurring.nextDate);
-    let status = next === null ? t('analysis.ended') : t('analysis.nextOn', { date: dayShort(next).replaceAll(' ', '\u00a0') });
+    let status = next !== null ? t('analysis.nextOn', { date: dayShort(next).replaceAll(' ', '\u00a0') }) : t('analysis.ended');
 
     if (recurring.isPaused) {
         status = t('analysis.paused');
@@ -216,7 +216,7 @@ function RecurringRowComponent(props: RecurringRowComponentProps): JSX.Element {
             </span>
             <span className='text-right'>
                 <span className='block text-[15px] font-semibold tabular-nums'>{money(recurring.amount, currencyNamed(recurring.currencyCode))}</span>
-                <span className='block text-[13px] text-ink-secondary tabular-nums'>{monthly === null ? '•' : t('analysis.perYear', { amount: euro(monthly * 12) })}</span>
+                <span className='block text-[13px] text-ink-secondary tabular-nums'>{monthly !== null ? t('analysis.perYear', { amount: euro(monthly * 12) }) : '•'}</span>
             </span>
             <ChevronRight size={17} className='shrink-0 text-ink-quaternary' />
         </button>
@@ -246,7 +246,7 @@ function RecurringCardComponent(): JSX.Element {
     const monthlyOf = (candidate: RecurringOperation): Maybe<number> => {
         const reference = rates.latest?.rates[candidate.currencyCode];
 
-        return monthlyEuros(candidate, reference === undefined ? null : bankRate(reference, candidate.currencyCode));
+        return monthlyEuros(candidate, reference !== undefined ? bankRate(reference, candidate.currencyCode) : null);
     };
 
     /**
@@ -254,7 +254,7 @@ function RecurringCardComponent(): JSX.Element {
      * @description Puts the stored recurring operation in the list, in place of its former self
      */
     const saved = (stored: RecurringOperation): void => {
-        setRecurring((current) => (current?.some((candidate) => candidate.id === stored.id) ? current.map((candidate) => (candidate.id === stored.id ? stored : candidate)) : [...current ?? [], stored]));
+        setRecurring((current) => (current?.some((candidate) => candidate.id === stored.id) ? current.map((candidate) => (candidate.id !== stored.id ? candidate : stored)) : [...current ?? [], stored]));
         setRoute(null);
     };
 
@@ -343,7 +343,7 @@ function HabitsCardComponent(props: HabitsCardComponentProps): JSX.Element {
                             <div key={entry.weekday} className='flex items-center gap-3 text-[13px]'>
                                 <span className='w-10 text-ink-secondary'>{weekdayShort(entry.weekday)}</span>
                                 <span className='h-2 flex-1 overflow-hidden rounded-full bg-fill'>
-                                    <span className='block h-full rounded-full' style={{ width: `${(entry.average / busiest) * 100}%`, backgroundColor: ACCENT, opacity: entry.average === busiest ? 1 : 0.55 }} />
+                                    <span className='block h-full rounded-full' style={{ width: `${(entry.average / busiest) * 100}%`, backgroundColor: ACCENT, opacity: entry.average !== busiest ? 0.55 : 1 }} />
                                 </span>
                                 <span className='w-14 text-right font-medium tabular-nums'>{euro(entry.average)}</span>
                             </div>

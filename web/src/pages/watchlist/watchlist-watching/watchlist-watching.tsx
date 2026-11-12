@@ -56,16 +56,16 @@ function WatchlistWatchingComponent(): JSX.Element {
                 {titlesText(current.length)}
             </p>
 
-            {current.length === 0 ? (
-                <div className='mt-8 rounded-2xl bg-fill px-6 py-10 text-center'>
-                    <p className='text-[15px] text-ink-secondary'>{t('watchlist.emptyWatching')}</p>
-                </div>
-            ) : (
+            {current.length !== 0 ? (
                 <ul className='mt-6 grid gap-3 md:grid-cols-2'>
                     {current.map((entry) => (
                         <WatchingCardComponent key={entry.id} entry={entry} onOpen={() => openTitle({ mediaType: entry.mediaType, tmdbId: entry.tmdbId })} />
                     ))}
                 </ul>
+            ) : (
+                <div className='mt-8 rounded-2xl bg-fill px-6 py-10 text-center'>
+                    <p className='text-[15px] text-ink-secondary'>{t('watchlist.emptyWatching')}</p>
+                </div>
             )}
         </div>
     );

@@ -139,7 +139,7 @@ export class BudgetStore {
                 this.confirmed = remote;
             }
 
-            this.publish(this.sending === null ? 'synced' : 'syncing', null);
+            this.publish(this.sending !== null ? 'syncing' : 'synced', null);
         } catch (error: unknown) {
             this.fail(error);
         }
@@ -278,7 +278,7 @@ export class BudgetStore {
      */
     private publish(status: SyncStatus, error: Maybe<string>): void {
         this.snapshot = {
-            document: this.confirmed === null ? null : applyQuietly(withoutRevision(this.confirmed), this.pending),
+            document: this.confirmed !== null ? applyQuietly(withoutRevision(this.confirmed), this.pending) : null,
             status,
             error,
             hasPendingChanges: this.pending.length > 0

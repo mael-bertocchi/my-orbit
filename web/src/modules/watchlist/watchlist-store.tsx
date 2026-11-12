@@ -55,7 +55,7 @@ export class WatchlistStore {
 
                 this.publish({ entries, status: 'ready', error: null });
             } catch (error: unknown) {
-                this.publish({ status: this.snapshot.entries === null ? 'failed' : 'ready', error: messageOf(error) });
+                this.publish({ status: this.snapshot.entries !== null ? 'ready' : 'failed', error: messageOf(error) });
             } finally {
                 this.reading = null;
             }
@@ -101,7 +101,7 @@ export class WatchlistStore {
     async update(id: string, changes: EntryChanges): Promise<Entry> {
         const entry = await this.api.updateEntry(id, changes);
 
-        this.publish({ entries: (this.snapshot.entries ?? []).map((existing) => (existing.id === id ? entry : existing)) });
+        this.publish({ entries: (this.snapshot.entries ?? []).map((existing) => (existing.id !== id ? existing : entry)) });
 
         return entry;
     }

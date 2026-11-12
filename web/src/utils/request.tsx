@@ -90,11 +90,11 @@ export class RequestError extends UserError {
  * @returns {string} The message to show
  */
 function refusal(status: number): string {
-    if (status === 429) {
-        return t('error.tooManyAttempts');
+    if (status !== 429) {
+        return status >= 500 ? t('error.unavailable') : t('error.refused');
     }
 
-    return status >= 500 ? t('error.unavailable') : t('error.refused');
+    return t('error.tooManyAttempts');
 }
 
 /**

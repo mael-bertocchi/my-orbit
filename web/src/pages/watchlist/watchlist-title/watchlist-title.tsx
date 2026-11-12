@@ -115,7 +115,7 @@ function dayInput(date: Date): string {
 function watchedInstant(day: string): Date {
     const now = new Date();
 
-    return day === dayInput(now) ? now : new Date(`${day}T12:00:00`);
+    return day !== dayInput(now) ? new Date(`${day}T12:00:00`) : now;
 }
 
 /**
@@ -145,7 +145,7 @@ function ReviewFormComponent(props: ReviewFormComponentProps): JSX.Element {
             const previous = props.entry?.watchedAt ?? null;
             const watchedAt = previous !== null && dayInput(previous) === day ? previous : watchedInstant(day);
 
-            await store.update(entry.id, { watchedAt, rating, comment: comment.trim() === '' ? null : comment.trim() });
+            await store.update(entry.id, { watchedAt, rating, comment: comment.trim() !== '' ? comment.trim() : null });
             props.onDone();
         } catch (failure: unknown) {
             showToast(messageOf(failure));
@@ -200,7 +200,7 @@ function StatusControlComponent(props: StatusControlComponentProps): JSX.Element
     return (
         <div className='mt-5 flex rounded-full bg-fill-strong/80 p-1' role='group' aria-label={t('watchlist.status')}>
             {STATUSES.map((option) => (
-                <button key={option.status} type='button' disabled={props.disabled} aria-pressed={option.status === props.status} onClick={() => props.onChange(option.status)} className={`flex-1 rounded-full px-3 py-1.5 text-[14px] font-medium transition disabled:opacity-60 ${option.status === props.status ? 'bg-white text-accent-strong shadow-control' : 'text-ink-secondary hover:text-ink'}`}>
+                <button key={option.status} type='button' disabled={props.disabled} aria-pressed={option.status === props.status} onClick={() => props.onChange(option.status)} className={`flex-1 rounded-full px-3 py-1.5 text-[14px] font-medium transition disabled:opacity-60 ${option.status !== props.status ? 'text-ink-secondary hover:text-ink' : 'bg-white text-accent-strong shadow-control'}`}>
                     {t(option.name)}
                 </button>
             ))}
@@ -217,10 +217,10 @@ function StatusControlComponent(props: StatusControlComponentProps): JSX.Element
 function ProviderComponent(props: ProviderComponentProps): JSX.Element {
     return (
         <li className='flex items-center gap-2 rounded-xl bg-fill py-1.5 pl-1.5 pr-3'>
-            {props.provider.logoPath === null ? (
-                <span className='h-7 w-7 rounded-lg bg-fill-strong' />
-            ) : (
+            {props.provider.logoPath !== null ? (
                 <img src={imageUrl(props.provider.logoPath, 'w92')} alt='' loading='lazy' className='h-7 w-7 rounded-lg object-cover' />
+            ) : (
+                <span className='h-7 w-7 rounded-lg bg-fill-strong' />
             )}
             <span className='text-[13px] font-medium'>{props.provider.name}</span>
         </li>
@@ -240,16 +240,16 @@ function OffersComponent(props: OffersComponentProps): JSX.Element {
     return (
         <section className='mt-7'>
             <h3 className='eyebrow mb-3'>{t('watchlist.whereToWatch')}</h3>
-            {kinds.length === 0 ? (
-                <p className='text-[15px] text-ink-secondary'>{t('watchlist.notAvailable')}</p>
-            ) : kinds.map(({ kind, name }) => (
+            {kinds.length !== 0 ? kinds.map(({ kind, name }) => (
                 <div key={kind} className='mt-3 first:mt-0'>
                     <p className='mb-1.5 text-[13px] font-medium text-ink-secondary'>{t(name)}</p>
                     <ul className='flex flex-wrap gap-2'>
                         {props.offers[kind].map((provider) => <ProviderComponent key={provider.id} provider={provider} />)}
                     </ul>
                 </div>
-            ))}
+            )) : (
+                <p className='text-[15px] text-ink-secondary'>{t('watchlist.notAvailable')}</p>
+            )}
             <p className='mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-quaternary'>
                 <span>{t('watchlist.offersSource')}</span>
                 {props.offers.link !== null && (
@@ -313,7 +313,7 @@ function SagaComponent(props: SagaComponentProps): JSX.Element {
         return (
             <section className='mt-7'>
                 <h3 className='eyebrow mb-3'>{t('watchlist.saga')}</h3>
-                {error === null ? <SpinnerComponent size={18} /> : <p className='text-[14px] text-ink-secondary'>{error}</p>}
+                {error !== null ? <p className='text-[14px] text-ink-secondary'>{error}</p> : <SpinnerComponent size={18} />}
             </section>
         );
     }
@@ -324,7 +324,7 @@ function SagaComponent(props: SagaComponentProps): JSX.Element {
             <p className='mb-3 text-[15px] font-semibold'>{saga.name}</p>
             <ol className='divide-y divide-hairline rounded-2xl bg-fill'>
                 {saga.parts.map((part, index) => {
-                    const entry = entries === null ? null : store.find(part);
+                    const entry = entries !== null ? store.find(part) : null;
                     const isCurrent = part.tmdbId === props.current.tmdbId;
                     let mark: JSX.Element;
 
@@ -381,7 +381,7 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
     const [isReviewing, setIsReviewing] = useState(false);
     const [isBusy, setIsBusy] = useState(false);
     const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
-    const entry = entries === null ? null : store.find(props.title);
+    const entry = entries !== null ? store.find(props.title) : null;
 
     useEffect(() => {
         let isCurrent = true;
@@ -435,15 +435,15 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
         return (
             <div>
                 {back}
-                {error === null ? (
-                    <div className='flex justify-center py-16'><SpinnerComponent /></div>
-                ) : (
+                {error !== null ? (
                     <div className='py-12 text-center'>
                         <p className='text-[15px] text-ink-secondary'>{error}</p>
                         <button type='button' onClick={() => setAttempt((current) => current + 1)} className='mt-4 rounded-full bg-accent px-5 py-2 text-[15px] font-semibold text-white'>
                             {t('watchlist.tryAgain')}
                         </button>
                     </div>
+                ) : (
+                    <div className='flex justify-center py-16'><SpinnerComponent /></div>
                 )}
             </div>
         );
@@ -497,20 +497,7 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
     const primary = 'inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-2xl bg-accent px-4 text-[15px] font-semibold text-white transition hover:bg-accent-strong disabled:opacity-60';
     let actions: JSX.Element;
 
-    if (entry === null) {
-        actions = (
-            <div className='mt-5 grid grid-cols-[1fr_auto] gap-3'>
-                <button type='button' disabled={isBusy} onClick={() => void run(() => store.add(props.title), t('watchlist.added', { title: details.title }))} className={primary}>
-                    <Plus size={18} strokeWidth={2.6} />
-                    {t('watchlist.addToWatch')}
-                </button>
-                <button type='button' onClick={() => setIsReviewing(true)} className={secondary}>
-                    <Check size={18} strokeWidth={2.6} />
-                    {t('watchlist.alreadySeen')}
-                </button>
-            </div>
-        );
-    } else {
+    if (entry !== null) {
         const removeButton = (
             <button type='button' disabled={isBusy} onClick={() => setIsConfirmingRemoval(true)} className={`${secondary} w-full text-negative-text`}>
                 <Trash2 size={17} />
@@ -552,6 +539,19 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
                 {!isReviewing && <SheetFooterComponent>{footer}</SheetFooterComponent>}
             </>
         );
+    } else {
+        actions = (
+            <div className='mt-5 grid grid-cols-[1fr_auto] gap-3'>
+                <button type='button' disabled={isBusy} onClick={() => void run(() => store.add(props.title), t('watchlist.added', { title: details.title }))} className={primary}>
+                    <Plus size={18} strokeWidth={2.6} />
+                    {t('watchlist.addToWatch')}
+                </button>
+                <button type='button' onClick={() => setIsReviewing(true)} className={secondary}>
+                    <Check size={18} strokeWidth={2.6} />
+                    {t('watchlist.alreadySeen')}
+                </button>
+            </div>
+        );
     }
 
     return (
@@ -587,7 +587,7 @@ function WatchlistTitleComponent(props: WatchlistTitleComponentProps): JSX.Eleme
                 <SagaComponent collectionId={details.collection.id} current={props.title} onOpen={props.onOpen} />
             )}
 
-            <AlertComponent open={isConfirmingRemoval} title={t('watchlist.confirmRemove')} message={entry?.watchedAt === null ? undefined : t('watchlist.removeMessage')} action={t('watchlist.remove')} onConfirm={confirmRemoval} onCancel={() => setIsConfirmingRemoval(false)} />
+            <AlertComponent open={isConfirmingRemoval} title={t('watchlist.confirmRemove')} message={entry?.watchedAt !== null ? t('watchlist.removeMessage') : undefined} action={t('watchlist.remove')} onConfirm={confirmRemoval} onCancel={() => setIsConfirmingRemoval(false)} />
         </div>
     );
 }

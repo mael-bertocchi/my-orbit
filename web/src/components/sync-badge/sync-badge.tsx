@@ -32,7 +32,7 @@ function SyncBadgeComponent(props: SyncBadgeComponentProps): JSX.Element {
     const { label, color } = LABELS[props.status];
 
     return (
-        <span role='status' aria-label={t(label)} title={t(label)} className={`h-2 w-2 rounded-full ${color} ${props.status === 'syncing' ? 'animate-pulse' : ''}`} />
+        <span role='status' aria-label={t(label)} title={t(label)} className={`h-2 w-2 rounded-full ${color} ${props.status !== 'syncing' ? '' : 'animate-pulse'}`} />
     );
 }
 

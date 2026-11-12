@@ -41,7 +41,7 @@ const NEGATIVE = '#FF3B30';
  */
 function shownMonth(key: Maybe<string>, now: Date): Date {
     const current = monthStart(now);
-    const month = key === null ? null : parseMonthKey(key);
+    const month = key !== null ? parseMonthKey(key) : null;
 
     return month === null || month.getTime() > current.getTime() ? current : month;
 }
@@ -153,7 +153,7 @@ function BudgetOverviewComponent(): JSX.Element {
      * @description Puts a month in the address, or takes it out for the current one.
      */
     const showMonth = (next: Date): void => {
-        setParams(next.getTime() === monthStart(now).getTime() ? {} : { month: monthKey(next) }, { replace: true });
+        setParams(next.getTime() !== monthStart(now).getTime() ? { month: monthKey(next) } : {}, { replace: true });
     };
 
     return (

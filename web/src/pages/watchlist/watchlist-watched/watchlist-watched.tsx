@@ -133,10 +133,10 @@ function WatchlistWatchedComponent(): JSX.Element {
     const update = (key: 'by' | 'q', value: string, fallback: string): void => {
         const next = new URLSearchParams(params);
 
-        if (value === fallback) {
-            next.delete(key);
-        } else {
+        if (value !== fallback) {
             next.set(key, value);
+        } else {
+            next.delete(key);
         }
 
         setParams(next, { replace: true });
@@ -164,7 +164,7 @@ function WatchlistWatchedComponent(): JSX.Element {
 
             <div className='mt-4 inline-flex rounded-full bg-fill-strong/80 p-1' role='group' aria-label={t('watchlist.order')}>
                 {ORDERS.map((option) => (
-                    <button key={option.order} type='button' aria-pressed={option.order === order} onClick={() => update('by', option.order, 'recent')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option.order === order ? 'bg-white text-ink shadow-control' : 'text-ink-secondary hover:text-ink'}`}>
+                    <button key={option.order} type='button' aria-pressed={option.order === order} onClick={() => update('by', option.order, 'recent')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option.order !== order ? 'text-ink-secondary hover:text-ink' : 'bg-white text-ink shadow-control'}`}>
                         {t(option.name)}
                     </button>
                 ))}
@@ -172,11 +172,7 @@ function WatchlistWatchedComponent(): JSX.Element {
 
             <FilterChipsComponent label={t('watchlist.filters')} allLabel={t('watchlist.all')} options={options} selected={selected} onChange={filter} className='mt-2' />
 
-            {shelves.length === 0 ? (
-                <div className='mt-6'>
-                    <EmptyStateComponent message={watched.length === 0 ? t('watchlist.noneWatched') : t('watchlist.noMatch')} />
-                </div>
-            ) : shelves.map((shelf) => (
+            {shelves.length !== 0 ? shelves.map((shelf) => (
                 <section key={shelf.key} className='mt-8'>
                     <h2 className='sticky top-[calc(3.5rem_+_env(safe-area-inset-top))] z-[1] -mx-1 mb-3 flex items-baseline gap-2 bg-canvas/90 px-1 py-1.5 text-[17px] font-semibold tracking-tight backdrop-blur'>
                         {shelf.title}
@@ -188,7 +184,11 @@ function WatchlistWatchedComponent(): JSX.Element {
                         ))}
                     </div>
                 </section>
-            ))}
+            )) : (
+                <div className='mt-6'>
+                    <EmptyStateComponent message={watched.length !== 0 ? t('watchlist.noMatch') : t('watchlist.noneWatched')} />
+                </div>
+            )}
             {count < shown.length && <div key={count} ref={sentinel} className='h-px' aria-hidden='true' />}
         </div>
     );

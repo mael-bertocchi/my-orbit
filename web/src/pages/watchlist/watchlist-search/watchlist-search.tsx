@@ -177,16 +177,16 @@ function WatchlistSearchComponent(props: WatchlistSearchComponentProps): JSX.Ele
         body = <div className='flex justify-center py-10'><SpinnerComponent /></div>;
     } else if (search.error !== null) {
         body = <p className='px-1 py-8 text-center text-[15px] text-negative-text'>{search.error}</p>;
-    } else if (search.results === null || search.results.length === 0) {
-        body = <p className='px-1 py-8 text-center text-[15px] text-ink-secondary'>{t('watchlist.noResults')}</p>;
-    } else {
+    } else if (search.results !== null && search.results.length !== 0) {
         body = (
             <ul className='divide-y divide-hairline'>
                 {search.results.map((result) => (
-                    <ResultRowComponent key={`${result.mediaType}:${result.tmdbId}`} result={result} entry={entries === null ? null : store.find(result)} onOpen={() => props.onOpen({ mediaType: result.mediaType, tmdbId: result.tmdbId })} />
+                    <ResultRowComponent key={`${result.mediaType}:${result.tmdbId}`} result={result} entry={entries !== null ? store.find(result) : null} onOpen={() => props.onOpen({ mediaType: result.mediaType, tmdbId: result.tmdbId })} />
                 ))}
             </ul>
         );
+    } else {
+        body = <p className='px-1 py-8 text-center text-[15px] text-ink-secondary'>{t('watchlist.noResults')}</p>;
     }
 
     return (

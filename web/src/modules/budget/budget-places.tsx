@@ -129,7 +129,7 @@ function currentPosition(): Promise<GeolocationPosition> {
          * @description Rejects with why the position is out of reach
          */
         const refuse = (error: GeolocationPositionError): void => {
-            reject(new UserError(t(error.code === error.PERMISSION_DENIED ? 'operation.locateDenied' : 'operation.locateUnavailable')));
+            reject(new UserError(t(error.code !== error.PERMISSION_DENIED ? 'operation.locateUnavailable' : 'operation.locateDenied')));
         };
 
         navigator.geolocation.getCurrentPosition(resolve, refuse, LOCATE_OPTIONS);

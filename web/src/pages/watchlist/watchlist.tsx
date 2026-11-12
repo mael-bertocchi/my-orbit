@@ -55,7 +55,7 @@ function WatchlistSheetComponent(): JSX.Element {
     let title = t('watchlist.searchTitle');
 
     if (route.kind === 'title') {
-        title = route.title.mediaType === 'movie' ? t('watchlist.movie') : t('watchlist.series');
+        title = route.title.mediaType !== 'movie' ? t('watchlist.series') : t('watchlist.movie');
     }
 
     /**

@@ -109,7 +109,7 @@ export interface Progressive {
 export function useProgressive(step: number, key: string): Progressive {
     const [state, setState] = useState({ key, shown: step });
     const observer = useRef<Maybe<IntersectionObserver>>(null);
-    const shown = state.key === key ? state.shown : step;
+    const shown = state.key !== key ? step : state.shown;
 
     if (state.key !== key) {
         setState({ key, shown: step });

@@ -114,7 +114,7 @@ export class ExchangeRates {
 
         const published = this.days.get(day)?.rates[code];
 
-        return published === undefined ? null : bankRate(published, code);
+        return published !== undefined ? bankRate(published, code) : null;
     }
 
     /**

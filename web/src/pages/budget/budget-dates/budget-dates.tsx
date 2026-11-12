@@ -112,14 +112,14 @@ function DateFormComponent(props: DateFormComponentProps): JSX.Element {
      */
     const submit = (event: FormEvent<HTMLFormElement>): void => {
         event.preventDefault();
-        props.onApply(mode === 'day' ? { start: day, end: day } : dayRange(start, end));
+        props.onApply(mode !== 'day' ? dayRange(start, end) : { start: day, end: day });
     };
 
     return (
         <form id={FORM_ID} onSubmit={submit} className='space-y-5'>
             <div role='radiogroup' aria-label={t('history.dateFilter')} className='grid grid-cols-2 rounded-full bg-fill-strong/80 p-1'>
                 {MODES.map(({ id, label }) => (
-                    <button key={id} type='button' role='radio' aria-checked={mode === id} onClick={() => setMode(id)} className={`rounded-full py-1.5 text-[14px] font-medium transition ${mode === id ? 'bg-white text-ink shadow-control' : 'text-ink-secondary hover:text-ink'}`}>
+                    <button key={id} type='button' role='radio' aria-checked={mode === id} onClick={() => setMode(id)} className={`rounded-full py-1.5 text-[14px] font-medium transition ${mode !== id ? 'text-ink-secondary hover:text-ink' : 'bg-white text-ink shadow-control'}`}>
                         {t(label)}
                     </button>
                 ))}

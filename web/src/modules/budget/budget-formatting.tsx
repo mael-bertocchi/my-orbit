@@ -93,7 +93,7 @@ export function numberStyle(): NumberStyle {
 function localize(formatted: string): string {
     const { decimal, grouping } = numberStyle();
 
-    return formatted.replace(/[,.]/g, (mark) => (mark === ',' ? grouping : decimal));
+    return formatted.replace(/[,.]/g, (mark) => (mark !== ',' ? decimal : grouping));
 }
 
 /**
@@ -103,7 +103,7 @@ function localize(formatted: string): string {
 function withSymbol(number: string, symbol: string): string {
     const { unitSeparator } = numberStyle();
 
-    return unitSeparator === null ? `${symbol}${number}` : `${number}${unitSeparator}${symbol}`;
+    return unitSeparator !== null ? `${number}${unitSeparator}${symbol}` : `${symbol}${number}`;
 }
 
 /**
@@ -203,7 +203,7 @@ export function weekdayShort(weekday: number): string {
  * @description A day and abbreviated month: 27 Sep, and 1er oct. in French.
  */
 export function dayShort(date: Date): string {
-    const day = date.getDate() === 1 ? dateWords().firstDay : String(date.getDate());
+    const day = date.getDate() !== 1 ? String(date.getDate()) : dateWords().firstDay;
 
     return `${day} ${dateWords().shortMonths[date.getMonth()] ?? ''}`;
 }
@@ -245,7 +245,7 @@ export function relativeDay(date: Date, now: Date = new Date()): string {
  * @description A day the way the History date filter names it: 5 Oct, with the year once it isn't the current one.
  */
 function filterDay(date: Date, now: Date): string {
-    return date.getFullYear() === now.getFullYear() ? dayShort(date) : `${dayShort(date)} ${date.getFullYear()}`;
+    return date.getFullYear() !== now.getFullYear() ? `${dayShort(date)} ${date.getFullYear()}` : dayShort(date);
 }
 
 /**
@@ -315,7 +315,7 @@ export function truncate(text: string, length: number): string {
  * @returns {string} Its name.
  */
 export function placeName(place: PlaceReference): string {
-    return currentLanguage() === 'fr' ? place.nameFr : place.nameEn;
+    return currentLanguage() !== 'fr' ? place.nameEn : place.nameFr;
 }
 
 /**

@@ -82,7 +82,7 @@ function browserLanguage(): Language {
  * @description The language a choice comes down to.
  */
 function resolve(choice: LanguageChoice): Language {
-    return choice === 'automatic' ? browserLanguage() : choice;
+    return choice !== 'automatic' ? choice : browserLanguage();
 }
 
 /**
@@ -166,10 +166,10 @@ export function chooseLanguage(next: LanguageChoice): void {
     settle();
 
     try {
-        if (next === 'automatic') {
-            localStorage.removeItem(CHOICE_KEY);
-        } else {
+        if (next !== 'automatic') {
             localStorage.setItem(CHOICE_KEY, next);
+        } else {
+            localStorage.removeItem(CHOICE_KEY);
         }
     } catch {
         return;
@@ -210,9 +210,9 @@ export function isMessageKey(key: string): key is MessageKey {
 export function t(key: MessageKey, values?: Record<string, string | number>): string {
     const template = MESSAGES[language][key];
 
-    if (values === undefined) {
-        return template;
+    if (values !== undefined) {
+        return template.replace(/\{(\w+)\}/g, (slot, name: string) => (name in values ? String(values[name]) : slot));
     }
 
-    return template.replace(/\{(\w+)\}/g, (slot, name: string) => (name in values ? String(values[name]) : slot));
+    return template;
 }

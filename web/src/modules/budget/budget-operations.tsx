@@ -50,14 +50,14 @@ export interface OperationDraft {
 export function sanitizeAmountInput(text: string): string {
     let working = text;
 
-    if (numberStyle().decimal === ',') {
-        working = working.replaceAll(',', '.');
-    } else {
+    if (numberStyle().decimal !== ',') {
         if (!working.includes('.') && /^[^,]*,\d{0,2}$/.test(working)) {
             working = working.replace(',', '.');
         }
 
         working = working.replaceAll(',', '');
+    } else {
+        working = working.replaceAll(',', '.');
     }
 
     let integer = '';
@@ -148,14 +148,14 @@ export function toOperation(draft: OperationDraft, rateToEuro: number, id?: stri
         id: id ?? crypto.randomUUID().toUpperCase(),
         date: wholeSeconds(draft.date),
         name: draft.name.trim(),
-        description: description === '' ? null : description,
+        description: description !== '' ? description : null,
         categoryId: draft.categoryId,
-        location: location === '' ? null : location,
+        location: location !== '' ? location : null,
         placeId: place?.id ?? null,
         place,
         amount: draft.amount,
         currencyCode: draft.currencyCode,
-        rateToEuro: draft.currencyCode === EURO.code ? 1 : rateToEuro,
+        rateToEuro: draft.currencyCode !== EURO.code ? rateToEuro : 1,
         isOnline: draft.isOnline,
         updatedAt: new Date()
     };
@@ -171,7 +171,7 @@ export function upsertOperation(document: BudgetDocument, operation: Operation):
     return {
         ...document,
         operations: exists
-            ? document.operations.map((candidate) => (candidate.id === operation.id ? operation : candidate))
+            ? document.operations.map((candidate) => (candidate.id !== operation.id ? candidate : operation))
             : [...document.operations, operation]
     };
 }

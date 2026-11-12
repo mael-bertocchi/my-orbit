@@ -62,7 +62,7 @@ function deniedUrl(authorization: ClientAuthorization): string {
 function AuthorizePage(): JSX.Element {
     const [params] = useSearchParams();
     const [authorization] = useState(() => authorizationOf(params));
-    const [lookup, setLookup] = useState<ClientLookup>({ status: authorization === null ? 'invalid' : 'loading' });
+    const [lookup, setLookup] = useState<ClientLookup>({ status: authorization !== null ? 'loading' : 'invalid' });
     const [error, setError] = useState<Maybe<string>>(null);
     const [isWorking, setIsWorking] = useState(false);
     const [isDone, setIsDone] = useState(false);
@@ -109,7 +109,7 @@ function AuthorizePage(): JSX.Element {
         }
     };
 
-    const name = lookup.status === 'known' ? lookup.client.name : '';
+    const name = lookup.status !== 'known' ? '' : lookup.client.name;
 
     return (
         <main className='flex min-h-dvh items-center justify-center px-5'>

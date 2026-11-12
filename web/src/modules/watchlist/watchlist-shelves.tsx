@@ -82,11 +82,11 @@ function byRelease(first: Entry, second: Entry): number {
         return 1;
     }
 
-    if (second.releaseDate === null) {
-        return -1;
+    if (second.releaseDate !== null) {
+        return first.releaseDate < second.releaseDate ? -1 : 1;
     }
 
-    return first.releaseDate < second.releaseDate ? -1 : 1;
+    return -1;
 }
 
 /**
@@ -95,11 +95,11 @@ function byRelease(first: Entry, second: Entry): number {
  */
 function byTitle(last: string): (first: Shelf, second: Shelf) => number {
     return (first: Shelf, second: Shelf): number => {
-        if (first.key === last || second.key === last) {
-            return first.key === last ? 1 : -1;
+        if (first.key !== last && second.key !== last) {
+            return (first.title ?? '').localeCompare(second.title ?? '', currentLanguage());
         }
 
-        return (first.title ?? '').localeCompare(second.title ?? '', currentLanguage());
+        return first.key !== last ? -1 : 1;
     };
 }
 
@@ -148,7 +148,7 @@ export function statusOf(entry: Entry): EntryStatus {
         return 'watched';
     }
 
-    return entry.startedAt === null ? 'toWatch' : 'watching';
+    return entry.startedAt !== null ? 'watching' : 'toWatch';
 }
 
 /**
@@ -184,7 +184,7 @@ export function watching(entries: Entry[]): Entry[] {
  * @returns {Entry[]} The titles kept
  */
 export function ofKinds(entries: Entry[], kinds: readonly MediaType[]): Entry[] {
-    return kinds.length === 0 ? entries : entries.filter((entry) => kinds.includes(entry.mediaType));
+    return kinds.length !== 0 ? entries.filter((entry) => kinds.includes(entry.mediaType)) : entries;
 }
 
 /**
@@ -218,21 +218,21 @@ function group(entries: Entry[], keyOf: (entry: Entry) => [string, string]): She
  */
 export function shelves(entries: Entry[], order: ShelfOrder, genres: ReadonlyMap<number, string>): Shelf[] {
     if (order === 'recent') {
-        return entries.length === 0 ? [] : [{ key: 'recent', title: null, entries: [...entries].sort(byAdded) }];
+        return entries.length !== 0 ? [{ key: 'recent', title: null, entries: [...entries].sort(byAdded) }] : [];
     }
 
     if (order === 'genre') {
         return group(entries, (entry) => {
-            const name = entry.genreIds.length === 0 ? undefined : genres.get(entry.genreIds[0]);
+            const name = entry.genreIds.length !== 0 ? genres.get(entry.genreIds[0]) : undefined;
 
-            return name === undefined ? ['genre:none', t('watchlist.noGenre')] : [`genre:${entry.genreIds[0]}`, name];
+            return name !== undefined ? [`genre:${entry.genreIds[0]}`, name] : ['genre:none', t('watchlist.noGenre')];
         })
             .map((shelf) => ({ ...shelf, entries: shelf.entries.sort(byAdded) }))
             .sort(byTitle('genre:none'));
     }
 
-    return group(entries, (entry) => (entry.collectionId === null ? ['saga:none', t('watchlist.noSaga')] : [`saga:${entry.collectionId}`, entry.collectionName === null ? '' : localized(entry.collectionName)]))
-        .map((shelf) => ({ ...shelf, entries: shelf.entries.sort(shelf.key === 'saga:none' ? byAdded : byRelease) }))
+    return group(entries, (entry) => (entry.collectionId !== null ? [`saga:${entry.collectionId}`, entry.collectionName !== null ? localized(entry.collectionName) : ''] : ['saga:none', t('watchlist.noSaga')]))
+        .map((shelf) => ({ ...shelf, entries: shelf.entries.sort(shelf.key !== 'saga:none' ? byRelease : byAdded) }))
         .sort(byTitle('saga:none'));
 }
 
@@ -248,7 +248,7 @@ export function shelves(entries: Entry[], order: ShelfOrder, genres: ReadonlyMap
  */
 export function watchedShelves(entries: Entry[], order: WatchedOrder, ratingTitle: (rating: number) => string): Shelf[] {
     if (order === 'best') {
-        return group(entries, (entry) => (entry.rating === null ? ['rating:none', t('watchlist.notRated')] : [`rating:${entry.rating}`, ratingTitle(entry.rating)]));
+        return group(entries, (entry) => (entry.rating !== null ? [`rating:${entry.rating}`, ratingTitle(entry.rating)] : ['rating:none', t('watchlist.notRated')]));
     }
 
     return group(entries, (entry) => {
@@ -280,7 +280,7 @@ export function watchedYears(entries: Entry[]): number[] {
  * @returns {Entry[]} The titles kept, in the same order
  */
 export function watchedIn(entries: Entry[], years: readonly number[]): Entry[] {
-    return years.length === 0 ? entries : entries.filter((entry) => years.includes(entry.watchedAt?.getFullYear() ?? 0));
+    return years.length !== 0 ? entries.filter((entry) => years.includes(entry.watchedAt?.getFullYear() ?? 0)) : entries;
 }
 
 /**
@@ -296,5 +296,5 @@ export function watchedEntries(entries: Entry[], order: WatchedOrder): Entry[] {
 
     return entries
         .filter((entry) => entry.watchedAt !== null)
-        .sort((first, second) => (order === 'best' ? (second.rating ?? 0) - (first.rating ?? 0) || latest(first, second) : latest(first, second)));
+        .sort((first, second) => (order !== 'best' ? latest(first, second) : (second.rating ?? 0) - (first.rating ?? 0) || latest(first, second)));
 }

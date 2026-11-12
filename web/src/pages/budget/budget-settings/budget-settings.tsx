@@ -113,7 +113,7 @@ function BudgetSettingsComponent(): JSX.Element {
                     return (
                         <ListRowComponent key={option.code} title={title}>
                             <span className='text-[14px] text-ink-secondary tabular-nums'>
-                                {reference === undefined ? '•' : `1 ${option.code} = ${rate(bankRate(reference, option.code))} €`}
+                                {reference !== undefined ? `1 ${option.code} = ${rate(bankRate(reference, option.code))} €` : '•'}
                             </span>
                         </ListRowComponent>
                     );

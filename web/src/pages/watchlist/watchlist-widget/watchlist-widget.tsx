@@ -34,9 +34,7 @@ function WatchlistGlanceComponent(): JSX.Element {
     if (entries === null) {
         return (
             <div className='flex h-[118px] items-center justify-center'>
-                {status === 'loading' ? (
-                    <SpinnerComponent />
-                ) : <p className='text-[14px] text-ink-secondary'>{t('watchlist.loadFailed')}</p>}
+                {status !== 'loading' ? <p className='text-[14px] text-ink-secondary'>{t('watchlist.loadFailed')}</p> : <SpinnerComponent />}
             </div>
         );
     }
@@ -69,7 +67,7 @@ function WatchlistGlanceComponent(): JSX.Element {
             {latest.length > 0 && (
                 <div className='flex shrink-0 -space-x-5' aria-hidden='true'>
                     {latest.map((entry, index) => (
-                        <PosterComponent key={entry.id} path={entry.posterPath} title={localized(entry.title)} width='w92' className={`w-12 rounded-md shadow-control ring-2 ring-white ${index === 0 ? '' : 'mt-2'}`} />
+                        <PosterComponent key={entry.id} path={entry.posterPath} title={localized(entry.title)} width='w92' className={`w-12 rounded-md shadow-control ring-2 ring-white ${index !== 0 ? 'mt-2' : ''}`} />
                     ))}
                 </div>
             )}

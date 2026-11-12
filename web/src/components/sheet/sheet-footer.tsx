@@ -21,11 +21,11 @@ interface SheetFooterComponentProps {
 function SheetFooterComponent(props: SheetFooterComponentProps): Maybe<JSX.Element> {
     const footer = useContext(SheetFooterContext);
 
-    if (footer === null) {
-        return null;
+    if (footer !== null) {
+        return createPortal(props.children, footer);
     }
 
-    return createPortal(props.children, footer);
+    return null;
 }
 
 export default SheetFooterComponent;

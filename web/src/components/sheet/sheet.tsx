@@ -63,7 +63,7 @@ function SheetComponent(props: SheetComponentProps): JSX.Element {
     };
 
     return (
-        <dialog ref={dialog} className={props.isFull === true ? 'sheet sheet-full' : 'sheet'} aria-label={props.title} onCancel={cancel} onClick={closeBeside}>
+        <dialog ref={dialog} className={props.isFull !== true ? 'sheet' : 'sheet sheet-full'} aria-label={props.title} onCancel={cancel} onClick={closeBeside}>
             {props.open && (
                 <>
                     <header className='flex items-center justify-between px-6 pb-2 pt-5'>

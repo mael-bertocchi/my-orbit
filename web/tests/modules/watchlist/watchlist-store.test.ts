@@ -73,7 +73,7 @@ function server(): FakeServer {
 
                 return Promise.resolve();
             }),
-            getGenres: vi.fn(() => Promise.resolve([{ id: 18, name: currentLanguage() === 'fr' ? 'Drame' : 'Drama' }]))
+            getGenres: vi.fn(() => Promise.resolve([{ id: 18, name: currentLanguage() !== 'fr' ? 'Drama' : 'Drame' }]))
         }
     };
 

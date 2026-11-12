@@ -50,7 +50,7 @@ function SuggestionFieldComponent(props: SuggestionFieldComponentProps): JSX.Ele
     const isShown = isOpen && props.suggestions.length > 0;
     const active = isShown && highlighted >= 0 && highlighted < props.suggestions.length ? highlighted : -1;
     const Icon = props.icon;
-    const padding = `${Icon === undefined ? 'pl-3.5' : 'pl-9'} ${props.trailing === undefined ? '' : 'pr-28'}`;
+    const padding = `${Icon !== undefined ? 'pl-9' : 'pl-3.5'} ${props.trailing !== undefined ? 'pr-28' : ''}`;
 
     /**
      * @function type
@@ -108,7 +108,7 @@ function SuggestionFieldComponent(props: SuggestionFieldComponentProps): JSX.Ele
 
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault();
-            move(event.key === 'ArrowDown' ? 1 : -1);
+            move(event.key !== 'ArrowDown' ? -1 : 1);
             return;
         }
 
@@ -136,7 +136,7 @@ function SuggestionFieldComponent(props: SuggestionFieldComponentProps): JSX.Ele
             {isShown && (
                 <ul id={listId} role='listbox' aria-label={props.label} className='mt-1.5 overflow-hidden rounded-xl bg-fill py-1'>
                     {props.suggestions.map((suggestion, index) => (
-                        <li key={suggestion.id ?? `${suggestion.value}|${suggestion.detail ?? ''}`} id={`${listId}-${index}`} role='option' aria-selected={index === active} onMouseDown={keepFocus} onClick={() => pick(suggestion)} onMouseEnter={() => setHighlighted(index)} className={`flex cursor-pointer items-baseline gap-2 px-3.5 py-2 text-[15px] ${index === active ? 'bg-fill-strong' : ''}`}>
+                        <li key={suggestion.id ?? `${suggestion.value}|${suggestion.detail ?? ''}`} id={`${listId}-${index}`} role='option' aria-selected={index === active} onMouseDown={keepFocus} onClick={() => pick(suggestion)} onMouseEnter={() => setHighlighted(index)} className={`flex cursor-pointer items-baseline gap-2 px-3.5 py-2 text-[15px] ${index !== active ? '' : 'bg-fill-strong'}`}>
                             <span className='truncate'>{suggestion.value}</span>
                             {suggestion.detail !== undefined && suggestion.detail !== '' && <span className='truncate text-[13px] text-ink-tertiary'>{suggestion.detail}</span>}
                         </li>

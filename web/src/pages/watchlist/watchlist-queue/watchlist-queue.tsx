@@ -55,7 +55,7 @@ function PosterCardComponent(props: PosterCardComponentProps): JSX.Element {
             <PosterComponent path={props.entry.posterPath} title={localized(props.entry.title)} width='w342' className='w-full rounded-xl shadow-control transition group-hover:-translate-y-0.5 group-hover:shadow-card' />
             <span className='mt-2 line-clamp-2 text-[14px] font-medium leading-snug'>{localized(props.entry.title)}</span>
             <span className='text-[12px] text-ink-tertiary'>
-                {[year, props.entry.mediaType === 'tv' ? t('watchlist.series') : null].filter((part) => part !== null).join(' • ')}
+                {[year, props.entry.mediaType !== 'tv' ? null : t('watchlist.series')].filter((part) => part !== null).join(' • ')}
             </span>
         </button>
     );
@@ -90,10 +90,10 @@ function WatchlistQueueComponent(): JSX.Element {
     const update = (key: 'by' | 'q', value: string, fallback: string): void => {
         const next = new URLSearchParams(params);
 
-        if (value === fallback) {
-            next.delete(key);
-        } else {
+        if (value !== fallback) {
             next.set(key, value);
+        } else {
+            next.delete(key);
         }
 
         setParams(next, { replace: true });
@@ -127,7 +127,7 @@ function WatchlistQueueComponent(): JSX.Element {
 
             <div className='mt-4 inline-flex rounded-full bg-fill-strong/80 p-1' role='group' aria-label={t('watchlist.shelving')}>
                 {SHELF_ORDERS.map((option) => (
-                    <button key={option} type='button' aria-pressed={option === order} onClick={() => update('by', option, 'genre')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option === order ? 'bg-white text-ink shadow-control' : 'text-ink-secondary hover:text-ink'}`}>
+                    <button key={option} type='button' aria-pressed={option === order} onClick={() => update('by', option, 'genre')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option !== order ? 'text-ink-secondary hover:text-ink' : 'bg-white text-ink shadow-control'}`}>
                         {t(ORDER_NAMES[option])}
                     </button>
                 ))}
@@ -135,19 +135,7 @@ function WatchlistQueueComponent(): JSX.Element {
 
             <FilterChipsComponent label={t('watchlist.kind')} allLabel={t('watchlist.all')} options={kindOptions} selected={kinds} onChange={filterKinds} className='mt-2' />
 
-            {groups.length === 0 ? (
-                <div className='mt-8 flex flex-col items-center rounded-2xl bg-fill px-6 py-10 text-center'>
-                    <p className='text-[15px] text-ink-secondary'>
-                        {emptyMessage}
-                    </p>
-                    {total === 0 && (
-                        <button type='button' onClick={openSearch} className='mt-4 inline-flex h-10 items-center gap-1.5 rounded-full bg-accent px-4 text-[15px] font-semibold text-white transition hover:bg-accent-strong'>
-                            <Plus size={17} strokeWidth={2.6} />
-                            {t('watchlist.addFirst')}
-                        </button>
-                    )}
-                </div>
-            ) : groups.map((shelf) => (
+            {groups.length !== 0 ? groups.map((shelf) => (
                 <section key={shelf.key} className='mt-9'>
                     {shelf.title !== null && (
                         <h2 className='eyebrow mb-3 flex items-baseline gap-2'>
@@ -161,7 +149,19 @@ function WatchlistQueueComponent(): JSX.Element {
                         ))}
                     </div>
                 </section>
-            ))}
+            )) : (
+                <div className='mt-8 flex flex-col items-center rounded-2xl bg-fill px-6 py-10 text-center'>
+                    <p className='text-[15px] text-ink-secondary'>
+                        {emptyMessage}
+                    </p>
+                    {total === 0 && (
+                        <button type='button' onClick={openSearch} className='mt-4 inline-flex h-10 items-center gap-1.5 rounded-full bg-accent px-4 text-[15px] font-semibold text-white transition hover:bg-accent-strong'>
+                            <Plus size={17} strokeWidth={2.6} />
+                            {t('watchlist.addFirst')}
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

@@ -134,11 +134,11 @@ const AUTHENTICATORS: Readonly<Record<string, MessageKey | { name: string }>> = 
 export function authenticatorName(passkey: Passkey): string {
     const known = AUTHENTICATORS[passkey.aaguid.toLowerCase()];
 
-    if (known === undefined) {
-        return t(passkey.backedUp ? 'account.passkey' : 'account.securityKey');
+    if (known !== undefined) {
+        return typeof known !== 'string' ? known.name : t(known);
     }
 
-    return typeof known === 'string' ? t(known) : known.name;
+    return t(passkey.backedUp ? 'account.passkey' : 'account.securityKey');
 }
 
 /**

@@ -184,7 +184,7 @@ export function isFutureDay(date: Date, now: Date): boolean {
 function calendarDay(year: number, month: number, day: number): Maybe<Date> {
     const date = new Date(year, month - 1, day);
 
-    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+    return date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day ? null : date;
 }
 
 /**
@@ -198,7 +198,7 @@ function calendarDay(year: number, month: number, day: number): Maybe<Date> {
 export function parseDayKey(key: string): Maybe<Date> {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
 
-    return match === null ? null : calendarDay(Number(match[1]), Number(match[2]), Number(match[3]));
+    return match !== null ? calendarDay(Number(match[1]), Number(match[2]), Number(match[3])) : null;
 }
 
 /**
@@ -240,7 +240,7 @@ export function parseDay(input: string, now: Date): Maybe<Date> {
     if (written[3] !== undefined) {
         const year = Number(written[3]);
 
-        return calendarDay(written[3].length === 2 ? 2000 + year : year, month, day);
+        return calendarDay(written[3].length !== 2 ? year : 2000 + year, month, day);
     }
 
     const thisYear = calendarDay(now.getFullYear(), month, day);

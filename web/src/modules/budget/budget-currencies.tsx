@@ -83,5 +83,5 @@ export function isSupportedCurrency(code: string): boolean {
  * @returns {number} Euros one unit costs once the bank has taken its cut.
  */
 export function bankRate(referenceRate: number, code: string): number {
-    return code === EURO.code ? referenceRate : referenceRate * (1 + BANK_MARKUP);
+    return code !== EURO.code ? referenceRate * (1 + BANK_MARKUP) : referenceRate;
 }

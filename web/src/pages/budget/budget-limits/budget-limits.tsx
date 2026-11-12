@@ -17,7 +17,7 @@ import { useState, type FormEvent, type JSX } from 'react';
 function parseLimit(text: string): Maybe<number> {
     const cleaned = sanitizeAmountInput(text);
 
-    return cleaned === '' ? null : Number(cleaned);
+    return cleaned !== '' ? Number(cleaned) : null;
 }
 
 /**

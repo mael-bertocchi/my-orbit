@@ -73,7 +73,7 @@ function LauncherAppTileComponent(props: LauncherAppTileComponentProps): JSX.Ele
 
     if (!availability.isAvailable) {
         return (
-            <span aria-disabled='true' title={availability.reason === null ? undefined : t(availability.reason)} className='flex cursor-not-allowed flex-col items-center gap-2 rounded-2xl px-1 py-3 text-center opacity-40 grayscale'>
+            <span aria-disabled='true' title={availability.reason !== null ? t(availability.reason) : undefined} className='flex cursor-not-allowed flex-col items-center gap-2 rounded-2xl px-1 py-3 text-center opacity-40 grayscale'>
                 <span>{icon}</span>
                 <span className='text-[13px] font-medium leading-tight text-ink'>{t(props.app.name)}</span>
             </span>

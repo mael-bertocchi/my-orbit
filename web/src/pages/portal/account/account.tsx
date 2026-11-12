@@ -70,7 +70,7 @@ interface PasskeyRowComponentProps {
  */
 function PasskeyRowComponent(props: PasskeyRowComponentProps): JSX.Element {
     const name = passkeyName(props.passkey);
-    const used = props.passkey.lastUsedAt === null ? t('account.neverUsed') : t('account.lastUsed', { date: day(props.passkey.lastUsedAt) });
+    const used = props.passkey.lastUsedAt !== null ? t('account.lastUsed', { date: day(props.passkey.lastUsedAt) }) : t('account.neverUsed');
 
     /**
      * @constant title
@@ -181,7 +181,7 @@ function PasskeyNameFormComponent(props: PasskeyNameFormComponentProps): JSX.Ele
 
         const trimmed = name.trim();
 
-        props.onSave(trimmed === '' ? null : trimmed);
+        props.onSave(trimmed !== '' ? trimmed : null);
     };
 
     return (
@@ -380,12 +380,12 @@ function AccountPage(): JSX.Element {
                 </h1>
 
                 <ListGroupComponent title={t('account.passkeys')} note={t('account.passkeysNote')}>
-                    {passkeys === null ? (
-                        <div className='flex min-h-[52px] items-center justify-center'><SpinnerComponent /></div>
-                    ) : (
+                    {passkeys !== null ? (
                         passkeys.map((passkey) => (
                             <PasskeyRowComponent key={passkey.id} passkey={passkey} canRemove={passkeys.length > 1} onRename={() => setRenaming(passkey)} onRemove={() => setRemoving(passkey)} />
                         ))
+                    ) : (
+                        <div className='flex min-h-[52px] items-center justify-center'><SpinnerComponent /></div>
                     )}
                     <ListRowComponent icon={<IconTileComponent icon={Plus} color={ACCENT} size={30} />} title={<span className='text-accent'>{t('account.addPasskey')}</span>} onClick={() => void add()} disabled={isAdding}>
                         {isAdding && <SpinnerComponent size={18} />}

@@ -56,9 +56,9 @@ export function toRecurringFields(draft: RecurringDraft): RecurringFields {
 
     return {
         name: draft.name.trim(),
-        description: description === '' ? null : description,
+        description: description !== '' ? description : null,
         categoryId: draft.categoryId,
-        location: location === '' ? null : location,
+        location: location !== '' ? location : null,
         placeId: place?.id ?? null,
         amount: draft.amount,
         currencyCode: draft.currencyCode,
@@ -92,9 +92,9 @@ export function intervalLabel(intervalMonths: number): string {
  * @returns {Maybe<number>} The euros a month, or null while a foreign currency's rate is unknown.
  */
 export function monthlyEuros(recurring: RecurringOperation, rateToEuro: Maybe<number>): Maybe<number> {
-    const rate = recurring.currencyCode === EURO.code ? 1 : rateToEuro;
+    const rate = recurring.currencyCode !== EURO.code ? rateToEuro : 1;
 
-    return rate === null ? null : recurring.amount * rate / recurring.intervalMonths;
+    return rate !== null ? recurring.amount * rate / recurring.intervalMonths : null;
 }
 
 /**
@@ -118,5 +118,5 @@ export function isRunning(recurring: RecurringOperation): boolean {
  * @returns {Maybe<Date>} Its midnight, or null for none.
  */
 export function dayOf(key: Maybe<string> | undefined): Maybe<Date> {
-    return key === null || key === undefined ? null : parseDayKey(key);
+    return key !== null && key !== undefined ? parseDayKey(key) : null;
 }
