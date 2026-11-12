@@ -12,9 +12,9 @@ function recurring(overrides: Partial<RecurringOperation> = {}): RecurringOperat
 
 describe('toRecurringFields', () => {
     it('trims the texts, stores empty ones as none and drops the place of an online one', () => {
-        const fields = toRecurringFields({ name: ' Netflix ', description: '  ', amount: 13.49, currencyCode: 'EUR', categoryId: 'fun', location: 'Paris', isOnline: true, firstDate: '2026-11-11', intervalMonths: 1, endDate: null, isPaused: false });
+        const fields = toRecurringFields({ name: ' Netflix ', description: '  ', amount: 13.49, currencyCode: 'EUR', categoryId: 'fun', location: 'Paris', place: { id: 'R71525', nameEn: 'Paris', nameFr: 'Paris' }, isOnline: true, firstDate: '2026-11-11', intervalMonths: 1, endDate: null, isPaused: false });
 
-        expect(fields).toEqual({ name: 'Netflix', description: null, categoryId: 'fun', location: null, amount: 13.49, currencyCode: 'EUR', isOnline: true, firstDate: '2026-11-11', intervalMonths: 1, endDate: null, isPaused: false });
+        expect(fields).toEqual({ name: 'Netflix', description: null, categoryId: 'fun', location: null, placeId: null, amount: 13.49, currencyCode: 'EUR', isOnline: true, firstDate: '2026-11-11', intervalMonths: 1, endDate: null, isPaused: false });
     });
 });
 

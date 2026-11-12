@@ -1,24 +1,25 @@
 import AlertComponent from 'components/alert/alert';
 import CategoryIconComponent from 'components/category-icon/category-icon';
 import SheetComponent from 'components/sheet/sheet';
-import SpinnerComponent from 'components/spinner/spinner';
 import SuggestionFieldComponent, { type Suggestion } from 'components/suggestion-field/suggestion-field';
 import SwitchComponent from 'components/switch/switch';
-import { Globe, LocateFixed, MapPin, Repeat, type LucideIcon } from 'lucide-react';
+import { Globe, Repeat, type LucideIcon } from 'lucide-react';
 import type { Maybe } from 'models';
 import { categoriesOf, categoryName } from 'modules/budget/budget-categories';
 import { CURRENCIES, EURO } from 'modules/budget/budget-currencies';
 import { atTime, dayKey, isFutureDay, parseDay, timeKey, withTimeOf } from 'modules/budget/budget-dates';
-import { euroPrecise, fieldDate, rate } from 'modules/budget/budget-formatting';
+import { euroPrecise, fieldDate, placeName, rate, whereabouts } from 'modules/budget/budget-formatting';
 import { useBudgetContext, useDocument, useRates } from 'modules/budget/budget-hooks';
-import { latestLocation, nameSuggestions } from 'modules/budget/budget-math';
+import { latestPlace, nameSuggestions } from 'modules/budget/budget-math';
 import type { BudgetEditorRoute, Category, Operation } from 'modules/budget/budget-models';
-import { locateCity, useCitySuggestions } from 'modules/budget/budget-places';
 import { amountInputOf, deleteOperation, groupAmountInput, Limits, parseAmountInput, sanitizeAmountInput, toOperation, upsertOperation } from 'modules/budget/budget-operations';
 import { defaultCurrency, rememberCurrency } from 'modules/budget/budget-preferences';
+import type { CityValue } from 'modules/budget/budget-places';
+import { isCityChosen } from 'modules/budget/budget-places';
 import { t } from 'modules/language/language-service';
+import BudgetCityFieldComponent from 'pages/budget/budget-city-field/budget-city-field';
 import { useEffect, useMemo, useState, type FormEvent, type JSX, type ReactNode } from 'react';
-import { messageOf, UserError } from 'utils/errors';
+import { UserError } from 'utils/errors';
 
 /**
  * @constant FORM_ID
@@ -129,6 +130,25 @@ export function CategoryPickerComponent(props: CategoryPickerComponentProps): JS
 }
 
 /**
+ * @function initialCity
+ * @description The city the editor opens on: the operation's own, in the page's language, or the place it was written
+ * with before cities were checked; for a new one, the city of the latest operation.
+ *
+ * @param {Maybe<Operation>} existing The operation edited, none for a new one
+ * @param {readonly Operation[]} operations Every operation
+ * @returns {CityValue} The city
+ */
+function initialCity(existing: Maybe<Operation>, operations: readonly Operation[]): CityValue {
+    if (existing !== null) {
+        return { location: whereabouts(existing), place: existing.place ?? null };
+    }
+
+    const place = latestPlace(operations);
+
+    return { location: place === null ? '' : placeName(place), place };
+}
+
+/**
  * @interface OperationFormComponentProps
  * @description Properties of the operation form
  */
@@ -161,23 +181,20 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
     const [categoryId, setCategoryId] = useState(existing?.categoryId ?? categories[0]?.id ?? '');
     const [name, setName] = useState(existing?.name ?? '');
     const [description, setDescription] = useState(existing?.description ?? '');
-    const [location, setLocation] = useState(existing === null ? latestLocation(document.operations) ?? '' : existing.location ?? '');
+    const [city, setCity] = useState<CityValue>(() => initialCity(existing, document.operations));
     const [date, setDate] = useState(existing?.date ?? now);
     const [isOnline, setIsOnline] = useState(existing?.isOnline ?? false);
-    const [isTypingLocation, setIsTypingLocation] = useState(false);
-    const [isLocating, setIsLocating] = useState(false);
-    const [locateError, setLocateError] = useState<Maybe<string>>(null);
 
     const names = useMemo(() => nameSuggestions(document.operations, name), [document.operations, name]);
     const nameOptions = names.map((value): Suggestion => ({ value }));
-    const cityOptions = useCitySuggestions(document.operations, location, isTypingLocation);
+    const keptLocation = existing === null || (existing.place ?? null) !== null ? null : existing.location ?? null;
 
     const day = dayKey(date);
     const isForeign = currencyCode !== EURO.code;
     const amount = parseAmountInput(amountText);
     const storedRate = existing !== null && existing.currencyCode === currencyCode && dayKey(existing.date) === day ? existing.rateToEuro : null;
     const appliedRate = rates.rate(currencyCode, day) ?? storedRate;
-    const isValid = amount !== null && name.trim() !== '' && categoryId !== '' && appliedRate !== null;
+    const isValid = amount !== null && name.trim() !== '' && categoryId !== '' && appliedRate !== null && (isOnline || isCityChosen(city, keptLocation));
 
     useEffect(() => {
         if (isForeign) {
@@ -190,53 +207,12 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
     }, [isValid, onValidityChange]);
 
     /**
-     * @function typeLocation
-     * @description Takes the place as it is typed, which brings the cities matching it
+     * @function pickName
+     * @description Takes the name of an earlier operation
      */
-    const typeLocation = (value: string): void => {
-        setLocation(value);
-        setIsTypingLocation(true);
-        setLocateError(null);
+    const pickName = (suggestion: Suggestion): void => {
+        setName(suggestion.value);
     };
-
-    /**
-     * @function pickLocation
-     * @description Takes a city suggested or located, which needs no more suggestions
-     */
-    const pickLocation = (value: string): void => {
-        setLocation(value);
-        setIsTypingLocation(false);
-        setLocateError(null);
-    };
-
-    /**
-     * @function locate
-     * @description Fills in the city the device is in, or says why it can't, the suggestions put away either way
-     */
-    const locate = async (): Promise<void> => {
-        setIsLocating(true);
-        setLocateError(null);
-
-        try {
-            pickLocation(await locateCity());
-        } catch (error: unknown) {
-            setIsTypingLocation(false);
-            setLocateError(messageOf(error));
-        } finally {
-            setIsLocating(false);
-        }
-    };
-
-    /**
-     * @constant locateButton
-     * @description The button at the end of the place, filling in the city the device is in
-     */
-    const locateButton = (
-        <button type='button' onMouseDown={(event) => event.preventDefault()} onClick={() => void locate()} disabled={isLocating} title={t('operation.locateHint')} className='absolute right-1.5 top-1/2 flex h-8 -translate-y-1/2 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-accent transition hover:bg-fill-strong disabled:opacity-60'>
-            {isLocating ? <SpinnerComponent size={14} /> : <LocateFixed size={15} />}
-            {t('operation.locate')}
-        </button>
-    );
 
     /**
      * @function settle
@@ -279,7 +255,7 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
             return;
         }
 
-        const draft = { name, description, amount, currencyCode, categoryId, date, location, isOnline };
+        const draft = { name, description, amount, currencyCode, categoryId, date, location: city.location, place: city.place, isOnline };
         const operation = { ...toOperation(draft, appliedRate, existing?.id), recurringId: existing?.recurringId ?? null };
 
         store.apply((current) => {
@@ -343,7 +319,7 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
             <CategoryPickerComponent categories={categories} selected={categoryId} onSelect={setCategoryId} />
 
             <FieldComponent label={t('operation.name')} htmlFor='name'>
-                <SuggestionFieldComponent id='name' value={name} onType={setName} onPick={setName} suggestions={nameOptions} label={t('operation.suggestions')} placeholder={t('operation.namePlaceholder')} maxLength={Limits.name} />
+                <SuggestionFieldComponent id='name' value={name} onType={setName} onPick={pickName} suggestions={nameOptions} label={t('operation.suggestions')} placeholder={t('operation.namePlaceholder')} maxLength={Limits.name} />
             </FieldComponent>
 
             <FieldComponent label={t('operation.description')} htmlFor='description'>
@@ -361,8 +337,7 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
 
             {!isOnline && (
                 <FieldComponent label={t('operation.location')} htmlFor='location'>
-                    <SuggestionFieldComponent id='location' value={location} onType={typeLocation} onPick={pickLocation} suggestions={cityOptions} label={t('operation.suggestions')} placeholder={t('operation.locationPlaceholder')} maxLength={Limits.location} icon={MapPin} trailing={locateButton} />
-                    {locateError !== null && <p className='mt-1.5 text-[12px] text-warning-text'>{locateError}</p>}
+                    <BudgetCityFieldComponent id='location' value={city} onChange={setCity} kept={keptLocation} />
                 </FieldComponent>
             )}
 

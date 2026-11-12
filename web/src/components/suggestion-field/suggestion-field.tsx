@@ -6,6 +6,7 @@ import { useState, type JSX, type KeyboardEvent, type MouseEvent, type ReactNode
  * @description A value the field offers to fill in
  */
 export interface Suggestion {
+    id?: string; /*!< What it stands for, when its text alone doesn't say */
     value: string; /*!< What it fills in */
     detail?: string; /*!< A word after it, to tell two alike apart */
 }
@@ -18,7 +19,7 @@ interface SuggestionFieldComponentProps {
     id: string; /*!< Its identifier, for its label */
     value: string; /*!< What is typed */
     onType: (value: string) => void; /*!< Called as it is typed */
-    onPick: (value: string) => void; /*!< Called with the suggestion picked */
+    onPick: (suggestion: Suggestion) => void; /*!< Called with the suggestion picked */
     suggestions: readonly Suggestion[]; /*!< What it offers, for what is typed */
     label: string; /*!< The list's name, for those who can't see it */
     placeholder: string; /*!< What to type, shown while it is empty */
@@ -66,7 +67,7 @@ function SuggestionFieldComponent(props: SuggestionFieldComponentProps): JSX.Ele
      * @description Fills in a suggestion and puts the list away
      */
     const pick = (suggestion: Suggestion): void => {
-        props.onPick(suggestion.value);
+        props.onPick(suggestion);
         setIsOpen(false);
         setHighlighted(-1);
     };
@@ -135,7 +136,7 @@ function SuggestionFieldComponent(props: SuggestionFieldComponentProps): JSX.Ele
             {isShown && (
                 <ul id={listId} role='listbox' aria-label={props.label} className='mt-1.5 overflow-hidden rounded-xl bg-fill py-1'>
                     {props.suggestions.map((suggestion, index) => (
-                        <li key={`${suggestion.value}|${suggestion.detail ?? ''}`} id={`${listId}-${index}`} role='option' aria-selected={index === active} onMouseDown={keepFocus} onClick={() => pick(suggestion)} onMouseEnter={() => setHighlighted(index)} className={`flex cursor-pointer items-baseline gap-2 px-3.5 py-2 text-[15px] ${index === active ? 'bg-fill-strong' : ''}`}>
+                        <li key={suggestion.id ?? `${suggestion.value}|${suggestion.detail ?? ''}`} id={`${listId}-${index}`} role='option' aria-selected={index === active} onMouseDown={keepFocus} onClick={() => pick(suggestion)} onMouseEnter={() => setHighlighted(index)} className={`flex cursor-pointer items-baseline gap-2 px-3.5 py-2 text-[15px] ${index === active ? 'bg-fill-strong' : ''}`}>
                             <span className='truncate'>{suggestion.value}</span>
                             {suggestion.detail !== undefined && suggestion.detail !== '' && <span className='truncate text-[13px] text-ink-tertiary'>{suggestion.detail}</span>}
                         </li>

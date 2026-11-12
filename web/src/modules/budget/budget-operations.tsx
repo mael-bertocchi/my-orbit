@@ -2,7 +2,7 @@ import type { Maybe } from 'models';
 import { EURO } from 'modules/budget/budget-currencies';
 import { wholeSeconds } from 'modules/budget/budget-dates';
 import { numberStyle } from 'modules/budget/budget-formatting';
-import type { BudgetDocument, Operation } from 'modules/budget/budget-models';
+import type { BudgetDocument, Operation, PlaceReference } from 'modules/budget/budget-models';
 
 /**
  * @constant MAX_DIGITS
@@ -31,7 +31,8 @@ export interface OperationDraft {
     currencyCode: string; /*!< The currency it was paid in */
     categoryId: string; /*!< Where it is filed */
     date: Date; /*!< When it happened */
-    location: string; /*!< Where it happened, ignored when online */
+    location: string; /*!< Where it happened, as it reads, ignored when online */
+    place: Maybe<PlaceReference>; /*!< The city it happened in, ignored when online */
     isOnline: boolean; /*!< Whether it has no physical location */
 }
 
@@ -141,6 +142,7 @@ export function amountInputOf(amount: number): string {
 export function toOperation(draft: OperationDraft, rateToEuro: number, id?: string): Operation {
     const description = draft.description.trim();
     const location = draft.isOnline ? '' : draft.location.trim();
+    const place = draft.isOnline || location === '' ? null : draft.place;
 
     return {
         id: id ?? crypto.randomUUID().toUpperCase(),
@@ -149,6 +151,8 @@ export function toOperation(draft: OperationDraft, rateToEuro: number, id?: stri
         description: description === '' ? null : description,
         categoryId: draft.categoryId,
         location: location === '' ? null : location,
+        placeId: place?.id ?? null,
+        place,
         amount: draft.amount,
         currencyCode: draft.currencyCode,
         rateToEuro: draft.currencyCode === EURO.code ? 1 : rateToEuro,

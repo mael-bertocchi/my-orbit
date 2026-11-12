@@ -26,6 +26,7 @@ function sameOperation(lhs: Operation, rhs: Operation): boolean {
         && (lhs.description ?? null) === (rhs.description ?? null)
         && lhs.categoryId === rhs.categoryId
         && (lhs.location ?? null) === (rhs.location ?? null)
+        && (lhs.placeId ?? null) === (rhs.placeId ?? null)
         && lhs.amount === rhs.amount
         && lhs.currencyCode === rhs.currencyCode
         && lhs.rateToEuro === rhs.rateToEuro

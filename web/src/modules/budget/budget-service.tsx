@@ -31,16 +31,17 @@ function path(collection: string, id: string): string {
  * @description What an operation holds, as the server takes it on creation or change
  *
  * @param {Operation} operation The operation
- * @returns {Omit<Operation, 'id' | 'updatedAt' | 'recurringId'>} Its fields, without its id, its update stamp and the
- * recurring operation it is an occurrence of, which the server sets
+ * @returns {Omit<Operation, 'id' | 'updatedAt' | 'recurringId' | 'place'>} Its fields, without its id, its update stamp,
+ * the recurring operation it is an occurrence of and its city's names, which the server sets
  */
-function operationFields(operation: Operation): Omit<Operation, 'id' | 'updatedAt' | 'recurringId'> {
+function operationFields(operation: Operation): Omit<Operation, 'id' | 'updatedAt' | 'recurringId' | 'place'> {
     return {
         date: operation.date,
         name: operation.name,
         description: operation.description ?? null,
         categoryId: operation.categoryId,
         location: operation.location ?? null,
+        placeId: operation.placeId ?? null,
         amount: operation.amount,
         currencyCode: operation.currencyCode,
         rateToEuro: operation.rateToEuro,

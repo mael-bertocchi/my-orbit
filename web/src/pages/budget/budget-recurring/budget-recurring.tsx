@@ -1,22 +1,27 @@
 import AlertComponent from 'components/alert/alert';
 import SheetComponent from 'components/sheet/sheet';
-import { CalendarX, Globe, MapPin, Pause } from 'lucide-react';
+import SuggestionFieldComponent, { type Suggestion } from 'components/suggestion-field/suggestion-field';
+import { CalendarX, Globe, Pause } from 'lucide-react';
 import type { Maybe } from 'models';
 import { categoriesOf } from 'modules/budget/budget-categories';
 import { CURRENCIES, EURO } from 'modules/budget/budget-currencies';
 import { dayKey } from 'modules/budget/budget-dates';
-import { euroPrecise, rate } from 'modules/budget/budget-formatting';
+import { euroPrecise, rate, whereabouts } from 'modules/budget/budget-formatting';
 import { useBudgetContext, useDocument, useRates } from 'modules/budget/budget-hooks';
 import type { RecurringOperation } from 'modules/budget/budget-models';
 import { amountInputOf, groupAmountInput, Limits, parseAmountInput, sanitizeAmountInput } from 'modules/budget/budget-operations';
+import { nameSuggestions } from 'modules/budget/budget-math';
 import { defaultCurrency } from 'modules/budget/budget-preferences';
 import { intervalLabel, INTERVALS, toRecurringFields } from 'modules/budget/budget-recurring';
 import budgetService from 'modules/budget/budget-service';
+import type { CityValue } from 'modules/budget/budget-places';
+import { isCityChosen } from 'modules/budget/budget-places';
 import { t } from 'modules/language/language-service';
 import { useToastContext } from 'modules/toast/toast-hooks';
 import type { ToastContextProps } from 'modules/toast/toast-models';
+import BudgetCityFieldComponent from 'pages/budget/budget-city-field/budget-city-field';
 import { CategoryPickerComponent, FieldComponent, ToggleRowComponent } from 'pages/budget/budget-operation/budget-operation';
-import { useEffect, useState, type FormEvent, type JSX } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type JSX } from 'react';
 import { messageOf } from 'utils/errors';
 
 /**
@@ -66,17 +71,21 @@ function RecurringFormComponent(props: RecurringFormComponentProps): JSX.Element
     const [categoryId, setCategoryId] = useState(existing?.categoryId ?? categories[0]?.id ?? '');
     const [name, setName] = useState(existing?.name ?? '');
     const [description, setDescription] = useState(existing?.description ?? '');
-    const [location, setLocation] = useState(existing?.location ?? '');
+    const [city, setCity] = useState<CityValue>({ location: existing === null ? '' : whereabouts(existing), place: existing?.place ?? null });
     const [isOnline, setIsOnline] = useState(existing?.isOnline ?? false);
     const [firstDate, setFirstDate] = useState(existing?.firstDate ?? today);
     const [intervalMonths, setIntervalMonths] = useState(existing?.intervalMonths ?? 1);
     const [endDate, setEndDate] = useState<Maybe<string>>(existing?.endDate ?? null);
     const [isPaused, setIsPaused] = useState(existing?.isPaused ?? false);
 
+    const names = useMemo(() => nameSuggestions(document.operations, name), [document.operations, name]);
+    const nameOptions = names.map((value): Suggestion => ({ value }));
     const amount = parseAmountInput(amountText);
     const isForeign = currencyCode !== EURO.code;
     const latestRate = rates.rate(currencyCode, today);
-    const isValid = amount !== null && name.trim() !== '' && categoryId !== '' && firstDate !== '' && (endDate === null || (endDate !== '' && endDate >= firstDate));
+    const keptLocation = existing === null || (existing.place ?? null) !== null ? null : existing.location ?? null;
+    const isEndValid = endDate === null || (endDate !== '' && endDate >= firstDate);
+    const isValid = amount !== null && name.trim() !== '' && categoryId !== '' && firstDate !== '' && isEndValid && (isOnline || isCityChosen(city, keptLocation));
 
     useEffect(() => {
         if (isForeign) {
@@ -89,6 +98,14 @@ function RecurringFormComponent(props: RecurringFormComponentProps): JSX.Element
     }, [isValid, onValidityChange]);
 
     /**
+     * @function pickName
+     * @description Takes the name of an earlier operation
+     */
+    const pickName = (suggestion: Suggestion): void => {
+        setName(suggestion.value);
+    };
+
+    /**
      * @function save
      * @description Stores the recurring operation, then reads the budget again for the occurrences the server logged.
      */
@@ -97,7 +114,7 @@ function RecurringFormComponent(props: RecurringFormComponentProps): JSX.Element
             return;
         }
 
-        const fields = toRecurringFields({ name, description, amount, currencyCode, categoryId, location, isOnline, firstDate, intervalMonths, endDate, isPaused });
+        const fields = toRecurringFields({ name, description, amount, currencyCode, categoryId, location: city.location, place: city.place, isOnline, firstDate, intervalMonths, endDate, isPaused });
 
         props.onSavingChange(true);
 
@@ -153,7 +170,7 @@ function RecurringFormComponent(props: RecurringFormComponentProps): JSX.Element
             <CategoryPickerComponent categories={categories} selected={categoryId} onSelect={setCategoryId} />
 
             <FieldComponent label={t('operation.name')} htmlFor='recurring-name'>
-                <input id='recurring-name' className='field' value={name} maxLength={Limits.name} onChange={(event) => setName(event.target.value)} placeholder={t('operation.namePlaceholder')} autoComplete='off' />
+                <SuggestionFieldComponent id='recurring-name' value={name} onType={setName} onPick={pickName} suggestions={nameOptions} label={t('operation.suggestions')} placeholder={t('operation.namePlaceholder')} maxLength={Limits.name} />
             </FieldComponent>
 
             <FieldComponent label={t('operation.description')} htmlFor='recurring-description'>
@@ -186,10 +203,7 @@ function RecurringFormComponent(props: RecurringFormComponentProps): JSX.Element
 
             {!isOnline && (
                 <FieldComponent label={t('operation.location')} htmlFor='recurring-location'>
-                    <div className='relative'>
-                        <MapPin size={16} className='pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-accent' />
-                        <input id='recurring-location' className='field pl-9' value={location} maxLength={Limits.location} onChange={(event) => setLocation(event.target.value)} placeholder={t('operation.locationPlaceholder')} />
-                    </div>
+                    <BudgetCityFieldComponent id='recurring-location' value={city} onChange={setCity} kept={keptLocation} />
                 </FieldComponent>
             )}
 

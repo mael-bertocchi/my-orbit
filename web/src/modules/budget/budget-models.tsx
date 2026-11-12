@@ -17,6 +17,16 @@ export const CategorySchema = z.object({
 });
 
 /**
+ * @constant PlaceReferenceSchema
+ * @description Zod schema for a city the server checked: its OpenStreetMap identity and its name in each language.
+ */
+export const PlaceReferenceSchema = z.object({
+    id: z.string(),
+    nameEn: z.string(),
+    nameFr: z.string()
+});
+
+/**
  * @constant OperationSchema
  * @description Zod schema for one logged operation.
  */
@@ -27,6 +37,8 @@ export const OperationSchema = z.object({
     description: z.string().nullish(),
     categoryId: z.string(),
     location: z.string().nullish(),
+    placeId: z.string().nullish(),
+    place: PlaceReferenceSchema.nullish(),
     amount: z.number(),
     currencyCode: z.string(),
     rateToEuro: z.number(),
@@ -45,6 +57,8 @@ export const RecurringOperationSchema = z.object({
     description: z.string().nullish(),
     categoryId: z.string(),
     location: z.string().nullish(),
+    placeId: z.string().nullish(),
+    place: PlaceReferenceSchema.nullish(),
     amount: z.number(),
     currencyCode: z.string(),
     isOnline: z.boolean(),
@@ -103,12 +117,18 @@ export const RateSnapshotSchema = z.object({
 
 /**
  * @constant PlaceSchema
- * @description Zod schema for a city the server suggests: its name, and its region and country to tell it apart.
+ * @description Zod schema for a city the server suggests: its identity, its names, and its region and country in the page's
+ * language to tell it apart.
  */
-export const PlaceSchema = z.object({
-    name: z.string(),
+export const PlaceSchema = PlaceReferenceSchema.extend({
     detail: z.string()
 });
+
+/**
+ * @type PlaceReference
+ * @description A city the server checked, named in each language
+ */
+export type PlaceReference = z.infer<typeof PlaceReferenceSchema>;
 
 /**
  * @type Place
@@ -136,9 +156,10 @@ export type RecurringOperation = z.infer<typeof RecurringOperationSchema>;
 
 /**
  * @type RecurringFields
- * @description What describes a recurring operation, as the server takes it on creation or change
+ * @description What describes a recurring operation, as the server takes it on creation or change: its city by identity
+ * alone, which the server names
  */
-export type RecurringFields = Omit<RecurringOperation, 'id' | 'nextDate'>;
+export type RecurringFields = Omit<RecurringOperation, 'id' | 'nextDate' | 'place'>;
 
 /**
  * @type TrashedOperation

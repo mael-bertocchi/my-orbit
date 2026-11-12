@@ -2,7 +2,7 @@ import type { Maybe } from 'models';
 import { categoriesOf } from 'modules/budget/budget-categories';
 import { EURO } from 'modules/budget/budget-currencies';
 import { daysInMonth, isSameMonth, monthKey, monthStart, shiftMonth, startOfDay } from 'modules/budget/budget-dates';
-import type { BudgetDocument, Category, MonthlyBudget, Operation } from 'modules/budget/budget-models';
+import type { BudgetDocument, Category, MonthlyBudget, Operation, PlaceReference } from 'modules/budget/budget-models';
 
 /**
  * @interface MonthSummary
@@ -255,32 +255,29 @@ export function sealCompletedMonths(document: BudgetDocument, now: Date = new Da
 }
 
 /**
- * @function latestLocation
- * @description Where the most recent in-person operation happened, to suggest it for the next one.
+ * @function latestPlace
+ * @description The city of the most recent in-person operation that has one, to suggest it for the next one.
  */
-export function latestLocation(operations: readonly Operation[]): Maybe<string> {
-    const latest = operations.toSorted((left, right) => right.date.getTime() - left.date.getTime())
-        .find((operation) => !operation.isOnline && (operation.location ?? '') !== '');
+export function latestPlace(operations: readonly Operation[]): Maybe<PlaceReference> {
+    const latest = operations.toSorted((left, right) => right.date.getTime() - left.date.getTime()).find((operation) => !operation.isOnline && (operation.place ?? null) !== null);
 
-    return latest?.location ?? null;
+    return latest?.place ?? null;
 }
 
 /**
- * @function recentLocations
- * @description The places operations happened at, most recent first and each only once.
+ * @function recentPlaces
+ * @description The cities operations took place in, most recent first and each only once.
  */
-export function recentLocations(operations: readonly Operation[]): string[] {
-    const locations = new Map<string, string>();
+export function recentPlaces(operations: readonly Operation[]): PlaceReference[] {
+    const places = new Map<string, PlaceReference>();
 
     for (const operation of operations.toSorted((left, right) => right.date.getTime() - left.date.getTime())) {
-        const location = operation.location?.trim() ?? '';
-
-        if (location !== '' && !locations.has(location.toLowerCase())) {
-            locations.set(location.toLowerCase(), location);
+        if (operation.place !== undefined && operation.place !== null && !places.has(operation.place.id)) {
+            places.set(operation.place.id, operation.place);
         }
     }
 
-    return [...locations.values()];
+    return [...places.values()];
 }
 
 /**
@@ -371,20 +368,33 @@ export function nameSuggestions(operations: readonly Operation[], typed: string,
 }
 
 /**
- * @function locationSuggestions
- * @description The places of earlier operations matching what is typed, the best match first, then the most recent. The
- * place typed in full is left out.
+ * @function placeMatch
+ * @description How well a city matches what is typed, already folded, under either of its names: 0 when neither matches,
+ * and also when one is typed in full, as there is nothing left to complete.
  */
-export function locationSuggestions(operations: readonly Operation[], typed: string, limit: number = 3): string[] {
+function placeMatch(place: PlaceReference, typed: string): number {
+    if (foldText(place.nameEn) === typed || foldText(place.nameFr) === typed) {
+        return 0;
+    }
+
+    return Math.max(rankMatch(place.nameEn, typed), rankMatch(place.nameFr, typed));
+}
+
+/**
+ * @function placeSuggestions
+ * @description The cities of earlier operations matching what is typed, under either of their names, the best match
+ * first, then the most recent.
+ */
+export function placeSuggestions(operations: readonly Operation[], typed: string, limit: number = 3): PlaceReference[] {
     const folded = foldText(typed);
 
     if (folded === '') {
         return [];
     }
 
-    const matching = recentLocations(operations).filter((location) => foldText(location) !== folded && rankMatch(location, folded) > 0);
+    const matching = recentPlaces(operations).filter((place) => placeMatch(place, folded) > 0);
 
-    return matching.toSorted((left, right) => rankMatch(right, folded) - rankMatch(left, folded)).slice(0, limit);
+    return matching.toSorted((left, right) => placeMatch(right, folded) - placeMatch(left, folded)).slice(0, limit);
 }
 
 /**

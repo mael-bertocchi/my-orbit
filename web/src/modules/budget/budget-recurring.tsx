@@ -1,7 +1,7 @@
 import type { Maybe } from 'models';
 import { EURO } from 'modules/budget/budget-currencies';
 import { parseDayKey } from 'modules/budget/budget-dates';
-import type { RecurringFields, RecurringOperation } from 'modules/budget/budget-models';
+import type { PlaceReference, RecurringFields, RecurringOperation } from 'modules/budget/budget-models';
 import type { MessageKey } from 'modules/language/language-en';
 import { t } from 'modules/language/language-service';
 
@@ -32,7 +32,8 @@ export interface RecurringDraft {
     amount: number; /*!< How much, in its own currency */
     currencyCode: string; /*!< The currency it is paid in */
     categoryId: string; /*!< Where its occurrences are filed */
-    location: string; /*!< Where it is paid, ignored when online */
+    location: string; /*!< Where it is paid, as it reads, ignored when online */
+    place: Maybe<PlaceReference>; /*!< The city it is paid in, ignored when online */
     isOnline: boolean; /*!< Whether it has no physical location */
     firstDate: string; /*!< Its first occurrence, as `YYYY-MM-DD` */
     intervalMonths: number; /*!< How many months lie between two occurrences */
@@ -51,12 +52,14 @@ export interface RecurringDraft {
 export function toRecurringFields(draft: RecurringDraft): RecurringFields {
     const description = draft.description.trim();
     const location = draft.isOnline ? '' : draft.location.trim();
+    const place = draft.isOnline || location === '' ? null : draft.place;
 
     return {
         name: draft.name.trim(),
         description: description === '' ? null : description,
         categoryId: draft.categoryId,
         location: location === '' ? null : location,
+        placeId: place?.id ?? null,
         amount: draft.amount,
         currencyCode: draft.currencyCode,
         isOnline: draft.isOnline,

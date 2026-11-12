@@ -9,7 +9,7 @@ import { currencyNamed, EURO } from 'modules/budget/budget-currencies';
 import type { DayRange } from 'modules/budget/budget-dates';
 import { dayKey, dayRange, isInRange, parseDayKey } from 'modules/budget/budget-dates';
 import { useBudgetEditorContext } from 'modules/budget/budget-editor-hooks';
-import { clockTime, euroPrecise, money, rangeTitle, relativeDay } from 'modules/budget/budget-formatting';
+import { clockTime, euroPrecise, money, rangeTitle, relativeDay, whereabouts } from 'modules/budget/budget-formatting';
 import { useDocument } from 'modules/budget/budget-hooks';
 import { dayGroups, euroAmount } from 'modules/budget/budget-math';
 import type { BudgetDocument, Operation } from 'modules/budget/budget-models';
@@ -30,7 +30,7 @@ function matches(document: BudgetDocument, operation: Operation, query: string):
         return true;
     }
 
-    const haystack = [operation.name, operation.description, operation.location, categoryName(categoryOrFallback(document.categories, operation.categoryId))];
+    const haystack = [operation.name, operation.description, operation.location, operation.place?.nameEn, operation.place?.nameFr, categoryName(categoryOrFallback(document.categories, operation.categoryId))];
 
     return haystack.some((text) => (text ?? '').toLowerCase().includes(needle));
 }
@@ -107,10 +107,10 @@ function OperationRowComponent(props: OperationRowComponentProps): JSX.Element {
                     {props.operation.isOnline && (
                         <span className='flex items-center gap-1'><Globe size={12} /> {t('history.online')}</span>
                     )}
-                    {!props.operation.isOnline && (props.operation.location ?? '') !== '' && (
+                    {!props.operation.isOnline && whereabouts(props.operation) !== '' && (
                         <span className='flex min-w-0 items-center gap-1'>
                             <MapPin size={12} className='shrink-0' />{' '}
-                            <span className='truncate'>{props.operation.location}</span>
+                            <span className='truncate'>{whereabouts(props.operation)}</span>
                         </span>
                     )}
                 </span>

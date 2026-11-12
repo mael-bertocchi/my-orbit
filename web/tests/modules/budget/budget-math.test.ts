@@ -4,12 +4,12 @@ import {
     daysLeft,
     isPastMonth,
     lastUsedCurrency,
-    latestLocation,
-    locationSuggestions,
+    latestPlace,
     nameSuggestions,
     liveBudget,
     monthlyBudgetFor,
-    recentLocations,
+    placeSuggestions,
+    recentPlaces,
     sealCompletedMonths,
     summary,
     toDispatch,
@@ -18,6 +18,30 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import { document, NOW, operation } from '../../support/fixtures';
+
+/**
+ * @constant LYON
+ * @description A city named alike in both languages
+ */
+const LYON = { id: 'R120965', nameEn: 'Lyon', nameFr: 'Lyon' };
+
+/**
+ * @constant SEOUL
+ * @description A city named differently in each language
+ */
+const SEOUL = { id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul' };
+
+/**
+ * @constant SAINT_ETIENNE
+ * @description A city whose name starts with another word
+ */
+const SAINT_ETIENNE = { id: 'R117905', nameEn: 'Saint-Étienne', nameFr: 'Saint-Étienne' };
+
+/**
+ * @constant ETRETAT
+ * @description A city whose name starts with an accent
+ */
+const ETRETAT = { id: 'R144640', nameEn: 'Étretat', nameFr: 'Étretat' };
 
 /**
  * @constant september
@@ -134,17 +158,18 @@ describe('withMonthlyBudget', () => {
 
 describe('suggestions', () => {
     const operations = [
-        operation({ id: 'a', date: new Date(2026, 8, 20), location: 'Lidl', currencyCode: 'CHF' }),
-        operation({ id: 'b', date: new Date(2026, 8, 25), location: 'Netflix', isOnline: true, currencyCode: 'USD' }),
-        operation({ id: 'c', date: new Date(2026, 8, 24), location: 'lidl' })
+        operation({ id: 'a', date: new Date(2026, 8, 20), location: 'Lyon', place: LYON, currencyCode: 'CHF' }),
+        operation({ id: 'b', date: new Date(2026, 8, 25), location: 'Séoul', place: SEOUL, isOnline: true, currencyCode: 'USD' }),
+        operation({ id: 'c', date: new Date(2026, 8, 24), location: 'Lyon', place: LYON }),
+        operation({ id: 'd', date: new Date(2026, 8, 23), location: 'Chez Paul' })
     ];
 
-    it('suggests the latest in-person place', () => {
-        expect(latestLocation(operations)).toBe('lidl');
+    it('suggests the city of the latest in-person operation that has one', () => {
+        expect(latestPlace(operations)).toEqual(LYON);
     });
 
-    it('lists each place once, most recent first', () => {
-        expect(recentLocations(operations)).toEqual(['Netflix', 'lidl']);
+    it('lists each city once, most recent first', () => {
+        expect(recentPlaces(operations)).toEqual([SEOUL, LYON]);
     });
 
     it('defaults to the currency of the latest operation', () => {
@@ -176,16 +201,16 @@ describe('nameSuggestions', () => {
     });
 });
 
-describe('locationSuggestions', () => {
+describe('placeSuggestions', () => {
     const operations = [
-        operation({ id: 'a', location: 'Saint-Étienne', date: new Date(2026, 8, 1) }),
-        operation({ id: 'b', location: 'Paris', date: new Date(2026, 8, 3) }),
-        operation({ id: 'c', location: 'Étretat', date: new Date(2026, 8, 5) })
+        operation({ id: 'a', place: SAINT_ETIENNE, date: new Date(2026, 8, 1) }),
+        operation({ id: 'b', place: SEOUL, date: new Date(2026, 8, 3) }),
+        operation({ id: 'c', place: ETRETAT, date: new Date(2026, 8, 5) })
     ];
 
-    it('suggests the earlier places matching what is typed, those starting with it first', () => {
-        expect(locationSuggestions(operations, 'et')).toEqual(['Étretat', 'Saint-Étienne']);
-        expect(locationSuggestions(operations, 'pa')).toEqual(['Paris']);
-        expect(locationSuggestions(operations, 'paris')).toEqual([]);
+    it('suggests the cities of earlier operations matching what is typed under either name, those starting with it first', () => {
+        expect(placeSuggestions(operations, 'et')).toEqual([ETRETAT, SAINT_ETIENNE]);
+        expect(placeSuggestions(operations, 'seo')).toEqual([SEOUL]);
+        expect(placeSuggestions(operations, 'seoul')).toEqual([]);
     });
 });

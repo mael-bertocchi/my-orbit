@@ -3,6 +3,7 @@ import type { Currency } from 'modules/budget/budget-currencies';
 import { EURO } from 'modules/budget/budget-currencies';
 import type { DayRange } from 'modules/budget/budget-dates';
 import { isSameDay, timeKey } from 'modules/budget/budget-dates';
+import type { PlaceReference } from 'modules/budget/budget-models';
 import type { Language } from 'modules/language/language-models';
 import { currentLanguage, t } from 'modules/language/language-service';
 
@@ -303,4 +304,42 @@ export function amountInput(amount: number): string {
  */
 export function truncate(text: string, length: number): string {
     return text.length <= length ? text : `${text.slice(0, Math.max(0, length - 1))}…`;
+}
+
+/**
+ * @function placeName
+ * @description A city's name in the page's language.
+ *
+ * @param {PlaceReference} place The city.
+ *
+ * @returns {string} Its name.
+ */
+export function placeName(place: PlaceReference): string {
+    return currentLanguage() === 'fr' ? place.nameFr : place.nameEn;
+}
+
+/**
+ * @interface Whereabouts
+ * @description Where an operation, or a recurring one, takes place.
+ */
+export interface Whereabouts {
+    location?: Maybe<string>; /*!< The place as written */
+    place?: Maybe<PlaceReference>; /*!< The city, checked by the server */
+}
+
+/**
+ * @function whereabouts
+ * @description Where an operation takes place, as the page shows it: its city in the page's language, else the place as
+ * written for one logged before cities were checked, else nothing.
+ *
+ * @param {Whereabouts} entry The operation.
+ *
+ * @returns {string} The place, empty when there is none.
+ */
+export function whereabouts(entry: Whereabouts): string {
+    if (entry.place !== undefined && entry.place !== null) {
+        return placeName(entry.place);
+    }
+
+    return entry.location?.trim() ?? '';
 }

@@ -1,6 +1,7 @@
 import type { Maybe } from 'models';
 import { categoriesOf } from 'modules/budget/budget-categories';
 import { monthKey, monthStart, shiftMonth, startOfDay } from 'modules/budget/budget-dates';
+import { whereabouts } from 'modules/budget/budget-formatting';
 import { euroAmount, monthlyBudgetFor, operationsIn } from 'modules/budget/budget-math';
 import type { BudgetDocument, Category, Operation } from 'modules/budget/budget-models';
 
@@ -254,12 +255,12 @@ export function spendingHabits(document: BudgetDocument, now: Date = new Date())
 
     for (const operation of operations.toSorted((left, right) => left.date.getTime() - right.date.getTime())) {
         const weekday = operation.date.getDay();
-        const location = operation.location?.trim() ?? '';
+        const location = whereabouts(operation);
 
         totals[weekday] = (totals[weekday] ?? 0) + euroAmount(operation);
 
         if (!operation.isOnline && location !== '') {
-            const key = location.toLowerCase();
+            const key = operation.place?.id ?? location.toLowerCase();
             const known = places.get(key);
 
             places.set(key, { name: location, spent: (known?.spent ?? 0) + euroAmount(operation), count: (known?.count ?? 0) + 1 });

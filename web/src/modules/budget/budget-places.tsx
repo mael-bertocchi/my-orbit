@@ -1,6 +1,6 @@
-import type { Suggestion } from 'components/suggestion-field/suggestion-field';
-import { foldText, locationSuggestions } from 'modules/budget/budget-math';
-import type { Operation, Place } from 'modules/budget/budget-models';
+import { foldText, placeSuggestions } from 'modules/budget/budget-math';
+import type { Maybe } from 'models';
+import type { Operation, Place, PlaceReference } from 'modules/budget/budget-models';
 import budgetService from 'modules/budget/budget-service';
 import { t } from 'modules/language/language-service';
 import { useEffect, useState } from 'react';
@@ -27,6 +27,28 @@ const MIN_QUERY = 2;
 const LOCATE_OPTIONS: PositionOptions = { enableHighAccuracy: false, timeout: 10 * 1000, maximumAge: 5 * 60 * 1000 };
 
 /**
+ * @interface CityValue
+ * @description What the city field holds: what is written, and the city picked, if any
+ */
+export interface CityValue {
+    location: string; /*!< The place as it reads in the field */
+    place: Maybe<PlaceReference>; /*!< The city picked, none while one is being typed */
+}
+
+/**
+ * @function isCityChosen
+ * @description Whether the field can be saved as it is: empty, or a city picked from the suggestions or located. A place
+ * written before cities were checked, which the server couldn't match to a city, may stay as it was written.
+ *
+ * @param {CityValue} value What the field holds
+ * @param {Maybe<string>} kept The place written before cities were checked, which may stay, if any
+ * @returns {boolean} Whether it can be saved
+ */
+export function isCityChosen(value: CityValue, kept: Maybe<string>): boolean {
+    return value.location.trim() === '' || value.place !== null || (kept !== null && value.location === kept);
+}
+
+/**
  * @interface FoundPlaces
  * @description The cities the server suggested, and for what
  */
@@ -37,16 +59,16 @@ interface FoundPlaces {
 
 /**
  * @function useCitySuggestions
- * @description The cities to suggest for what is typed: the places of earlier operations first, then the cities the
- * server finds, each once. The server is only asked once something was typed, after a pause, and staying silent when it
- * fails: the earlier places still help.
+ * @description The cities to suggest for what is typed: those of earlier operations first, then those the server finds,
+ * each once. The server is only asked once something was typed, after a pause, and staying silent when it fails: the
+ * earlier cities still help.
  *
  * @param {readonly Operation[]} operations The earlier operations
  * @param {string} query What is typed
  * @param {boolean} isTyping Whether it was typed, rather than filled in
- * @returns {Suggestion[]} The cities, the likeliest first
+ * @returns {Place[]} The cities, the likeliest first; those of earlier operations without a region and country
  */
-export function useCitySuggestions(operations: readonly Operation[], query: string, isTyping: boolean): Suggestion[] {
+export function useCitySuggestions(operations: readonly Operation[], query: string, isTyping: boolean): Place[] {
     const [found, setFound] = useState<FoundPlaces>({ query: '', places: [] });
     const trimmed = query.trim();
     const shouldAsk = isTyping && trimmed.length >= MIN_QUERY;
@@ -78,24 +100,13 @@ export function useCitySuggestions(operations: readonly Operation[], query: stri
         };
     }, [shouldAsk, trimmed]);
 
-    if (!isTyping) {
+    if (!isTyping || foldText(trimmed) === '') {
         return [];
     }
 
-    const folded = foldText(trimmed);
-    const earlier = locationSuggestions(operations, trimmed).map((location): Suggestion => ({ value: location }));
-    const known = new Set([folded, ...earlier.map((suggestion) => foldText(suggestion.value))]);
-    const places = shouldAsk && found.query === trimmed ? found.places : [];
-    const fresh: Suggestion[] = [];
-
-    for (const place of places) {
-        const key = foldText(place.name);
-
-        if (!known.has(key)) {
-            known.add(key);
-            fresh.push({ value: place.name, detail: place.detail });
-        }
-    }
+    const earlier = placeSuggestions(operations, trimmed).map((place): Place => ({ ...place, detail: '' }));
+    const known = new Set(earlier.map((place) => place.id));
+    const fresh = (shouldAsk && found.query === trimmed ? found.places : []).filter((place) => !known.has(place.id));
 
     return [...earlier, ...fresh];
 }
@@ -130,15 +141,13 @@ function currentPosition(): Promise<GeolocationPosition> {
  * @description Finds the city the device is in: the browser tells the position, rounded to about a kilometre, and the
  * server names its city.
  *
- * @returns {Promise<string>} The city's name. Rejects with a `UserError` saying why it can't be found.
+ * @returns {Promise<Place>} The city. Rejects with a `UserError` saying why it can't be found.
  */
-export async function locateCity(): Promise<string> {
+export async function locateCity(): Promise<Place> {
     const position = await currentPosition();
 
     try {
-        const place = await budgetService.locatePlace(position.coords.latitude, position.coords.longitude);
-
-        return place.name;
+        return await budgetService.locatePlace(position.coords.latitude, position.coords.longitude);
     } catch (error: unknown) {
         if (error instanceof RequestError && error.status === 404) {
             throw new UserError(t('operation.locateNoCity'));
