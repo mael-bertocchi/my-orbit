@@ -480,22 +480,20 @@ struct OperationEditorSheet: View {
 
     /**
      * @method occurrenceNote
-     * @description The word that the operation was logged by a recurring operation, and that changing it changes it alone
+     * @description The centred badge telling that the operation was logged by a recurring operation
      */
     private var occurrenceNote: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 6) {
             Image(systemName: "repeat")
-                .font(.system(size: 15))
-                .foregroundStyle(Theme.accent)
-            Text("Logged by a recurring operation: changing it changes this occurrence only.")
-                .font(Theme.font(12))
-                .foregroundStyle(Theme.muted)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
+                .font(.system(size: 12, weight: .semibold))
+            Text("Logged by a recurring operation")
+                .font(Theme.font(13, .medium))
         }
-        .padding(.vertical, 12)
+        .foregroundStyle(Theme.accent)
+        .padding(.vertical, 7)
         .padding(.horizontal, 14)
-        .glassCard(radius: Theme.controlRadius)
+        .background(Theme.accent.opacity(0.14), in: Capsule())
+        .frame(maxWidth: .infinity)
     }
 
     /**

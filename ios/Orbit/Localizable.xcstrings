@@ -1814,12 +1814,12 @@
         }
       }
     },
-    "Logged by a recurring operation: changing it changes this occurrence only." : {
+    "Logged by a recurring operation" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enregistrée par une opération récurrente : la modifier ne change que cette échéance."
+            "value" : "Enregistrée par une opération récurrente"
           }
         }
       }
