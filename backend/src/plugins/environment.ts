@@ -20,7 +20,8 @@ export const variables = Type.Object({
     JWT_ACCESS_EXPIRY: Type.String({ minLength: 1 }),
     JWT_REFRESH_EXPIRY: Type.String({ minLength: 1 }),
     WATCHLIST_TMDB_TOKEN: Type.String({ default: '' }),
-    WATCHLIST_TMDB_URL: Type.String({ pattern: '^https?://[^ ]+[^/]$', default: 'https://api.themoviedb.org/3' })
+    WATCHLIST_TMDB_URL: Type.String({ pattern: '^https?://[^ ]+[^/]$', default: 'https://api.themoviedb.org/3' }),
+    BUDGET_PLACES_URL: Type.String({ pattern: '^https?://[^ ]+[^/]$', default: 'https://photon.komoot.io' })
 });
 
 /**

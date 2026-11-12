@@ -7,6 +7,7 @@ The **Fastify + TypeScript** server behind the Orbit portal: it opens the single
 - **REST API** • versioned under `/v1`, split into focused modules: the portal's own (identity, health) and one folder per app under `modules/<app>/`, served under `/v1/<app>`. In the database too, every model and table starts with its app (`BudgetOperation` in `budget_operations`; `Identity…` for the portal's own), so apps never fight over a name.
 - **Passkey-only identity** • the single account opens with a passkey (WebAuthn), nothing else: no password, no code, no user table, no registration. The first passkey is created with an enrollment token you set only for that; the iOS app signs in through the portal with a one-time code bound to a PKCE challenge. JWT access + refresh sessions.
 - **Entry-by-entry writes** • clients read the whole budget document at once (`GET /v1/budget/state`) and write it one entry at a time: an operation, a category, the settings, a frozen month. No route can replace or wipe the whole budget. Each write bumps a revision, so a client can tell whether anything changed since it last read.
+- **Cities** • the operation editor suggests cities and finds the one the owner stands in from [Photon](https://photon.komoot.io), a key-free geocoder built on OpenStreetMap, which the server asks itself (`/v1/budget/places`), so Photon never learns who asks, and only sees a position rounded to about a kilometre.
 - **A trash for operations** • a deleted operation is kept with the moment it was deleted, out of the budget, and can be restored.
 - **Recurring operations** • a rent or a subscription is kept apart (`/v1/budget/recurring`): what it logs, every 1, 3, 6 or 12 months from a first day, until an end day if any, paused or not. Every read of the budget first logs each occurrence fallen due as a plain operation on its day, priced at that day's rate, under an id made of the recurring operation's and the day's: an occurrence is never logged twice, even by two reads at once, nor again once it went to the trash. A day the month lacks falls on its last day; a paused one has its occurrences skipped.
 - **Watchlist** • films and series to watch, being watched (`startedAt`) or watched (`watchedAt`, with a rating in half stars and a comment) (`/v1/watchlist/entries`). What a title is comes from TMDB, which the server asks itself so its token never leaves it (`/v1/watchlist/catalog`): search, details with where to watch it in France (JustWatch data), sagas and genres, kept in memory for a while. A title and its saga's name are stored in English and in French, so the list reads right in either language.
@@ -15,7 +16,7 @@ The **Fastify + TypeScript** server behind the Orbit portal: it opens the single
 
 ## Stack
 
-Node 24 · Fastify 5 · TypeScript · Prisma 7 · PostgreSQL · Zod · SimpleWebAuthn · TMDB
+Node 24 · Fastify 5 · TypeScript · Prisma 7 · PostgreSQL · Zod · SimpleWebAuthn · TMDB · Photon
 
 ## API
 
@@ -52,6 +53,8 @@ Node 24 · Fastify 5 · TypeScript · Prisma 7 · PostgreSQL · Zod · SimpleWeb
 | `DELETE /v1/budget/history/:month` | access | Forget the budget frozen against a month |
 | `GET /v1/budget/rates` | access | The latest euro reference rates |
 | `GET /v1/budget/rates/:date` | access | The reference rates of one past day |
+| `GET /v1/budget/places/search?query=` | access | The cities whose name starts with what is typed, from two letters |
+| `GET /v1/budget/places/locate?latitude=&longitude=` | access | The city at a position, rounded to about a kilometre first; `404` out of any city |
 | `GET /v1/watchlist/entries` | access | Every title on the watchlist |
 | `POST /v1/watchlist/entries` | access | Add a `{ mediaType, tmdbId }`, described by the catalog; `409` if it is already there |
 | `PATCH /v1/watchlist/entries/:id` | access | Start it (`startedAt`), mark it watched (`watchedAt`), rate it (`rating`, 1 to 10 half stars), comment on it |
@@ -71,7 +74,7 @@ Node 24 · Fastify 5 · TypeScript · Prisma 7 · PostgreSQL · Zod · SimpleWeb
 | `GET /v1/oauth/connections` | access | The MCP clients the owner authorized and that still hold their access, with when they were authorized and last used |
 | `DELETE /v1/oauth/connections/:id` | access | Revoke a client's access: its refresh token and its access token stop working at once |
 
-Every response is wrapped in `{ "data": … }`; errors are `{ "message": …, "data": … }`. The catalog routes write in `?language=en` or `fr` (French by default).
+Every response is wrapped in `{ "data": … }`; errors are `{ "message": …, "data": … }`. The catalog and places routes write in `?language=en` or `fr` (French by default).
 
 ## Getting Started
 

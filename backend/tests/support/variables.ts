@@ -22,6 +22,7 @@ export function testVariables(overrides: Partial<Variables> = {}): Variables {
         JWT_REFRESH_EXPIRY: '30d',
         WATCHLIST_TMDB_TOKEN: 'a-test-tmdb-token',
         WATCHLIST_TMDB_URL: 'https://tmdb.example.fr/3',
+        BUDGET_PLACES_URL: 'https://places.example.fr',
         ...overrides
     };
 }

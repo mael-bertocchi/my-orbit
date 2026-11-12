@@ -6,6 +6,7 @@ import { StatusCodes } from 'http-status-codes';
 import categoriesRoutes from 'src/modules/budget/categories/categories-routes';
 import historyRoutes from 'src/modules/budget/history/history-routes';
 import operationsRoutes from 'src/modules/budget/operations/operations-routes';
+import placesRoutes from 'src/modules/budget/places/places-routes';
 import ratesRoutes from 'src/modules/budget/rates/rates-routes';
 import recurringRoutes from 'src/modules/budget/recurring/recurring-routes';
 import settingsRoutes from 'src/modules/budget/settings/settings-routes';
@@ -132,6 +133,7 @@ async function startServer(): Promise<void> {
     await fastify.register(categoriesRoutes, { prefix: '/v1/budget/categories' });
     await fastify.register(settingsRoutes, { prefix: '/v1/budget/settings' });
     await fastify.register(historyRoutes, { prefix: '/v1/budget/history' });
+    await fastify.register(placesRoutes, { prefix: '/v1/budget/places' });
     await fastify.register(catalogRoutes, { prefix: '/v1/watchlist/catalog' });
     await fastify.register(entriesRoutes, { prefix: '/v1/watchlist/entries' });
     await fastify.register(oauthRoutes);
