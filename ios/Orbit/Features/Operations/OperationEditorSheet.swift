@@ -308,8 +308,8 @@ struct OperationEditorSheet: View {
                 }
                 Text(rateLine)
                     .font(Theme.font(11))
-                    .foregroundStyle(rateProblem == nil ? Theme.faint : Theme.warning)
-                    .padding(.top, euroAmount == nil ? 4 : 0)
+                    .foregroundStyle(rateProblem != nil ? Theme.warning : Theme.faint)
+                    .padding(.top, euroAmount != nil ? 0 : 4)
             }
         }
         .frame(maxWidth: .infinity)
@@ -518,7 +518,7 @@ struct OperationEditorSheet: View {
         description = operation.description ?? ""
         place = operation.place
         location = operation.whereabouts
-        keptLocation = operation.place == nil ? operation.location : nil
+        keptLocation = operation.place != nil ? nil : operation.location
         date = operation.date
         isOnline = operation.isOnline
     }

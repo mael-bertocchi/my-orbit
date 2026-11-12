@@ -32,7 +32,7 @@ enum DocumentDiff {
      * @returns The writes, in the order to send them
      */
     static func writes(from remote: BudgetDocument, to local: BudgetDocument) -> [BudgetWrite] {
-        let settings: [BudgetWrite] = remote.budget == local.budget ? [] : [.storeSettings(local.budget)]
+        let settings: [BudgetWrite] = remote.budget != local.budget ? [.storeSettings(local.budget)] : []
 
         return categoryWrites(from: remote.categories, to: local.categories)
             + settings
@@ -73,7 +73,7 @@ enum DocumentDiff {
      */
     private static func historyWrites(from remote: [String: MonthlyBudget], to local: [String: MonthlyBudget]) -> [BudgetWrite] {
         let stores: [BudgetWrite] = local.keys.sorted().compactMap { month in
-            remote[month] == local[month] ? nil : local[month].map { BudgetWrite.storeMonth(month, $0) }
+            remote[month] != local[month] ? local[month].map { BudgetWrite.storeMonth(month, $0) } : nil
         }
 
         return stores + remote.keys.sorted().filter { local[$0] == nil }.map { BudgetWrite.deleteMonth($0) }

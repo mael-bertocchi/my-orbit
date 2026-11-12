@@ -80,7 +80,7 @@ struct HistoryDateSheet: View {
                 }
 
                 PrimaryButton(title: String(appLocalized: "Apply")) {
-                    apply(mode == .day ? DayRange(day: day) : DayRange(start, end))
+                    apply(mode != .day ? DayRange(start, end) : DayRange(day: day))
                 }
                 .padding(.top, 24)
 

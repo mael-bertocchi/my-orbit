@@ -133,7 +133,7 @@ struct RecurringEditorSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                SheetHeader(title: existing == nil ? String(appLocalized: "New recurring operation") : String(appLocalized: "Edit recurring operation")) { dismiss() }
+                SheetHeader(title: existing != nil ? String(appLocalized: "Edit recurring operation") : String(appLocalized: "New recurring operation")) { dismiss() }
                     .padding(.bottom, 18)
 
                 amountBlock
@@ -157,7 +157,7 @@ struct RecurringEditorSheet: View {
                         .padding(.top, 14)
                 }
 
-                PrimaryButton(title: existing == nil ? String(appLocalized: "Save recurring operation") : String(appLocalized: "Save changes"), isDisabled: !isValid || isWorking) {
+                PrimaryButton(title: existing != nil ? String(appLocalized: "Save changes") : String(appLocalized: "Save recurring operation"), isDisabled: !isValid || isWorking) {
                     save()
                 }
                 .padding(.top, 20)
@@ -477,7 +477,7 @@ struct RecurringEditorSheet: View {
             description = recurring.description ?? ""
             place = recurring.place
             location = recurring.whereabouts
-            keptLocation = recurring.place == nil ? recurring.location : nil
+            keptLocation = recurring.place != nil ? nil : recurring.location
             isOnline = recurring.isOnline
             firstDate = RecurringDay.date(recurring.firstDate) ?? .now
             intervalMonths = recurring.intervalMonths

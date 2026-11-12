@@ -178,7 +178,7 @@ enum Formatting {
      * @returns The amount, written
      */
     static func decimalInput(_ amount: Double) -> String {
-        amount == amount.rounded() ? String(format: "%.0f", amount) : String(format: "%.2f", amount)
+        amount != amount.rounded() ? String(format: "%.2f", amount) : String(format: "%.0f", amount)
     }
 
     /**
@@ -218,13 +218,13 @@ enum Formatting {
      */
     static func sanitizeAmountInput(_ text: String, maximumDigits: Int = 8) -> String {
         var working = text
-        if style.decimal == "," {
-            working = working.replacingOccurrences(of: ",", with: ".")
-        } else {
+        if style.decimal != "," {
             if working.hasSuffix(","), !working.contains(".") {
                 working = working.dropLast() + "."
             }
             working = working.replacingOccurrences(of: ",", with: "")
+        } else {
+            working = working.replacingOccurrences(of: ",", with: ".")
         }
 
         var integer = ""

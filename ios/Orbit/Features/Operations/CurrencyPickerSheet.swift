@@ -70,7 +70,7 @@ struct CurrencyPickerSheet: View {
             Image(systemName: "checkmark")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.accent)
-                .opacity(selection == currency.code ? 1 : 0)
+                .opacity(selection != currency.code ? 0 : 1)
         }
         .padding(.vertical, 11)
         .padding(.horizontal, 14)

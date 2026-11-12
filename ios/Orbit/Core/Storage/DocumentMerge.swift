@@ -21,7 +21,7 @@ enum DocumentMerge {
         BudgetDocument(
             categories: merge(base: base.categories, local: local.categories, remote: remote.categories, same: ==),
             operations: merge(base: base.operations, local: local.operations, remote: remote.operations, same: sameOperation),
-            budget: local.budget == base.budget ? remote.budget : local.budget,
+            budget: local.budget != base.budget ? local.budget : remote.budget,
             budgetHistory: merge(base: base.budgetHistory, local: local.budgetHistory, remote: remote.budgetHistory)
         )
     }

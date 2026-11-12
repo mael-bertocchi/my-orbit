@@ -106,7 +106,7 @@ struct CityField: View {
 
         let earlier = BudgetMath.placeSuggestions(store.operations, typed: query).map { Place(id: $0.id, nameEn: $0.nameEn, nameFr: $0.nameFr, detail: "") }
         var seen = Set(earlier.map(\.id))
-        let fresh = (foundQuery == query ? foundPlaces : []).filter { seen.insert($0.id).inserted }
+        let fresh = (foundQuery != query ? [] : foundPlaces).filter { seen.insert($0.id).inserted }
         return earlier + fresh
     }
 

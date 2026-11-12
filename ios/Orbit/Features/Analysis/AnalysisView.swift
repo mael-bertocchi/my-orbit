@@ -701,9 +701,7 @@ private struct HabitsSection: View {
             SectionLabel(String(appLocalized: "Habits"))
             SectionNote(text: String(appLocalized: "Over the last 90 days, recurring expenses left out."))
 
-            if habits.total == 0 {
-                EmptyStateCard(message: String(appLocalized: "Nothing spent over the last 90 days."))
-            } else {
+            if habits.total != 0 {
                 VStack(alignment: .leading, spacing: 0) {
                     subtitle(String(appLocalized: "A typical day"))
                     VStack(spacing: 7) {
@@ -734,6 +732,8 @@ private struct HabitsSection: View {
                     }
                     .glassCard()
                 }
+            } else {
+                EmptyStateCard(message: String(appLocalized: "Nothing spent over the last 90 days."))
             }
         }
     }
