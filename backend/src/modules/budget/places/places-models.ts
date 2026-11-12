@@ -44,6 +44,7 @@ export const GeoapifyResultSchema = z.object({
     state: z.string().optional(),
     country: z.string().optional(),
     result_type: z.string().optional(),
+    place_id: z.string().optional(),
     lat: z.number().finite(),
     lon: z.number().finite(),
     datasource: z.object({ raw: z.object({ osm_type: z.string().optional(), osm_id: z.number().int().optional() }).optional() }).optional()

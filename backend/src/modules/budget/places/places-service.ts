@@ -207,9 +207,42 @@ function detailOf(name: string, state: Perhaps<string>, country: Perhaps<string>
 }
 
 /**
+ * @constant OSM_KINDS
+ * @description The OpenStreetMap kinds by the number Geoapify writes them with in its place identities.
+ */
+const OSM_KINDS: Record<string, string> = { '01': 'R', '02': 'W', '03': 'N' };
+
+/**
+ * @constant OSM_IN_PLACE_ID
+ * @description Where a Geoapify place identity, written in hexadecimal, holds the OpenStreetMap kind of the place, then
+ * its number on eight bytes, lowest first: `f001` and the kind, `f901` and the number.
+ */
+const OSM_IN_PLACE_ID = /f001(0[1-3])f901([0-9a-f]{16})/;
+
+/**
+ * @function osmIdOf
+ * @description The OpenStreetMap identity of a place Geoapify found, read in the place identity it gives.
+ *
+ * @param {Perhaps<string>} placeId Geoapify's place identity.
+ *
+ * @returns {Maybe<string>} The identity, such as `R2297418`, or null when it can't be read.
+ */
+function osmIdOf(placeId: Perhaps<string>): Maybe<string> {
+    const found = placeId === undefined ? null : OSM_IN_PLACE_ID.exec(placeId.toLowerCase());
+
+    if (found === null) {
+        return null;
+    }
+
+    const number = Buffer.from(found[2], 'hex').readBigUInt64LE();
+
+    return number > 0n && number < 10n ** 15n ? `${OSM_KINDS[found[1]]}${number.toString()}` : null;
+}
+
+/**
  * @function placeIdOf
- * @description A city's identity: its OpenStreetMap kind and number when Geoapify gives them, else its position to five
- * decimals, which is the same whichever language it is named in.
+ * @description A city's identity: its OpenStreetMap kind and number, as Geoapify gives them or as its place identity
+ * holds them, else its position to five decimals, which is the same whichever language it is named in.
  *
  * @param {GeoapifyResult} result What Geoapify says of the city.
  *
@@ -223,7 +256,7 @@ function placeIdOf(result: GeoapifyResult): string {
         return `${kind}${Math.abs(raw.osm_id)}`;
     }
 
-    return `G${result.lat.toFixed(5)},${result.lon.toFixed(5)}`;
+    return osmIdOf(result.place_id) ?? `G${result.lat.toFixed(5)},${result.lon.toFixed(5)}`;
 }
 
 /**
@@ -329,8 +362,31 @@ export async function searchPlaces(context: PlacesContext, query: string, langua
 }
 
 /**
+ * @function cityAt
+ * @description The name of the city a place found at a position lies in: the place itself when it is a city, else the
+ * city it names.
+ *
+ * @param {unknown} candidate What Geoapify says of the place.
+ *
+ * @returns {Maybe<string>} The city's name, or null when it names none.
+ */
+function cityAt(candidate: unknown): Maybe<string> {
+    const result = GeoapifyResultSchema.safeParse(candidate);
+
+    if (!result.success) {
+        return null;
+    }
+
+    const name = result.data.result_type === 'city' ? cityNameOf(result.data) : result.data.city;
+
+    return name === undefined || name === null || name.trim() === '' ? null : name;
+}
+
+/**
  * @function locatePlace
- * @description Finds the city at a position, named in both languages.
+ * @description Finds the city at a position: the place Geoapify finds there is often a district, which names the city it
+ * lies in, or else the city itself; that name is then looked up around the position, for the city's identity and its
+ * names in both languages.
  *
  * @param {PlacesContext} context What it works with.
  * @param {number} latitude The latitude, already rounded.
@@ -344,9 +400,11 @@ export async function locatePlace(context: PlacesContext, latitude: number, long
     let place = positions.get(key);
 
     if (place === undefined) {
-        const cities = await findCities(context, '/reverse', { lat: String(latitude), lon: String(longitude), limit: '1' }, language);
+        const name = cityAt((await ask(context, '/reverse', { lat: String(latitude), lon: String(longitude), lang: language, limit: '1' }))[0]);
+        const cities = name === null ? [] : await findCities(context, '/autocomplete', { text: name, bias: `proximity:${longitude},${latitude}`, limit: '5' }, language);
+        const named = (city: Place): string => (language === 'fr' ? city.nameFr : city.nameEn);
 
-        place = cities[0] ?? null;
+        place = cities.find((city) => name !== null && foldName(named(city)) === foldName(name)) ?? cities[0] ?? null;
         positions.set(key, place);
     }
 

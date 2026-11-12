@@ -9,7 +9,7 @@ import { RequestError } from 'src/shared/models';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { GeoapifyCity } from '../../../support/geoapify';
-import { stubCities, stubGeoapify } from '../../../support/geoapify';
+import { resultOf, stubCities, stubGeoapify } from '../../../support/geoapify';
 import { standIn } from '../../../support/stand-in';
 import { testVariables } from '../../../support/variables';
 
@@ -114,12 +114,22 @@ describe('searchPlaces', () => {
 });
 
 describe('locatePlace', () => {
-    it('names the city at the position in both languages', async () => {
-        const calls = stubCities([], [SEOUL]);
-        const place = await locatePlace(contextWith(new PlacesTable()), 37.57, 126.98, 'fr');
+    it('names the city the district at the position lies in, found again around it in both languages', async () => {
+        const district = { name: '서강동', city: 'Séoul', country: 'Corée du Sud', result_type: 'suburb', lat: 37.5468923, lon: 126.9260216 };
+        const calls = stubGeoapify((url) => (url.pathname === '/reverse' ? [district] : [resultOf(SEOUL, url.searchParams.get('lang') ?? 'en')]));
+        const place = await locatePlace(contextWith(new PlacesTable()), 37.55, 126.93, 'fr');
 
         expect(place).toEqual({ id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul', detail: 'Corée du Sud' });
-        expect(calls.every((call) => call.pathname === '/reverse' && call.searchParams.get('lat') === '37.57')).toBe(true);
+        expect(calls[0].pathname).toBe('/reverse');
+        expect(calls[0].searchParams.get('lat')).toBe('37.55');
+        expect(calls[1].searchParams.get('text')).toBe('Séoul');
+        expect(calls[1].searchParams.get('bias')).toBe('proximity:126.93,37.55');
+    });
+
+    it('names the city found at the position when it is one', async () => {
+        stubGeoapify((url) => [resultOf(SEOUL, url.searchParams.get('lang') ?? 'en')]);
+
+        expect((await locatePlace(contextWith(new PlacesTable()), 37.57, 126.98, 'en')).id).toBe('R2297418');
     });
 
     it('answers 404 when the position is in no city', async () => {
@@ -130,6 +140,14 @@ describe('locatePlace', () => {
 });
 
 describe('city identity', () => {
+    it('reads the OpenStreetMap identity held in the place identity Geoapify gives', async () => {
+        const seoul = { name: 'Séoul', city: 'Séoul', result_type: 'city', lat: 37.5666791, lon: 126.9782914, place_id: '51513d88539cbe5f4059d2e9d4f088c84240f00101f9014a0e230000000000c0020892030653c3a96f756c' };
+        const village = { name: 'Seoulasso', result_type: 'city', lat: 13.2396771, lon: -4.6983236, place_id: '519619805715cb12c0594333f4f4b67a2a40f00103f90138d1dece01000000c0020892030953656f756c6173736f' };
+        stubGeoapify(() => [seoul, village]);
+
+        expect((await searchPlaces(contextWith(new PlacesTable()), 'seoul', 'fr')).map((place) => place.id)).toEqual(['R2297418', 'N7765676344']);
+    });
+
     it('names a city by its position when Geoapify gives no OpenStreetMap identity', async () => {
         stubGeoapify((url) => [{ name: url.searchParams.get('lang') === 'fr' ? 'Séoul' : 'Seoul', result_type: 'city', lat: 37.566667, lon: 126.978056 }]);
 
