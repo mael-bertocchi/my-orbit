@@ -13,7 +13,6 @@ import { useDocument } from 'modules/budget/budget-hooks';
 import type { CategorySpend } from 'modules/budget/budget-math';
 import { categorySpends, monthlyBudgetFor, operationsIn, summary, toDispatch } from 'modules/budget/budget-math';
 import { t } from 'modules/language/language-service';
-import { LatestCardComponent, UpcomingCardComponent } from 'pages/budget/budget-glances/budget-glances';
 import BudgetLimitsComponent from 'pages/budget/budget-limits/budget-limits';
 import TrendBadgeComponent from 'pages/budget/budget-trend/budget-trend';
 import { useState, type JSX } from 'react';
@@ -180,8 +179,8 @@ function BudgetOverviewComponent(): JSX.Element {
                 </h1>
             </PageHeaderComponent>
 
-            <div className='mt-6 grid grid-cols-1 gap-5 xl:grid-cols-5 wide:grid-cols-10'>
-                <section className='card flex flex-col items-center p-6 sm:p-8 xl:sticky xl:top-10 xl:col-span-2 xl:self-start wide:static wide:col-span-3 wide:self-stretch'>
+            <div className='mt-6 grid grid-cols-1 gap-5 xl:grid-cols-5'>
+                <section className='card flex flex-col items-center p-6 sm:p-8 xl:col-span-2'>
                     <div className='flex flex-1 items-center'>
                         <RingComponent progress={hasOperations ? figures.progress : 0} color={isOverBudget ? NEGATIVE : ACCENT}>
                             <p className={`text-[14px] font-medium ${isOverBudget ? 'text-negative-text' : 'text-ink-secondary'}`}>
@@ -202,7 +201,7 @@ function BudgetOverviewComponent(): JSX.Element {
                     </div>
                 </section>
 
-                <section className='card p-6 sm:p-8 xl:col-span-3 wide:col-span-4'>
+                <section className='card p-6 sm:p-8 xl:col-span-3'>
                     <div className='flex items-baseline justify-between gap-4'>
                         <h2 className='text-[20px] font-semibold tracking-tight'>{t('budget.byCategory')}</h2>
                         <button type='button' onClick={() => setShowLimits(true)} className='text-[15px] font-medium text-accent hover:text-accent-strong'>
@@ -225,11 +224,6 @@ function BudgetOverviewComponent(): JSX.Element {
                         ))}
                     </div>
                 </section>
-
-                <div className='hidden gap-5 lg:grid lg:grid-cols-2 xl:col-span-5 wide:col-span-3 wide:grid-cols-1 wide:grid-rows-[1fr_1fr]'>
-                    <UpcomingCardComponent />
-                    <LatestCardComponent month={month} />
-                </div>
             </div>
 
             <BudgetLimitsComponent month={month} open={showLimits} onClose={() => setShowLimits(false)} />

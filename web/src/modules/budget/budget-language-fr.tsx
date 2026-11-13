@@ -68,10 +68,6 @@ export const budgetFr: BudgetMessages = {
     'budget.notDispatched': 'Encore {amount} du budget à répartir',
     'budget.emptyMonth': 'Aucune opération ce mois-ci.',
     'budget.noSpending': 'Aucune dépense ce mois-ci pour l’instant. Ajoutez une opération et vos catégories se rempliront ici.',
-    'budget.upcoming': 'Prochaines échéances',
-    'budget.seeAll': 'Tout voir',
-    'budget.latest': 'Dernières opérations',
-    'budget.noUpcoming': 'Aucune opération récurrente à venir.',
 
     'limits.title': 'Modifier les limites',
     'limits.monthly': 'Budget mensuel',
