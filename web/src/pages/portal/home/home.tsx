@@ -78,7 +78,7 @@ function AppTileComponent(props: AppTileComponentProps): JSX.Element {
     }
 
     return (
-        <Link to={appPath(props.app)} aria-label={t('home.open', { app: t(props.app.name) })} className='card group flex flex-col p-5 sm:p-6 lg:p-7'>
+        <Link to={appPath(props.app)} aria-label={t('home.open', { app: t(props.app.name) })} className='card pressable group flex flex-col p-5 sm:p-6 lg:p-7'>
             <div className='flex items-center gap-3.5'>
                 <AppIconComponent app={props.app} size={46} />
                 <div className='min-w-0 flex-1'>

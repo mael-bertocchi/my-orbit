@@ -36,7 +36,7 @@ function ListRowComponent(props: ListRowComponentProps): JSX.Element {
     }
 
     return (
-        <button type='button' onClick={props.onClick} disabled={disabled} className='flex min-h-[52px] w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-fill/60 disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent'>
+        <button type='button' onClick={props.onClick} disabled={disabled} className='flex min-h-[52px] w-full items-center gap-3 px-4 py-2.5 text-left pressable disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent'>
             {content}
         </button>
     );

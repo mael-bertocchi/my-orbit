@@ -109,7 +109,7 @@ function CategoryRowComponent(props: CategoryRowComponentProps): JSX.Element {
     const range = props.spend.limit > 0 ? `${euro(props.spend.spent)} / ${euro(props.spend.limit)}` : euro(props.spend.spent);
 
     return (
-        <button type='button' onClick={props.onOpen} className='-mx-3 flex w-[calc(100%+1.5rem)] flex-col gap-2.5 rounded-2xl px-3 py-3 text-left transition hover:bg-fill/70'>
+        <button type='button' onClick={props.onOpen} className='-mx-3 flex w-[calc(100%+1.5rem)] flex-col gap-2.5 rounded-2xl px-3 py-3 text-left pressable'>
             <span className='flex w-full items-center gap-3'>
                 <CategoryIconComponent category={props.spend.category} size={34} />
                 <span className='min-w-0 flex-1 truncate text-[15px] font-medium'>{categoryName(props.spend.category)}</span>

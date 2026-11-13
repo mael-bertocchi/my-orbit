@@ -32,7 +32,7 @@ function OperationRowComponent(props: OperationRowComponentProps): JSX.Element {
     const isOccurrence = (props.operation.recurringId ?? '') !== '';
 
     return (
-        <button type='button' onClick={props.onOpen} className='flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition hover:bg-fill/60 sm:px-5'>
+        <button type='button' onClick={props.onOpen} className='flex w-full items-center gap-3.5 px-4 py-3.5 text-left pressable sm:px-5'>
             <CategoryIconComponent category={category} size={40} />
             <span className='min-w-0 flex-1'>
                 <span className='flex items-center gap-1.5'>

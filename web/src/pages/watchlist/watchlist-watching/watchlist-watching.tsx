@@ -26,7 +26,7 @@ interface WatchingCardComponentProps {
 function WatchingCardComponent(props: WatchingCardComponentProps): JSX.Element {
     return (
         <li>
-            <button type='button' onClick={props.onOpen} className='card flex w-full gap-4 p-3.5 text-left transition hover:bg-fill'>
+            <button type='button' onClick={props.onOpen} className='card flex w-full gap-4 p-3.5 text-left transition hover:brightness-95'>
                 <PosterComponent path={props.entry.posterPath} title={localized(props.entry.title)} width='w185' className='w-20 rounded-lg shadow-control' />
                 <span className='flex min-w-0 flex-1 flex-col self-stretch'>
                     <span className='line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight'>{localized(props.entry.title)}</span>

@@ -53,7 +53,7 @@ function PosterCardComponent(props: PosterCardComponentProps): JSX.Element {
 
     return (
         <button type='button' onClick={props.onOpen} className='group flex flex-col text-left'>
-            <PosterComponent path={props.entry.posterPath} title={localized(props.entry.title)} width='w342' className='w-full rounded-xl shadow-control' />
+            <PosterComponent path={props.entry.posterPath} title={localized(props.entry.title)} width='w342' className='w-full rounded-xl shadow-control transition group-hover:brightness-95' />
             <span className='mt-2 line-clamp-2 text-[14px] font-medium leading-snug'>{localized(props.entry.title)}</span>
             <span className='text-[12px] text-ink-tertiary'>
                 {[year, props.entry.mediaType !== 'tv' ? null : t('watchlist.series')].filter((part) => part !== null).join(' • ')}

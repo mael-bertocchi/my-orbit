@@ -209,7 +209,7 @@ function RecurringRowComponent(props: RecurringRowComponentProps): JSX.Element {
     }
 
     return (
-        <button type='button' onClick={() => props.onOpen(recurring)} className={`flex w-full items-center gap-3 py-2.5 text-left transition hover:opacity-70 ${isRunning(recurring) ? '' : 'opacity-60'}`}>
+        <button type='button' onClick={() => props.onOpen(recurring)} className={`pressable flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left ${isRunning(recurring) ? '' : 'opacity-60'}`}>
             <CategoryIconComponent category={category} size={34} />
             <span className='min-w-0 flex-1'>
                 <span className='block truncate text-[15px] font-medium'>{recurring.name}</span>
@@ -280,7 +280,7 @@ function RecurringCardComponent(): JSX.Element {
         body = <EmptyStateComponent message={`${t('analysis.recurringFailed')} ${failure}`} />;
     } else if (recurring !== null) {
         body = (
-            <div className='-mr-2 mt-3 min-h-0 flex-1 divide-y divide-hairline overflow-y-auto pr-2'>
+            <div className='-mx-2 mt-3 min-h-0 flex-1 divide-y divide-hairline overflow-y-auto'>
                 {sorted.length === 0 && <EmptyStateComponent message={t('analysis.noRecurring')} />}
                 {sorted.map((candidate) => (
                     <RecurringRowComponent key={candidate.id} recurring={candidate} category={categoryOrFallback(categories, candidate.categoryId)} monthly={monthlyOf(candidate)} onOpen={(opened) => setRoute({ kind: 'edit', recurring: opened })} />
