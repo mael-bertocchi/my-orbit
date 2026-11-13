@@ -164,12 +164,12 @@
         }
       }
     },
-    "Apps such as Claude that can access your account. You can revoke their access at any time." : {
+    "Apps that can access your account. You can revoke their access at any time." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les applications comme Claude qui ont accès à votre compte. Vous pouvez leur retirer cet accès à tout moment."
+            "value" : "Les applications qui ont accès à votre compte. Vous pouvez leur retirer cet accès à tout moment."
           }
         }
       }

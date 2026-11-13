@@ -24,7 +24,7 @@ struct ConnectionsSheet: View {
                 SheetHeader(title: String(appLocalized: "External apps")) { dismiss() }
                     .padding(.bottom, 12)
 
-                Text("Apps such as Claude that can access your account. You can revoke their access at any time.")
+                Text("Apps that can access your account. You can revoke their access at any time.")
                     .font(Theme.font(12))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
