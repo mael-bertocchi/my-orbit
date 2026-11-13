@@ -52,10 +52,6 @@ export const budgetFr: BudgetMessages = {
     'layout.loadFailed': 'Impossible de charger votre budget',
     'layout.tryAgain': 'Réessayer',
 
-    'sync.syncing': 'Synchronisation',
-    'sync.synced': 'Synchronisé',
-    'sync.offline': 'Hors ligne',
-    'sync.error': 'Erreur',
 
     'budget.eyebrow': 'Budget',
     'budget.previousMonth': 'Mois précédent',
@@ -165,10 +161,8 @@ export const budgetFr: BudgetMessages = {
 
     'settings.eyebrow': 'Réglages',
     'settings.title': 'Préférences',
-    'settings.sync': 'Synchronisation',
     'settings.budget': 'Budget',
     'settings.budgetAndLimits': 'Budget et limites',
-    'settings.entry': 'Saisie',
     'settings.defaultCurrency': 'Devise par défaut',
     'settings.exchangeRates': 'Taux de change',
     'settings.markup': 'Inclut la marge de {markup} que votre banque ajoute au taux de référence.',

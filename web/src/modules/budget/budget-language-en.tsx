@@ -50,10 +50,6 @@ export const budgetEn = {
     'layout.loadFailed': "Your budget couldn't be loaded",
     'layout.tryAgain': 'Try again',
 
-    'sync.syncing': 'Syncing',
-    'sync.synced': 'Synced',
-    'sync.offline': 'Offline',
-    'sync.error': 'Error',
 
     'budget.eyebrow': 'Budget',
     'budget.previousMonth': 'Previous month',
@@ -163,10 +159,8 @@ export const budgetEn = {
 
     'settings.eyebrow': 'Settings',
     'settings.title': 'Preferences',
-    'settings.sync': 'Sync',
     'settings.budget': 'Budget',
     'settings.budgetAndLimits': 'Budget & limits',
-    'settings.entry': 'Entry',
     'settings.defaultCurrency': 'Default currency',
     'settings.exchangeRates': 'Exchange rates',
     'settings.markup': 'Includes the {markup} your bank adds on top of the reference rate.',
