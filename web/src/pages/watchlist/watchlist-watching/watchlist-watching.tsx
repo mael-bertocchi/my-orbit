@@ -1,46 +1,15 @@
 import PageHeaderComponent from 'components/page-header/page-header';
-import PosterComponent from 'components/poster/poster';
 import { t } from 'modules/language/language-service';
-import { dayText, localized, titleFacts, titlesText } from 'modules/watchlist/watchlist-formatting';
+import { titlesText } from 'modules/watchlist/watchlist-formatting';
 import { useWatchlist, useWatchlistSheetContext } from 'modules/watchlist/watchlist-hooks';
-import type { Entry, WatchlistSheetContextProps } from 'modules/watchlist/watchlist-models';
+import type { WatchlistSheetContextProps } from 'modules/watchlist/watchlist-models';
 import { watching } from 'modules/watchlist/watchlist-shelves';
+import PosterCardComponent from 'pages/watchlist/watchlist-poster-card/watchlist-poster-card';
 import { useMemo, type JSX } from 'react';
 
 /**
- * @interface WatchingCardComponentProps
- * @description Properties of one title being watched
- */
-interface WatchingCardComponentProps {
-    entry: Entry; /*!< The title */
-    onOpen: () => void; /*!< Called when it is tapped */
-}
-
-/**
- * @function WatchingCardComponent
- * @description One title being watched: its poster, its name, its year and kind, and since when. The whole card opens
- * the title, where it is marked watched.
- *
- * @param {WatchingCardComponentProps} props The properties of the component
- */
-function WatchingCardComponent(props: WatchingCardComponentProps): JSX.Element {
-    return (
-        <li>
-            <button type='button' onClick={props.onOpen} className='card flex w-full gap-4 p-3.5 text-left transition hover:brightness-95'>
-                <PosterComponent path={props.entry.posterPath} title={localized(props.entry.title)} width='w185' className='w-20 rounded-lg shadow-control' />
-                <span className='flex min-w-0 flex-1 flex-col self-stretch'>
-                    <span className='line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight'>{localized(props.entry.title)}</span>
-                    <span className='mt-0.5 block truncate text-[13px] text-ink-tertiary'>{titleFacts(props.entry)}</span>
-                    {props.entry.startedAt !== null && <span className='mt-auto block truncate text-[13px] text-ink-secondary'>{t('watchlist.startedOn', { date: dayText(props.entry.startedAt) })}</span>}
-                </span>
-            </button>
-        </li>
-    );
-}
-
-/**
  * @function WatchlistWatchingComponent
- * @description The "Watching" tab: the titles started and not finished, the latest started first, each on a card
+ * @description The "Watching" tab: the titles started and not finished, the latest started first, on a wall of posters like To watch
  *
  * @returns {JSX.Element} The titles being watched
  */
@@ -60,11 +29,11 @@ function WatchlistWatchingComponent(): JSX.Element {
             </PageHeaderComponent>
 
             {current.length !== 0 ? (
-                <ul className='mt-6 grid gap-3 md:grid-cols-2 wide:grid-cols-3'>
+                <div className='mt-6 grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-5 xl:grid-cols-6 wide:grid-cols-8'>
                     {current.map((entry) => (
-                        <WatchingCardComponent key={entry.id} entry={entry} onOpen={() => openTitle({ mediaType: entry.mediaType, tmdbId: entry.tmdbId })} />
+                        <PosterCardComponent key={entry.id} entry={entry} onOpen={() => openTitle({ mediaType: entry.mediaType, tmdbId: entry.tmdbId })} />
                     ))}
-                </ul>
+                </div>
             ) : (
                 <div className='mt-8 rounded-2xl bg-fill px-6 py-10 text-center'>
                     <p className='text-[15px] text-ink-secondary'>{t('watchlist.emptyWatching')}</p>
