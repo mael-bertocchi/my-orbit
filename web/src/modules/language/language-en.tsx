@@ -71,7 +71,7 @@ export const portalEn = {
     'account.removeMessage': "It won't open Orbit anymore. Delete it from your passwords too.",
     'account.removeAction': 'Remove',
     'account.connections': 'External apps',
-    'account.connectionsNote': 'Apps such as Claude that can access your account. You can revoke their access at any time.',
+    'account.connectionsNote': 'Apps that can access your account. You can revoke their access at any time.',
     'account.noConnection': 'No app connected',
     'account.connected': 'Authorized {date}',
     'account.revokeConnection': 'Revoke {name}',

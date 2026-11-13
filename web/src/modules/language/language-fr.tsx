@@ -72,7 +72,7 @@ const portalFr: PortalMessages = {
     'account.removeMessage': 'Elle n’ouvrira plus Orbit. Supprimez-la aussi de vos mots de passe.',
     'account.removeAction': 'Supprimer',
     'account.connections': 'Applications externes',
-    'account.connectionsNote': 'Les applications comme Claude qui ont accès à votre compte. Vous pouvez leur retirer cet accès à tout moment.',
+    'account.connectionsNote': 'Les applications qui ont accès à votre compte. Vous pouvez leur retirer cet accès à tout moment.',
     'account.noConnection': 'Aucune application connectée',
     'account.connected': 'Autorisée le {date}',
     'account.revokeConnection': 'Révoquer {name}',
