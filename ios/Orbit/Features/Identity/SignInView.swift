@@ -3,7 +3,8 @@ import SwiftUI
 
 /**
  * @class SignInView
- * @description The sign-in screen: one button opening the Orbit portal in a secure sheet, where the passkey lives
+ * @description The sign-in screen: the mark with what the budget keeps track of turning around it, a sentence on what
+ * Orbit holds and one button opening the Orbit portal in a secure sheet, where the passkey lives
  */
 struct SignInView: View {
     @Environment(ApplicationSession.self) private var session /*!< The session to open */
@@ -21,54 +22,80 @@ struct SignInView: View {
         ZStack {
             AmbientBackground()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    header
-                        .padding(.bottom, 32)
-
-                    PrimaryButton(title: String(appLocalized: "Sign in with a passkey"), systemImage: "person.badge.key", isDisabled: isSigningIn) {
-                        signIn()
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        OrbitHero()
+                            .padding(.bottom, 20)
+                        header
+                            .padding(.bottom, 32)
+                        signInButton
+                        status
                     }
-
-                    if isSigningIn {
-                        ProgressView()
-                            .tint(Theme.accent)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 18)
-                    } else if let errorMessage {
-                        Text(errorMessage)
-                            .font(Theme.font(13))
-                            .foregroundStyle(Theme.negative)
-                            .padding(.top, 14)
-                            .transition(.opacity)
-                    }
+                    .padding(.horizontal, Theme.screenPadding)
+                    .padding(.vertical, 32)
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
                 }
-                .padding(.horizontal, Theme.screenPadding)
-                .padding(.top, 80)
-                .padding(.bottom, 40)
+                .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollIndicators(.hidden)
         }
     }
 
     /**
      * @method header
-     * @description Orbit's mark, its name and what signing in takes
+     * @description Orbit's name, large, and what it holds
      */
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Image("Mark")
-                .resizable()
-                .frame(width: 60, height: 60)
-                .accessibilityHidden(true)
-                .padding(.bottom, 6)
+        VStack(spacing: 14) {
             Text(verbatim: "Orbit")
-                .font(Theme.font(30, .semibold))
-                .tracking(-0.5)
+                .font(Theme.font(56, .semibold))
+                .tracking(-1.8)
                 .foregroundStyle(Theme.text)
-            Text("Sign in with your passkey to open your budget. The Orbit portal opens in a secure sheet to ask for it.")
-                .font(Theme.font(14))
+            Text("Your spending, your limits and everything that orbits your budget, together in one place.")
+                .font(Theme.font(19, .medium))
                 .foregroundStyle(Theme.muted)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 340)
+        }
+    }
+
+    /**
+     * @method signInButton
+     * @description The one button, a light capsule that opens the portal's passkey sheet without saying how
+     */
+    private var signInButton: some View {
+        Button {
+            signIn()
+        } label: {
+            Text("Sign in")
+                .font(Theme.font(16, .semibold))
+                .foregroundStyle(Theme.background)
+                .padding(.horizontal, 34)
+                .frame(height: 48)
+                .background(isSigningIn ? Theme.accent : Theme.accent200, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(isSigningIn)
+    }
+
+    /**
+     * @method status
+     * @description The spinner while signing in, or why the last attempt failed
+     */
+    @ViewBuilder
+    private var status: some View {
+        if isSigningIn {
+            ProgressView()
+                .tint(Theme.accent)
+                .padding(.top, 18)
+        } else if let errorMessage {
+            Text(errorMessage)
+                .font(Theme.font(13))
+                .foregroundStyle(Theme.negative)
+                .multilineTextAlignment(.center)
+                .padding(.top, 14)
+                .transition(.opacity)
         }
     }
 

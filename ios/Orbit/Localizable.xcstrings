@@ -1184,22 +1184,12 @@
         }
       }
     },
-    "Sign in with a passkey" : {
+    "Sign in" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se connecter avec une clé d’accès"
-          }
-        }
-      }
-    },
-    "Sign in with your passkey to open your budget. The Orbit portal opens in a secure sheet to ask for it." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connectez-vous avec votre clé d’accès pour ouvrir votre budget. Le portail Orbit s’ouvre dans une feuille sécurisée pour la demander."
+            "value" : "Se connecter"
           }
         }
       }
@@ -1860,6 +1850,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Impossible de trouver votre position."
+          }
+        }
+      }
+    },
+    "Your spending, your limits and everything that orbits your budget, together in one place." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos dépenses, vos limites et tout ce qui gravite autour de votre budget, réunis en un seul endroit."
           }
         }
       }

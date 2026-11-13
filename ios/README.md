@@ -106,7 +106,7 @@ If the profile has already expired, the reinstall works but the launch is refuse
 
 The only way in is the owner's **passkey**, which belongs to the Orbit portal's site (`my-orbit.mael-bertocchi.fr`). An app can only use a site's passkeys with the *Associated Domains* capability, which a free developer team doesn't get, so the app signs in **through the portal**, the way an app offers "Sign in with Apple":
 
-1. **Sign in with a passkey** opens the portal's `/connect` page in an ephemeral browser sheet (`ASWebAuthenticationSession`), with a fresh PKCE challenge (`PortalConnection`).
+1. **Sign in** opens the portal's `/connect` page in an ephemeral browser sheet (`ASWebAuthenticationSession`), with a fresh PKCE challenge (`PortalConnection`).
 2. The page asks for the passkey (Face ID); the backend checks it and hands back a one-time code, bound to that challenge, through the `my-orbit://` scheme.
 3. The app trades the code, with the PKCE verifier only it knows, for its tokens (`POST /v1/identity/connect/token`).
 
