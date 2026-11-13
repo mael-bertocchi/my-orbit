@@ -87,7 +87,7 @@ function WatchedPosterComponent(props: WatchedPosterComponentProps): JSX.Element
 
     return (
         <button type='button' onClick={props.onOpen} title={title} aria-label={`${title}, ${ratingText(props.entry.rating)}`} className='group relative flex flex-col text-left'>
-            <PosterComponent path={props.entry.posterPath} title={title} width='w185' className='w-full rounded-lg shadow-control transition group-hover:-translate-y-0.5 group-hover:shadow-card' />
+            <PosterComponent path={props.entry.posterPath} title={title} width='w185' className='w-full rounded-lg shadow-control' />
             {props.entry.rating !== null && (
                 <span className='absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm tabular-nums'>
                     <Star size={10} fill='#FF9F0A' stroke='#FF9F0A' />

@@ -85,7 +85,7 @@ function AppTileComponent(props: AppTileComponentProps): JSX.Element {
                     <p className='text-[17px] font-semibold tracking-tight'>{t(props.app.name)}</p>
                     <p className='text-[13px] text-ink-secondary'>{t(props.app.summary)}</p>
                 </div>
-                <ChevronRight size={18} className='text-ink-quaternary transition group-hover:translate-x-0.5 group-hover:text-ink-tertiary' />
+                <ChevronRight size={18} className='text-ink-quaternary transition group-hover:text-ink-tertiary' />
             </div>
             {Widget !== undefined && (
                 <div className='mt-5 border-t border-hairline pt-4 lg:flex lg:min-h-[300px] lg:flex-1 lg:items-center lg:justify-center lg:pt-6'>
