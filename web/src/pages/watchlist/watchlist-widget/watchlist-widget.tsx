@@ -18,6 +18,7 @@ const POSTERS = 4;
  * @function WatchlistGlanceComponent
  * @description How many titles are left to watch, the latest added, and either the title being watched or, when none
  * is, the last one watched with its rating. It reads the same watchlist the app shows, loading it if the app hasn't.
+ * On a desktop, where the tile has room, the posters grow and sit beside the figure.
  *
  * @returns {JSX.Element} The glance at the watchlist
  */
@@ -45,10 +46,10 @@ function WatchlistGlanceComponent(): JSX.Element {
     const current = watching(entries).at(0);
 
     return (
-        <div className='flex min-h-[118px] items-start gap-4'>
-            <div className='min-w-0 flex-1'>
+        <div className='flex min-h-[118px] items-start gap-4 lg:items-center lg:justify-center lg:gap-12'>
+            <div className='min-w-0 flex-1 lg:flex-none'>
                 <p className='text-[13px] font-medium text-ink-secondary'>{t('watchlist.toWatch')}</p>
-                <p className='mt-0.5 text-[30px] font-semibold leading-tight tracking-tight tabular-nums'>{pending.length}</p>
+                <p className='mt-0.5 text-[30px] font-semibold leading-tight tracking-tight tabular-nums lg:text-[44px]'>{pending.length}</p>
                 {current !== undefined && (
                     <p className='mt-1 truncate text-[13px] text-ink-tertiary'>{t('watchlist.nowWatching', { title: localized(current.title) })}</p>
                 )}
@@ -65,9 +66,9 @@ function WatchlistGlanceComponent(): JSX.Element {
                 )}
             </div>
             {latest.length > 0 && (
-                <div className='flex shrink-0 -space-x-5' aria-hidden='true'>
+                <div className='flex shrink-0 -space-x-5 lg:-space-x-8' aria-hidden='true'>
                     {latest.map((entry, index) => (
-                        <PosterComponent key={entry.id} path={entry.posterPath} title={localized(entry.title)} width='w92' className={`w-12 rounded-md shadow-control ring-2 ring-white ${index !== 0 ? 'mt-2' : ''}`} />
+                        <PosterComponent key={entry.id} path={entry.posterPath} title={localized(entry.title)} width='w185' className={`w-12 rounded-md shadow-control ring-2 ring-white lg:w-[88px] lg:rounded-lg ${index !== 0 ? 'mt-2 lg:mt-4' : ''}`} />
                     ))}
                 </div>
             )}

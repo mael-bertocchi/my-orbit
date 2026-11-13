@@ -1,5 +1,6 @@
 import EmptyStateComponent from 'components/empty-state/empty-state';
 import FilterChipsComponent from 'components/filter-chips/filter-chips';
+import PageHeaderComponent from 'components/page-header/page-header';
 import PosterComponent from 'components/poster/poster';
 import SearchFieldComponent from 'components/search-field/search-field';
 import { Star } from 'lucide-react';
@@ -154,31 +155,35 @@ function WatchlistWatchedComponent(): JSX.Element {
 
     return (
         <div className='animate-rise'>
-            <p className='eyebrow'>{t('watchlist.eyebrow')}</p>
-            <h1 className='mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('watchlist.watchedTitle')}</h1>
-            <p className='mt-1 text-[15px] text-ink-secondary'>
-                {watchedText(watched.length)}
-            </p>
+            <PageHeaderComponent>
+                <p className='eyebrow'>{t('watchlist.eyebrow')}</p>
+                <h1 className='mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('watchlist.watchedTitle')}</h1>
+                <p className='mt-1 text-[15px] text-ink-secondary'>
+                    {watchedText(watched.length)}
+                </p>
+            </PageHeaderComponent>
 
             <SearchFieldComponent value={query} onChange={(next) => update('q', next, '')} placeholder={t('watchlist.filter')} clearLabel={t('watchlist.clearSearch')} className='mt-6' />
 
-            <div className='mt-4 inline-flex rounded-full bg-fill-strong/80 p-1' role='group' aria-label={t('watchlist.order')}>
-                {ORDERS.map((option) => (
-                    <button key={option.order} type='button' aria-pressed={option.order === order} onClick={() => update('by', option.order, 'recent')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option.order !== order ? 'text-ink-secondary hover:text-ink' : 'bg-white text-ink shadow-control'}`}>
-                        {t(option.name)}
-                    </button>
-                ))}
+            <div className='lg:mt-4 lg:flex lg:items-center lg:gap-3'>
+                <div className='mt-4 inline-flex shrink-0 rounded-full bg-fill-strong/80 p-1 lg:mt-0' role='group' aria-label={t('watchlist.order')}>
+                    {ORDERS.map((option) => (
+                        <button key={option.order} type='button' aria-pressed={option.order === order} onClick={() => update('by', option.order, 'recent')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option.order !== order ? 'text-ink-secondary hover:text-ink' : 'bg-white text-ink shadow-control'}`}>
+                            {t(option.name)}
+                        </button>
+                    ))}
+                </div>
+                <span aria-hidden='true' className='hidden h-6 w-px shrink-0 bg-hairline lg:block' />
+                <FilterChipsComponent label={t('watchlist.filters')} allLabel={t('watchlist.all')} options={options} selected={selected} onChange={filter} className='mt-2 lg:mt-0 lg:min-w-0 lg:flex-1' />
             </div>
-
-            <FilterChipsComponent label={t('watchlist.filters')} allLabel={t('watchlist.all')} options={options} selected={selected} onChange={filter} className='mt-2' />
 
             {shelves.length !== 0 ? shelves.map((shelf) => (
                 <section key={shelf.key} className='mt-8'>
-                    <h2 className='sticky top-[calc(3.5rem_+_env(safe-area-inset-top))] z-[1] -mx-1 mb-3 flex items-baseline gap-2 bg-canvas/90 px-1 py-1.5 text-[17px] font-semibold tracking-tight backdrop-blur'>
+                    <h2 className='sticky top-[calc(3.5rem_+_env(safe-area-inset-top))] z-[1] lg:top-0 -mx-1 mb-3 flex items-baseline gap-2 bg-canvas/90 px-1 py-1.5 text-[17px] font-semibold tracking-tight backdrop-blur'>
                         {shelf.title}
                         <span className='text-[13px] font-medium text-ink-quaternary'>{totals.get(shelf.key) ?? shelf.entries.length}</span>
                     </h2>
-                    <div className='grid grid-cols-4 gap-x-2.5 gap-y-4 sm:grid-cols-6 sm:gap-x-3 lg:grid-cols-8'>
+                    <div className='grid grid-cols-4 gap-x-2.5 gap-y-4 sm:grid-cols-6 sm:gap-x-3 lg:grid-cols-7 xl:grid-cols-8 wide:grid-cols-10'>
                         {shelf.entries.map((entry) => (
                             <WatchedPosterComponent key={entry.id} entry={entry} onOpen={() => openTitle({ mediaType: entry.mediaType, tmdbId: entry.tmdbId })} />
                         ))}

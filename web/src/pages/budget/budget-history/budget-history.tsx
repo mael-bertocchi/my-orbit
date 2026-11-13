@@ -1,20 +1,21 @@
-import CategoryIconComponent from 'components/category-icon/category-icon';
 import EmptyStateComponent from 'components/empty-state/empty-state';
 import FilterChipsComponent from 'components/filter-chips/filter-chips';
+import PageHeaderComponent from 'components/page-header/page-header';
 import SearchFieldComponent from 'components/search-field/search-field';
-import { AlignLeft, CalendarDays, Globe, MapPin, Repeat } from 'lucide-react';
+import { CalendarDays } from 'lucide-react';
 import type { Maybe } from 'models';
 import { categoriesOf, categoryName, categoryOrFallback } from 'modules/budget/budget-categories';
-import { currencyNamed, EURO } from 'modules/budget/budget-currencies';
 import type { DayRange } from 'modules/budget/budget-dates';
 import { dayKey, dayRange, isInRange, parseDayKey } from 'modules/budget/budget-dates';
 import { useBudgetEditorContext } from 'modules/budget/budget-editor-hooks';
-import { clockTime, euroPrecise, money, rangeTitle, relativeDay, whereabouts } from 'modules/budget/budget-formatting';
+import { money, rangeTitle, relativeDay } from 'modules/budget/budget-formatting';
 import { useDocument } from 'modules/budget/budget-hooks';
-import { dayGroups, euroAmount } from 'modules/budget/budget-math';
+import { dayGroups } from 'modules/budget/budget-math';
 import type { BudgetDocument, Operation } from 'modules/budget/budget-models';
 import { t } from 'modules/language/language-service';
 import BudgetDatesComponent from 'pages/budget/budget-dates/budget-dates';
+import BudgetHistorySummaryComponent from 'pages/budget/budget-history-summary/budget-history-summary';
+import OperationRowComponent from 'pages/budget/budget-operation-row/budget-operation-row';
 import { useMemo, useState, type JSX } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { readList, writeList } from 'utils/filters';
@@ -65,76 +66,12 @@ function rangeOf(from: Maybe<string>, to: Maybe<string>): Maybe<DayRange> {
 }
 
 /**
- * @interface OperationRowComponentProps
- * @description Properties of one operation row
- */
-interface OperationRowComponentProps {
-    document: BudgetDocument; /*!< The budget */
-    operation: Operation; /*!< The operation */
-    onOpen: () => void; /*!< Called to open it */
-}
-
-/**
- * @function OperationRowComponent
- * @description One operation: its category, name and marks, when and where it happened, and its amount, with the euro
- * figure under a foreign one.
- *
- * @param {OperationRowComponentProps} props The properties of the component
- */
-function OperationRowComponent(props: OperationRowComponentProps): JSX.Element {
-    const category = categoryOrFallback(props.document.categories, props.operation.categoryId);
-    const isForeign = props.operation.currencyCode !== EURO.code;
-    const hasDescription = (props.operation.description ?? '') !== '';
-    const isOccurrence = (props.operation.recurringId ?? '') !== '';
-
-    return (
-        <button type='button' onClick={props.onOpen} className='flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition hover:bg-fill/60 sm:px-5'>
-            <CategoryIconComponent category={category} size={40} />
-            <span className='min-w-0 flex-1'>
-                <span className='flex items-center gap-1.5'>
-                    <span className='truncate text-[15px] font-medium'>{props.operation.name}</span>
-                    {isOccurrence && (
-                        <Repeat size={13} className='shrink-0 text-ink-quaternary' aria-label={t('history.recurring')} />
-                    )}
-                    {hasDescription && (
-                        <AlignLeft size={13} className='shrink-0 text-ink-quaternary' aria-label={t('history.hasNote')} />
-                    )}
-                </span>
-                <span className='mt-0.5 flex items-center gap-2 text-[13px] text-ink-secondary'>
-                    <time dateTime={props.operation.date.toISOString()} className='shrink-0 tabular-nums'>
-                        {clockTime(props.operation.date)}
-                    </time>
-                    {props.operation.isOnline && (
-                        <span className='flex items-center gap-1'><Globe size={12} /> {t('history.online')}</span>
-                    )}
-                    {!props.operation.isOnline && whereabouts(props.operation) !== '' && (
-                        <span className='flex min-w-0 items-center gap-1'>
-                            <MapPin size={12} className='shrink-0' />{' '}
-                            <span className='truncate'>{whereabouts(props.operation)}</span>
-                        </span>
-                    )}
-                </span>
-            </span>
-            <span className='shrink-0 text-right'>
-                <span className='block text-[15px] font-semibold tabular-nums'>
-                    {money(props.operation.amount, currencyNamed(props.operation.currencyCode))}
-                </span>
-                {isForeign && (
-                    <span className='block text-[12px] text-ink-tertiary tabular-nums'>
-                        {euroPrecise(euroAmount(props.operation))}
-                    </span>
-                )}
-            </span>
-        </button>
-    );
-}
-
-/**
  * @function BudgetHistoryComponent
  * @description The History tab: every operation grouped by day with each day's total, a search, and one row of filters:
  * a date filter on one day or a period, then one chip per category, several of which can be picked at once (All shows
  * every category). Under a date filter, the total of what is listed comes first. The filters live in the address, so a
- * category opened from Budget survives a reload.
+ * category opened from Budget survives a reload. On a wide desktop, that total moves to a column beside the list, split
+ * between categories, whatever the filters.
  */
 function BudgetHistoryComponent(): JSX.Element {
     const document = useDocument();
@@ -198,40 +135,54 @@ function BudgetHistoryComponent(): JSX.Element {
 
     return (
         <div className='animate-rise'>
-            <p className='eyebrow'>{t('history.eyebrow')}</p>
-            <h1 className='mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('history.title')}</h1>
+            <PageHeaderComponent>
+                <p className='eyebrow'>{t('history.eyebrow')}</p>
+                <h1 className='mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('history.title')}</h1>
+            </PageHeaderComponent>
 
-            <SearchFieldComponent value={query} onChange={(next) => update({ q: next })} placeholder={t('history.search')} clearLabel={t('history.clearSearch')} className='mt-6' />
+            <div className='xl:grid xl:grid-cols-12 xl:gap-6'>
+                <div className='xl:col-span-8'>
+                    <SearchFieldComponent value={query} onChange={(next) => update({ q: next })} placeholder={t('history.search')} clearLabel={t('history.clearSearch')} className='mt-6' />
 
-            <FilterChipsComponent label={t('history.filters')} allLabel={t('history.all')} options={options} selected={categoryIds} onChange={filterCategories} leading={dateChip} className='mt-2' />
+                    <FilterChipsComponent label={t('history.filters')} allLabel={t('history.all')} options={options} selected={categoryIds} onChange={filterCategories} leading={dateChip} className='mt-2' />
 
-            <div className='mt-2'>
-                {groups.length === 0 && (
-                    <div className='mt-6'>
-                        <EmptyStateComponent message={isFiltered ? t('history.noMatch') : t('history.empty')} />
+                    <div className='mt-2'>
+                        {groups.length === 0 && (
+                            <div className='mt-6'>
+                                <EmptyStateComponent message={isFiltered ? t('history.noMatch') : t('history.empty')} />
+                            </div>
+                        )}
+                        {range !== null && groups.length > 0 && (
+                            <div className='card mt-6 flex items-baseline justify-between gap-4 px-5 py-4 xl:hidden'>
+                                <span className='text-[15px] font-medium text-ink-secondary'>{t('history.totalSpent')}</span>
+                                <span className='text-[20px] font-semibold tracking-tight tabular-nums'>
+                                    {money(groups.reduce((total, group) => total + group.spent, 0))}
+                                </span>
+                            </div>
+                        )}
+                        {groups.map((group) => (
+                            <section key={group.date.getTime()}>
+                                <div className='flex items-baseline justify-between px-1 pb-2 pt-7'>
+                                    <h2 className='eyebrow'>{relativeDay(group.date)}</h2>
+                                    <span className='text-[13px] text-ink-tertiary tabular-nums'>{money(group.spent)}</span>
+                                </div>
+                                <div className='card divide-y divide-hairline overflow-hidden'>
+                                    {group.operations.map((operation) => (
+                                        <OperationRowComponent key={operation.id} document={document} operation={operation} onOpen={() => openEdit(operation.id)} />
+                                    ))}
+                                </div>
+                            </section>
+                        ))}
                     </div>
-                )}
-                {range !== null && groups.length > 0 && (
-                    <div className='card mt-6 flex items-baseline justify-between gap-4 px-5 py-4'>
-                        <span className='text-[15px] font-medium text-ink-secondary'>{t('history.totalSpent')}</span>
-                        <span className='text-[20px] font-semibold tracking-tight tabular-nums'>
-                            {money(groups.reduce((total, group) => total + group.spent, 0))}
-                        </span>
-                    </div>
-                )}
-                {groups.map((group) => (
-                    <section key={group.date.getTime()}>
-                        <div className='flex items-baseline justify-between px-1 pb-2 pt-7'>
-                            <h2 className='eyebrow'>{relativeDay(group.date)}</h2>
-                            <span className='text-[13px] text-ink-tertiary tabular-nums'>{money(group.spent)}</span>
+                </div>
+
+                {groups.length > 0 && (
+                    <aside className='hidden xl:col-span-4 xl:block'>
+                        <div className='sticky top-10 mt-6'>
+                            <BudgetHistorySummaryComponent document={document} groups={groups} range={range} />
                         </div>
-                        <div className='card divide-y divide-hairline overflow-hidden'>
-                            {group.operations.map((operation) => (
-                                <OperationRowComponent key={operation.id} document={document} operation={operation} onOpen={() => openEdit(operation.id)} />
-                            ))}
-                        </div>
-                    </section>
-                ))}
+                    </aside>
+                )}
             </div>
 
             <BudgetDatesComponent open={isPickingDates} range={range} onApply={filterDates} onClear={() => filterDates(null)} onClose={() => setIsPickingDates(false)} />

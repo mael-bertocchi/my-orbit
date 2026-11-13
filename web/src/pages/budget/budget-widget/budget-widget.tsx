@@ -1,3 +1,4 @@
+import RingComponent from 'components/ring/ring';
 import SpinnerComponent from 'components/spinner/spinner';
 import TrackBarComponent from 'components/track-bar/track-bar';
 import { monthStart } from 'modules/budget/budget-dates';
@@ -23,7 +24,8 @@ const NEGATIVE = '#FF3B30';
 /**
  * @function BudgetGlanceComponent
  * @description What is left to spend this month, how much of the budget is gone, and what that leaves per remaining
- * day. It reads the same budget the app shows, loading it if the app hasn't.
+ * day. It reads the same budget the app shows, loading it if the app hasn't. On a desktop, where the tile has room, the
+ * bar becomes the app's ring, with the figures beside it.
  *
  * @returns {JSX.Element} The glance at the budget
  */
@@ -50,32 +52,52 @@ function BudgetGlanceComponent(): JSX.Element {
     const figures = summary(document.operations, month, monthlyBudgetFor(document, month), now);
     const hasOperations = operationsIn(document.operations, month).length > 0;
     const isOverBudget = hasOperations && figures.left < 0;
+    const left = hasOperations ? euro(Math.abs(figures.left)) : '•';
+    const ofLimit = hasOperations ? t('budget.of', { amount: euro(figures.limit) }) : t('budget.noOperations');
+    const leftLabel = isOverBudget ? t('budget.overspent') : t('budget.leftToSpend');
+    const leftClassName = isOverBudget ? 'text-negative-text' : 'text-ink-secondary';
+    const perDay = hasOperations ? euro(figures.perDay) : '•';
+    const daysLeft = hasOperations ? String(figures.daysLeft) : '•';
+    const color = isOverBudget ? NEGATIVE : ACCENT;
 
     return (
-        <div>
-            <p className={`text-[13px] font-medium ${isOverBudget ? 'text-negative-text' : 'text-ink-secondary'}`}>
-                {isOverBudget ? t('budget.overspent') : t('budget.leftToSpend')}
-            </p>
-            <p className='mt-0.5 text-[30px] font-semibold leading-tight tracking-tight tabular-nums'>
-                {hasOperations ? euro(Math.abs(figures.left)) : '•'}
-            </p>
-            <p className='text-[13px] text-ink-tertiary'>
-                {hasOperations ? t('budget.of', { amount: euro(figures.limit) }) : t('budget.noOperations')}
-            </p>
-            <div className='mt-3'>
-                <TrackBarComponent progress={hasOperations ? figures.progress : 0} color={isOverBudget ? NEGATIVE : ACCENT} />
+        <>
+            <div className='lg:hidden'>
+                <p className={`text-[13px] font-medium ${leftClassName}`}>{leftLabel}</p>
+                <p className='mt-0.5 text-[30px] font-semibold leading-tight tracking-tight tabular-nums'>{left}</p>
+                <p className='text-[13px] text-ink-tertiary'>{ofLimit}</p>
+                <div className='mt-3'>
+                    <TrackBarComponent progress={hasOperations ? figures.progress : 0} color={color} />
+                </div>
+                <dl className='mt-3 flex gap-6 text-[13px]'>
+                    <div>
+                        <dt className='text-ink-secondary'>{t('budget.perDay')}</dt>
+                        <dd className='font-semibold tabular-nums'>{perDay}</dd>
+                    </div>
+                    <div>
+                        <dt className='text-ink-secondary'>{t('budget.daysLeft')}</dt>
+                        <dd className='font-semibold tabular-nums'>{daysLeft}</dd>
+                    </div>
+                </dl>
             </div>
-            <dl className='mt-3 flex gap-6 text-[13px]'>
-                <div>
-                    <dt className='text-ink-secondary'>{t('budget.perDay')}</dt>
-                    <dd className='font-semibold tabular-nums'>{hasOperations ? euro(figures.perDay) : '•'}</dd>
-                </div>
-                <div>
-                    <dt className='text-ink-secondary'>{t('budget.daysLeft')}</dt>
-                    <dd className='font-semibold tabular-nums'>{hasOperations ? figures.daysLeft : '•'}</dd>
-                </div>
-            </dl>
-        </div>
+            <div className='hidden items-center gap-12 lg:flex'>
+                <RingComponent progress={hasOperations ? figures.progress : 0} color={color} size={200}>
+                    <p className={`text-[13px] font-medium ${leftClassName}`}>{leftLabel}</p>
+                    <p className='mt-0.5 text-[32px] font-semibold leading-none tracking-tight tabular-nums'>{left}</p>
+                    <p className='mt-1.5 text-[13px] text-ink-tertiary'>{ofLimit}</p>
+                </RingComponent>
+                <dl className='flex flex-col gap-5'>
+                    <div>
+                        <dt className='text-[13px] text-ink-secondary'>{t('budget.perDay')}</dt>
+                        <dd className='text-[24px] font-semibold tabular-nums'>{perDay}</dd>
+                    </div>
+                    <div>
+                        <dt className='text-[13px] text-ink-secondary'>{t('budget.daysLeft')}</dt>
+                        <dd className='text-[24px] font-semibold tabular-nums'>{daysLeft}</dd>
+                    </div>
+                </dl>
+            </div>
+        </>
     );
 }
 

@@ -2,6 +2,7 @@ import CategoryIconComponent from 'components/category-icon/category-icon';
 import EmptyStateComponent from 'components/empty-state/empty-state';
 import type { MonthBar, MonthBarsLabels } from 'components/month-bars/month-bars';
 import MonthBarsComponent from 'components/month-bars/month-bars';
+import PageHeaderComponent from 'components/page-header/page-header';
 import SpinnerComponent from 'components/spinner/spinner';
 import { ChevronRight, Globe, MapPin, Plus } from 'lucide-react';
 import type { Maybe } from 'models';
@@ -289,7 +290,7 @@ function RecurringCardComponent(): JSX.Element {
     }
 
     return (
-        <section className='card flex h-[440px] flex-col p-6 sm:p-8 lg:col-span-3'>
+        <section className='card flex h-[440px] flex-col p-6 sm:p-8 lg:col-span-3 wide:col-span-1 wide:h-0 wide:min-h-full'>
             <div className='flex items-center justify-between gap-4'>
                 <h2 className='text-[20px] font-semibold tracking-tight'>{t('analysis.recurring')}</h2>
                 <button type='button' onClick={() => setRoute({ kind: 'new' })} className='flex shrink-0 items-center gap-1 rounded-full bg-fill px-3 py-1.5 text-[14px] font-medium text-accent transition hover:bg-fill-strong'>
@@ -326,7 +327,7 @@ function HabitsCardComponent(props: HabitsCardComponentProps): JSX.Element {
     const onlineShare = total > 0 ? habits.online / total : 0;
 
     return (
-        <section className='card p-6 sm:p-8 lg:col-span-2'>
+        <section className='card p-6 sm:p-8 lg:col-span-2 wide:col-span-1'>
             <h2 className='text-[20px] font-semibold tracking-tight'>{t('analysis.habits')}</h2>
             <p className='mt-1 text-[13px] text-ink-secondary'>{t('analysis.habitsNote')}</p>
 
@@ -376,21 +377,22 @@ interface PlacesCardComponentProps {
 
 /**
  * @function PlacesCardComponent
- * @description The places most spent at over the last ninety days, recurring operations left out, as a row of tiles.
+ * @description The places most spent at over the last ninety days, recurring operations left out, as a row of tiles,
+ * or a column of them on a wide desktop, where the card sits beside the recurring operations and the habits.
  *
  * @param {PlacesCardComponentProps} props The properties of the component
  */
 function PlacesCardComponent(props: PlacesCardComponentProps): JSX.Element {
     return (
-        <section className='card p-6 sm:p-8'>
+        <section className='card p-6 sm:p-8 lg:col-span-5 wide:col-span-1'>
             <h2 className='text-[20px] font-semibold tracking-tight'>{t('analysis.places')}</h2>
             <p className='mt-1 text-[13px] text-ink-secondary'>{t('analysis.habitsNote')}</p>
-            <div className='mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-2.5 lg:grid-cols-5'>
+            <div className='mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-2.5 lg:grid-cols-5 wide:grid-cols-1'>
                 {props.places.map((place, index) => (
-                    <div key={place.name} className='flex min-w-0 items-center gap-3 rounded-2xl bg-fill px-3 py-2.5 sm:flex-col sm:items-start sm:gap-0 sm:py-3'>
+                    <div key={place.name} className='flex min-w-0 items-center gap-3 rounded-2xl bg-fill px-3 py-2.5 sm:flex-col sm:items-start sm:gap-0 sm:py-3 wide:flex-row wide:items-center wide:gap-3 wide:py-2.5'>
                         <span className='flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-ink-secondary'><MapPin size={13} className='shrink-0 text-ink-tertiary' /><span className='tabular-nums'>{index + 1}</span></span>
-                        <span className='min-w-0 flex-1 truncate text-[15px] font-semibold sm:mt-1 sm:w-full sm:flex-none'>{place.name}</span>
-                        <span className='shrink-0 text-[13px] text-ink-secondary tabular-nums sm:mt-0.5'>{euro(place.spent)} • {t('analysis.visits', { count: String(place.count) })}</span>
+                        <span className='min-w-0 flex-1 truncate text-[15px] font-semibold sm:mt-1 sm:w-full sm:flex-none wide:mt-0 wide:w-auto wide:flex-1'>{place.name}</span>
+                        <span className='shrink-0 text-[13px] text-ink-secondary tabular-nums sm:mt-0.5 wide:mt-0'>{euro(place.spent)} • {t('analysis.visits', { count: String(place.count) })}</span>
                     </div>
                 ))}
             </div>
@@ -402,7 +404,8 @@ function PlacesCardComponent(props: PlacesCardComponentProps): JSX.Element {
  * @function BudgetAnalysisComponent
  * @description The Analysis tab, about what a single month can't show: how the spending moved over the last year, the
  * recurring operations, managed here, and the recent habits. Everything but the recurring operations is worked out in
- * the page, from the budget it already holds.
+ * the page, from the budget it already holds. On a wide desktop, the recurring operations, the habits and the places
+ * share one row, at the same height: the recurring operations' list scrolls within the height the other two need.
  */
 function BudgetAnalysisComponent(): JSX.Element {
     const document = useDocument();
@@ -414,16 +417,18 @@ function BudgetAnalysisComponent(): JSX.Element {
 
     return (
         <div className='animate-rise'>
-            <p className='eyebrow'>{t('analysis.eyebrow')}</p>
-            <h1 className='mt-1 text-[28px] font-semibold leading-tight tracking-tight sm:text-[34px]'>{t('analysis.title', { count: String(totals.length) })}</h1>
+            <PageHeaderComponent>
+                <p className='eyebrow'>{t('analysis.eyebrow')}</p>
+                <h1 className='mt-1 text-[28px] font-semibold leading-tight tracking-tight sm:text-[34px]'>{t('analysis.title', { count: String(totals.length) })}</h1>
+            </PageHeaderComponent>
 
             <div className='mt-6 flex flex-col gap-5'>
                 <TrendsCardComponent totals={totals} categories={categories} />
-                <div className='grid grid-cols-1 gap-5 lg:grid-cols-5'>
+                <div className={`grid grid-cols-1 gap-5 lg:grid-cols-5 ${habits.places.length !== 0 ? 'wide:grid-cols-3' : ''}`}>
                     <RecurringCardComponent />
                     <HabitsCardComponent habits={habits} />
+                    {habits.places.length > 0 && <PlacesCardComponent places={habits.places} />}
                 </div>
-                {habits.places.length > 0 && <PlacesCardComponent places={habits.places} />}
             </div>
         </div>
     );

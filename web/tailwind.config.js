@@ -7,6 +7,9 @@ export default {
   ],
   theme: {
     extend: {
+      screens: {
+        wide: '1400px',
+      },
       colors: {
         canvas: '#F5F5F7',
         ink: {

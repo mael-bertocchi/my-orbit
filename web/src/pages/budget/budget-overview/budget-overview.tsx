@@ -1,5 +1,6 @@
 import CategoryIconComponent from 'components/category-icon/category-icon';
 import EmptyStateComponent from 'components/empty-state/empty-state';
+import PageHeaderComponent from 'components/page-header/page-header';
 import RingComponent from 'components/ring/ring';
 import TrackBarComponent from 'components/track-bar/track-bar';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -12,6 +13,7 @@ import { useDocument } from 'modules/budget/budget-hooks';
 import type { CategorySpend } from 'modules/budget/budget-math';
 import { categorySpends, monthlyBudgetFor, operationsIn, summary, toDispatch } from 'modules/budget/budget-math';
 import { t } from 'modules/language/language-service';
+import { LatestCardComponent, UpcomingCardComponent } from 'pages/budget/budget-glances/budget-glances';
 import BudgetLimitsComponent from 'pages/budget/budget-limits/budget-limits';
 import TrendBadgeComponent from 'pages/budget/budget-trend/budget-trend';
 import { useState, type JSX } from 'react';
@@ -127,7 +129,9 @@ function CategoryRowComponent(props: CategoryRowComponentProps): JSX.Element {
  * @description The Budget tab: what is left to spend in a month, the spent, days-left and per-day figures, and every
  * category against its limit. In the current month, each category's change from what it usually spent by the same
  * day. Each month is measured against its own budget, which can be edited at any time. The
- * month shown lives in the address, so coming back from a category's operations lands on the same month.
+ * month shown lives in the address, so coming back from a category's operations lands on the same month. On a desktop,
+ * the recurring operations coming next and the month's latest operations join them, in cards of the same height as
+ * their row's.
  */
 function BudgetOverviewComponent(): JSX.Element {
     const document = useDocument();
@@ -156,38 +160,41 @@ function BudgetOverviewComponent(): JSX.Element {
         setParams(next.getTime() !== monthStart(now).getTime() ? { month: monthKey(next) } : {}, { replace: true });
     };
 
+    const monthArrows = (
+        <>
+            <button type='button' aria-label={t('budget.previousMonth')} onClick={() => showMonth(shiftMonth(month, -1))} className='flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-control transition hover:bg-fill'>
+                <ChevronLeft size={19} strokeWidth={2.4} />
+            </button>
+            <button type='button' aria-label={t('budget.nextMonth')} disabled={!canGoForward} onClick={() => showMonth(shiftMonth(month, 1))} className='flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-control transition hover:bg-fill disabled:opacity-35 disabled:hover:bg-white'>
+                <ChevronRight size={19} strokeWidth={2.4} />
+            </button>
+        </>
+    );
+
     return (
         <div className='animate-rise'>
-            <div className='flex items-end justify-between gap-4'>
-                <div>
-                    <p className='eyebrow'>{t('budget.eyebrow')}</p>
-                    <h1 className='mt-1 whitespace-nowrap text-[28px] font-semibold leading-tight tracking-tight sm:text-[34px]'>
-                        {monthTitle(month)} <span className='font-normal text-ink-tertiary'>{month.getFullYear()}</span>
-                    </h1>
-                </div>
-                <div className='flex gap-2 pb-1'>
-                    <button type='button' aria-label={t('budget.previousMonth')} onClick={() => showMonth(shiftMonth(month, -1))} className='flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-control transition hover:bg-fill'>
-                        <ChevronLeft size={19} strokeWidth={2.4} />
-                    </button>
-                    <button type='button' aria-label={t('budget.nextMonth')} disabled={!canGoForward} onClick={() => showMonth(shiftMonth(month, 1))} className='flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-control transition hover:bg-fill disabled:opacity-35 disabled:hover:bg-white'>
-                        <ChevronRight size={19} strokeWidth={2.4} />
-                    </button>
-                </div>
-            </div>
+            <PageHeaderComponent trailing={monthArrows}>
+                <p className='eyebrow'>{t('budget.eyebrow')}</p>
+                <h1 className='mt-1 whitespace-nowrap text-[28px] font-semibold leading-tight tracking-tight sm:text-[34px]'>
+                    {monthTitle(month)} <span className='font-normal text-ink-tertiary'>{month.getFullYear()}</span>
+                </h1>
+            </PageHeaderComponent>
 
-            <div className='mt-6 grid grid-cols-1 gap-5 lg:grid-cols-5'>
-                <section className='card flex flex-col items-center p-6 sm:p-8 lg:sticky lg:top-24 lg:col-span-2 lg:self-start'>
-                    <RingComponent progress={hasOperations ? figures.progress : 0} color={isOverBudget ? NEGATIVE : ACCENT}>
-                        <p className={`text-[14px] font-medium ${isOverBudget ? 'text-negative-text' : 'text-ink-secondary'}`}>
-                            {isOverBudget ? t('budget.overspent') : t('budget.leftToSpend')}
-                        </p>
-                        <p className='mt-0.5 text-[40px] font-semibold leading-none tracking-tight tabular-nums'>
-                            {hasOperations ? euro(Math.abs(figures.left)) : '•'}
-                        </p>
-                        <p className='mt-2 text-[14px] text-ink-tertiary'>
-                            {hasOperations ? t('budget.of', { amount: euro(figures.limit) }) : t('budget.noOperations')}
-                        </p>
-                    </RingComponent>
+            <div className='mt-6 grid grid-cols-1 gap-5 xl:grid-cols-5 wide:grid-cols-10'>
+                <section className='card flex flex-col items-center p-6 sm:p-8 xl:sticky xl:top-10 xl:col-span-2 xl:self-start wide:static wide:col-span-3 wide:self-stretch'>
+                    <div className='flex flex-1 items-center'>
+                        <RingComponent progress={hasOperations ? figures.progress : 0} color={isOverBudget ? NEGATIVE : ACCENT}>
+                            <p className={`text-[14px] font-medium ${isOverBudget ? 'text-negative-text' : 'text-ink-secondary'}`}>
+                                {isOverBudget ? t('budget.overspent') : t('budget.leftToSpend')}
+                            </p>
+                            <p className='mt-0.5 text-[40px] font-semibold leading-none tracking-tight tabular-nums'>
+                                {hasOperations ? euro(Math.abs(figures.left)) : '•'}
+                            </p>
+                            <p className='mt-2 text-[14px] text-ink-tertiary'>
+                                {hasOperations ? t('budget.of', { amount: euro(figures.limit) }) : t('budget.noOperations')}
+                            </p>
+                        </RingComponent>
+                    </div>
                     <div className='mt-8 grid w-full grid-cols-3 gap-2.5'>
                         <StatTileComponent label={t('budget.spent')} value={hasOperations ? euro(figures.spent) : '•'} />
                         <StatTileComponent label={t('budget.daysLeft')} value={hasOperations ? String(figures.daysLeft) : '•'} />
@@ -195,7 +202,7 @@ function BudgetOverviewComponent(): JSX.Element {
                     </div>
                 </section>
 
-                <section className='card p-6 sm:p-8 lg:col-span-3'>
+                <section className='card p-6 sm:p-8 xl:col-span-3 wide:col-span-4'>
                     <div className='flex items-baseline justify-between gap-4'>
                         <h2 className='text-[20px] font-semibold tracking-tight'>{t('budget.byCategory')}</h2>
                         <button type='button' onClick={() => setShowLimits(true)} className='text-[15px] font-medium text-accent hover:text-accent-strong'>
@@ -218,6 +225,11 @@ function BudgetOverviewComponent(): JSX.Element {
                         ))}
                     </div>
                 </section>
+
+                <div className='hidden gap-5 lg:grid lg:grid-cols-2 xl:col-span-5 wide:col-span-3 wide:grid-cols-1 wide:grid-rows-[1fr_1fr]'>
+                    <UpcomingCardComponent />
+                    <LatestCardComponent month={month} />
+                </div>
             </div>
 
             <BudgetLimitsComponent month={month} open={showLimits} onClose={() => setShowLimits(false)} />

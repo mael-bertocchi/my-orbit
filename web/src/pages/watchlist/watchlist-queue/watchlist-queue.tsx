@@ -1,4 +1,5 @@
 import FilterChipsComponent from 'components/filter-chips/filter-chips';
+import PageHeaderComponent from 'components/page-header/page-header';
 import PosterComponent from 'components/poster/poster';
 import SearchFieldComponent from 'components/search-field/search-field';
 import { Plus } from 'lucide-react';
@@ -117,23 +118,27 @@ function WatchlistQueueComponent(): JSX.Element {
 
     return (
         <div className='animate-rise'>
-            <p className='eyebrow'>{t('watchlist.eyebrow')}</p>
-            <h1 className='mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('watchlist.toWatchTitle')}</h1>
-            <p className='mt-1 text-[15px] text-ink-secondary'>
-                {titlesText(total)}
-            </p>
+            <PageHeaderComponent>
+                <p className='eyebrow'>{t('watchlist.eyebrow')}</p>
+                <h1 className='mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('watchlist.toWatchTitle')}</h1>
+                <p className='mt-1 text-[15px] text-ink-secondary'>
+                    {titlesText(total)}
+                </p>
+            </PageHeaderComponent>
 
             <SearchFieldComponent value={query} onChange={(next) => update('q', next, '')} placeholder={t('watchlist.filter')} clearLabel={t('watchlist.clearSearch')} className='mt-6' />
 
-            <div className='mt-4 inline-flex rounded-full bg-fill-strong/80 p-1' role='group' aria-label={t('watchlist.shelving')}>
-                {SHELF_ORDERS.map((option) => (
-                    <button key={option} type='button' aria-pressed={option === order} onClick={() => update('by', option, 'genre')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option !== order ? 'text-ink-secondary hover:text-ink' : 'bg-white text-ink shadow-control'}`}>
-                        {t(ORDER_NAMES[option])}
-                    </button>
-                ))}
+            <div className='lg:mt-4 lg:flex lg:items-center lg:gap-3'>
+                <div className='mt-4 inline-flex shrink-0 rounded-full bg-fill-strong/80 p-1 lg:mt-0' role='group' aria-label={t('watchlist.shelving')}>
+                    {SHELF_ORDERS.map((option) => (
+                        <button key={option} type='button' aria-pressed={option === order} onClick={() => update('by', option, 'genre')} className={`rounded-full px-3.5 py-1.5 text-[14px] font-medium transition ${option !== order ? 'text-ink-secondary hover:text-ink' : 'bg-white text-ink shadow-control'}`}>
+                            {t(ORDER_NAMES[option])}
+                        </button>
+                    ))}
+                </div>
+                <span aria-hidden='true' className='hidden h-6 w-px shrink-0 bg-hairline lg:block' />
+                <FilterChipsComponent label={t('watchlist.kind')} allLabel={t('watchlist.all')} options={kindOptions} selected={kinds} onChange={filterKinds} className='mt-2 lg:mt-0 lg:min-w-0 lg:flex-1' />
             </div>
-
-            <FilterChipsComponent label={t('watchlist.kind')} allLabel={t('watchlist.all')} options={kindOptions} selected={kinds} onChange={filterKinds} className='mt-2' />
 
             {groups.length !== 0 ? groups.map((shelf) => (
                 <section key={shelf.key} className='mt-9'>
@@ -143,7 +148,7 @@ function WatchlistQueueComponent(): JSX.Element {
                             <span className='font-medium normal-case tracking-normal text-ink-quaternary'>{shelf.entries.length}</span>
                         </h2>
                     )}
-                    <div className='grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-6'>
+                    <div className='grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-5 xl:grid-cols-6 wide:grid-cols-8'>
                         {shelf.entries.map((entry) => (
                             <PosterCardComponent key={entry.id} entry={entry} onOpen={() => openTitle({ mediaType: entry.mediaType, tmdbId: entry.tmdbId })} />
                         ))}

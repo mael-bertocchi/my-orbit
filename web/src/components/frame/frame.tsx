@@ -1,6 +1,8 @@
 import AppIconComponent from 'components/app-icon/app-icon';
+import { FrameActionContext } from 'components/frame/frame-context';
 import LauncherComponent from 'components/launcher/launcher';
 import LogoComponent from 'components/logo/logo';
+import SidebarComponent from 'components/sidebar/sidebar';
 import { Grip, Settings, type LucideIcon } from 'lucide-react';
 import type { PortalApp } from 'modules/apps/apps-models';
 import { appPath } from 'modules/apps/apps-registry';
@@ -16,7 +18,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 export interface FrameTab {
     to: string; /*!< Its path */
     label: MessageKey; /*!< Its name */
-    icon: LucideIcon; /*!< Its icon on a phone's tab bar */
+    icon: LucideIcon; /*!< Its icon on a phone's tab bar and in the sidebar */
     end?: boolean; /*!< Whether it is only current on its exact path, for the tab at the app's root */
 }
 
@@ -56,6 +58,8 @@ const LAUNCHER_ID = 'portal-launcher';
  * draws its bottom rule once the page scrolls under it, like an iOS navigation bar. On a phone the tabs move to a tab bar
  * along the bottom edge. The app switcher's button fades the page out and the launcher in, in its place, with the tabs
  * and the action, which belong to the page; Escape, the button again, or picking a destination brings the page back.
+ * On a desktop the bar gives way to a sidebar listing every app, the one shown with its tabs, and the action moves to
+ * the page's header; the page then takes the rest of the width, up to a width that keeps its lines readable.
  *
  * @param {FrameComponentProps} props The properties of the component
  */
@@ -117,7 +121,7 @@ function FrameComponent(props: FrameComponentProps): JSX.Element {
 
     return (
         <>
-            <header className={`sticky top-0 z-30 border-b bg-canvas/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150 transition-colors duration-200 ${isScrolled ? 'border-hairline' : 'border-transparent'}`}>
+            <header className={`sticky top-0 z-30 border-b lg:hidden bg-canvas/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150 transition-colors duration-200 ${isScrolled ? 'border-hairline' : 'border-transparent'}`}>
                 <div className='mx-auto grid h-14 max-w-5xl grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 sm:px-8'>
                     <Link to={props.app !== undefined ? appPath(props.app) : '/'} className='flex items-center gap-2.5 justify-self-start rounded-lg'>
                         {props.app !== undefined ? <AppIconComponent app={props.app} size={28} /> : <LogoComponent size={28} />}
@@ -150,8 +154,14 @@ function FrameComponent(props: FrameComponentProps): JSX.Element {
                 </div>
             </header>
 
-            <main inert={isLaunching} className={`mx-auto max-w-5xl px-5 pt-8 sm:px-8 sm:pb-16 sm:pt-10 ${tabs.length > 0 ? 'pb-28' : 'pb-12'} ${pageClassName}`}>
-                {props.children}
+            <SidebarComponent app={props.app} tabs={tabs} />
+
+            <main inert={isLaunching} className={`mx-auto max-w-5xl px-5 pt-8 sm:px-8 sm:pb-16 sm:pt-10 lg:ml-[248px] lg:mr-0 lg:max-w-none lg:px-12 ${tabs.length > 0 ? 'pb-28' : 'pb-12'} ${pageClassName}`}>
+                <div className='lg:mx-auto lg:max-w-[1360px]'>
+                    <FrameActionContext.Provider value={props.action ?? null}>
+                        {props.children}
+                    </FrameActionContext.Provider>
+                </div>
             </main>
 
             {tabs.length > 0 && (

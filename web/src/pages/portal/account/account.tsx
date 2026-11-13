@@ -196,7 +196,8 @@ function PasskeyNameFormComponent(props: PasskeyNameFormComponentProps): JSX.Ele
 /**
  * @function AccountPage
  * @description The portal's account settings: the passkeys that open it (add one, rename one, remove one), the apps
- * authorized with one (revoke one), the language every app speaks, and signing out.
+ * authorized with one (revoke one), the language every app speaks, and signing out. On a desktop, its lists keep the
+ * width of a settings column, centred, rather than stretching across the screen.
  */
 function AccountPage(): JSX.Element {
     const { signOut }: IdentityContextProps = useIdentityContext();
@@ -373,7 +374,7 @@ function AccountPage(): JSX.Element {
 
     return (
         <FrameComponent>
-            <div className='animate-rise'>
+            <div className='animate-rise lg:mx-auto lg:max-w-3xl'>
                 <p className='eyebrow'>{t('account.eyebrow')}</p>
                 <h1 className='mb-8 mt-1 text-[34px] font-semibold leading-tight tracking-tight'>
                     {t('account.title')}

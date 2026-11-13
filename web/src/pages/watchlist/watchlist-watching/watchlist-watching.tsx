@@ -1,3 +1,4 @@
+import PageHeaderComponent from 'components/page-header/page-header';
 import PosterComponent from 'components/poster/poster';
 import { t } from 'modules/language/language-service';
 import { dayText, localized, titleFacts, titlesText } from 'modules/watchlist/watchlist-formatting';
@@ -50,14 +51,16 @@ function WatchlistWatchingComponent(): JSX.Element {
 
     return (
         <div className='animate-rise'>
-            <p className='eyebrow'>{t('watchlist.eyebrow')}</p>
-            <h1 className='mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('watchlist.watchingTitle')}</h1>
-            <p className='mt-1 text-[15px] text-ink-secondary'>
-                {titlesText(current.length)}
-            </p>
+            <PageHeaderComponent>
+                <p className='eyebrow'>{t('watchlist.eyebrow')}</p>
+                <h1 className='mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('watchlist.watchingTitle')}</h1>
+                <p className='mt-1 text-[15px] text-ink-secondary'>
+                    {titlesText(current.length)}
+                </p>
+            </PageHeaderComponent>
 
             {current.length !== 0 ? (
-                <ul className='mt-6 grid gap-3 md:grid-cols-2'>
+                <ul className='mt-6 grid gap-3 md:grid-cols-2 wide:grid-cols-3'>
                     {current.map((entry) => (
                         <WatchingCardComponent key={entry.id} entry={entry} onOpen={() => openTitle({ mediaType: entry.mediaType, tmdbId: entry.tmdbId })} />
                     ))}

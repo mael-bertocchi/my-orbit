@@ -70,6 +70,10 @@ export const budgetEn = {
     'budget.notDispatched': '{amount} of the budget is not dispatched yet',
     'budget.emptyMonth': 'No operations in this month.',
     'budget.noSpending': 'No spending yet this month. Log an operation and your categories will fill in here.',
+    'budget.upcoming': 'Upcoming',
+    'budget.seeAll': 'See all',
+    'budget.latest': 'Latest operations',
+    'budget.noUpcoming': 'No recurring operation coming up.',
 
     'limits.title': 'Edit limits',
     'limits.monthly': 'Monthly budget',

@@ -2,6 +2,7 @@ import AlertComponent from 'components/alert/alert';
 import IconTileComponent from 'components/icon-tile/icon-tile';
 import ListGroupComponent from 'components/list-group/list-group';
 import ListRowComponent from 'components/list-row/list-row';
+import PageHeaderComponent from 'components/page-header/page-header';
 import SyncBadgeComponent from 'components/sync-badge/sync-badge';
 import { ArchiveRestore, ChevronRight, Euro, LayoutGrid, List, RefreshCw, Target, Trash2 } from 'lucide-react';
 import { categoriesOf, DEFAULT_CATEGORIES } from 'modules/budget/budget-categories';
@@ -32,6 +33,7 @@ const NEGATIVE = '#FF3B30';
  * @function BudgetSettingsComponent
  * @description The Settings tab: the sync state, the budget and limits, the default currency, the exchange rates and
  * what the budget holds. The language and signing out live in the portal's account settings, as they span every app.
+ * On a desktop, its lists keep the width of a settings column, centred, rather than stretching across the screen.
  */
 function BudgetSettingsComponent(): JSX.Element {
     const document = useDocument();
@@ -69,9 +71,11 @@ function BudgetSettingsComponent(): JSX.Element {
     };
 
     return (
-        <div className='animate-rise'>
-            <p className='eyebrow'>{t('settings.eyebrow')}</p>
-            <h1 className='mb-8 mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('settings.title')}</h1>
+        <div className='animate-rise lg:mx-auto lg:max-w-3xl'>
+            <PageHeaderComponent className='mb-8'>
+                <p className='eyebrow'>{t('settings.eyebrow')}</p>
+                <h1 className='mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('settings.title')}</h1>
+            </PageHeaderComponent>
 
             <ListGroupComponent title={t('settings.budget')}>
                 <ListRowComponent icon={<IconTileComponent icon={RefreshCw} color={ACCENT} size={30} />} title={t('settings.sync')}>

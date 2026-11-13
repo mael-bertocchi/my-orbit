@@ -53,7 +53,8 @@ function today(now: Date): string {
 /**
  * @function AppTileComponent
  * @description An app on the home page: its icon, name and purpose, and a glance at it when it has one. While the app
- * can't be used, the tile is greyed out, out of reach, and says why in place of the glance.
+ * can't be used, the tile is greyed out, out of reach, and says why in place of the glance. On a desktop, the tiles of
+ * a row share its height and the glance sits in the middle of the room it is given.
  *
  * @param {AppTileComponentProps} props The properties of the component
  */
@@ -63,7 +64,7 @@ function AppTileComponent(props: AppTileComponentProps): JSX.Element {
 
     if (!availability.isAvailable) {
         return (
-            <div aria-disabled='true' className='card block cursor-not-allowed p-5 sm:p-6'>
+            <div aria-disabled='true' className='card flex cursor-not-allowed flex-col p-5 sm:p-6 lg:p-7'>
                 <div className='flex items-center gap-3.5 opacity-50 grayscale'>
                     <AppIconComponent app={props.app} size={46} />
                     <div className='min-w-0 flex-1'>
@@ -71,13 +72,13 @@ function AppTileComponent(props: AppTileComponentProps): JSX.Element {
                         <p className='text-[13px] text-ink-secondary'>{t(props.app.summary)}</p>
                     </div>
                 </div>
-                {availability.reason !== null && <p className='mt-5 border-t border-hairline pt-4 text-[14px] text-ink-secondary'>{t(availability.reason)}</p>}
+                {availability.reason !== null && <p className='mt-5 border-t border-hairline pt-4 text-[14px] text-ink-secondary lg:flex lg:flex-1 lg:items-center lg:justify-center lg:pt-6'>{t(availability.reason)}</p>}
             </div>
         );
     }
 
     return (
-        <Link to={appPath(props.app)} aria-label={t('home.open', { app: t(props.app.name) })} className='card group block p-5 sm:p-6'>
+        <Link to={appPath(props.app)} aria-label={t('home.open', { app: t(props.app.name) })} className='card group flex flex-col p-5 sm:p-6 lg:p-7'>
             <div className='flex items-center gap-3.5'>
                 <AppIconComponent app={props.app} size={46} />
                 <div className='min-w-0 flex-1'>
@@ -87,7 +88,7 @@ function AppTileComponent(props: AppTileComponentProps): JSX.Element {
                 <ChevronRight size={18} className='text-ink-quaternary transition group-hover:translate-x-0.5 group-hover:text-ink-tertiary' />
             </div>
             {Widget !== undefined && (
-                <div className='mt-5 border-t border-hairline pt-4'>
+                <div className='mt-5 border-t border-hairline pt-4 lg:flex lg:min-h-[300px] lg:flex-1 lg:items-center lg:justify-center lg:pt-6'>
                     <Suspense fallback={<div className='h-[118px]' />}>
                         <Widget />
                     </Suspense>
@@ -113,7 +114,7 @@ function HomePage(): JSX.Element {
                     {account !== null ? t(greetingKey(now), { name: account.name }) : t('home.welcome')}
                 </h1>
 
-                <div className='mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3'>
+                <div className='mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2'>
                     {TILES.map(({ app, Widget }) => (
                         <AppTileComponent key={app.id} app={app} Widget={Widget} />
                     ))}
