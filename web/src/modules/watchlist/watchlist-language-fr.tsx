@@ -14,7 +14,7 @@ export const watchlistFr: WatchlistMessages = {
     'watchlist.watched': 'Vus',
     'watchlist.toWatchTitle': 'À voir',
     'watchlist.watchedTitle': 'Vus',
-    'watchlist.add': 'Ajouter',
+    'watchlist.add': 'Nouveau titre',
     'watchlist.addFirst': 'Trouver un film ou une série',
     'watchlist.loadFailed': 'Votre watchlist n’a pas pu être chargée',
     'watchlist.tryAgain': 'Réessayer',

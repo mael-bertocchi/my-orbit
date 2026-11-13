@@ -12,7 +12,7 @@ export const watchlistEn = {
     'watchlist.watched': 'Watched',
     'watchlist.toWatchTitle': 'To watch',
     'watchlist.watchedTitle': 'Watched',
-    'watchlist.add': 'Add',
+    'watchlist.add': 'New title',
     'watchlist.addFirst': 'Find a film or a series',
     'watchlist.loadFailed': "Your watchlist couldn't be loaded",
     'watchlist.tryAgain': 'Try again',
