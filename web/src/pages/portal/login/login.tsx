@@ -1,4 +1,4 @@
-import LogoComponent from 'components/logo/logo';
+import OrbitHeroComponent from 'components/orbit-hero/orbit-hero';
 import SpinnerComponent from 'components/spinner/spinner';
 import { KeyRound } from 'lucide-react';
 import type { Maybe } from 'models';
@@ -19,7 +19,8 @@ type SignInMode = 'signIn' | 'enroll';
 
 /**
  * @function LoginPage
- * @description The portal's door: one button to sign in with a passkey (Face ID or Touch ID on an Apple device). While
+ * @description The portal's door: the logo with the apps turning around it, a sentence on what the portal holds and one
+ * button that signs in with a passkey (Face ID or Touch ID on an Apple device), without dwelling on how. While
  * the server has an enrollment token set, it also offers to create a passkey with it, which is how the first one is made.
  * Once signed in, it goes back to the page asked for.
  *
@@ -94,16 +95,15 @@ function LoginPage(): JSX.Element {
     }
 
     return (
-        <main className='flex min-h-dvh items-center justify-center px-5'>
-            <div className='w-full max-w-[380px] animate-rise text-center'>
-                <div className='flex justify-center'>
-                    <LogoComponent size={76} />
+        <main className='flex min-h-dvh flex-col items-center justify-center overflow-hidden px-5 py-10'>
+            <div className='w-full max-w-[560px] animate-rise text-center'>
+                <div className='-my-[38px] scale-[0.8] sm:my-0 sm:scale-100'>
+                    <OrbitHeroComponent />
                 </div>
-                <h1 className='mt-6 text-[34px] font-semibold tracking-tight'>Orbit</h1>
-                <p className='mt-1 text-[17px] text-ink-secondary'>{t('portal.tagline')}</p>
+                <h1 className='mt-6 text-[56px] font-semibold leading-none tracking-[-0.035em] sm:text-[84px]'>Orbit</h1>
 
                 {mode !== 'signIn' ? (
-                    <form className='mt-10 text-left' onSubmit={submitToken}>
+                    <form className='mx-auto mt-10 max-w-[380px] text-left' onSubmit={submitToken}>
                         <p className='text-center text-[15px] text-ink-secondary'>{t('signIn.setUpPrompt')}</p>
                         <label htmlFor='enrollment-token' className='field-label mt-6'>{t('signIn.token')}</label>
                         <input id='enrollment-token' type='password' autoComplete='off' spellCheck={false} value={token} disabled={isWorking} onChange={(event) => setToken(event.target.value)} className='field font-mono' />
@@ -118,10 +118,9 @@ function LoginPage(): JSX.Element {
                         </div>
                     </form>
                 ) : (
-                    <div className='mt-10'>
-                        <p className='text-[15px] text-ink-secondary'>{t('signIn.prompt')}</p>
-                        <button type='button' className='button-primary mt-5' disabled={isWorking} onClick={() => void attempt(signIn)}>
-                            <KeyRound size={19} strokeWidth={2.3} />
+                    <div className='flex flex-col items-center'>
+                        <p className='mx-auto mt-5 max-w-[480px] text-balance text-[20px] font-medium leading-snug tracking-tight text-ink-secondary sm:text-[24px]'>{t('signIn.headline')}</p>
+                        <button type='button' className='button-primary mt-9 w-auto rounded-full px-9' disabled={isWorking} onClick={() => void attempt(signIn)}>
                             {t('signIn.action')}
                         </button>
                         {isEnrollmentOpen && (

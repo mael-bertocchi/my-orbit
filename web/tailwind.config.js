@@ -61,10 +61,15 @@ export default {
           from: { opacity: '0', transform: 'translateY(8px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
+        orbit: {
+          from: { transform: 'rotate(0deg)' },
+          to: { transform: 'rotate(360deg)' },
+        },
       },
       animation: {
         shake: 'shake 0.4s ease-in-out',
         rise: 'rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1)',
+        orbit: 'orbit 90s linear infinite',
       },
     },
   },

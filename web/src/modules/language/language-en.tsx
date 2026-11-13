@@ -12,12 +12,11 @@ export const portalEn = {
     'common.loading': 'Loading',
     'common.irreversible': "This can't be undone.",
 
-    'portal.tagline': 'Your personal space.',
     'portal.loadFailed': "This page couldn't be loaded",
     'portal.reload': 'Reload',
 
-    'signIn.prompt': 'Sign in with your passkey to open your space.',
-    'signIn.action': 'Sign in with a passkey',
+    'signIn.headline': 'Your budget, your films and series, and everything in your orbit, together in one place.',
+    'signIn.action': 'Sign in',
     'signIn.setUp': 'Set up a passkey',
     'signIn.setUpPrompt': "Paste the enrollment token set in the server's environment, then create your passkey.",
     'signIn.token': 'Enrollment token',

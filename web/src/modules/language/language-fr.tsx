@@ -13,12 +13,11 @@ const portalFr: PortalMessages = {
     'common.loading': 'Chargement',
     'common.irreversible': 'Cette action est irréversible.',
 
-    'portal.tagline': 'Votre espace personnel.',
     'portal.loadFailed': 'Impossible de charger cette page',
     'portal.reload': 'Recharger',
 
-    'signIn.prompt': 'Connectez-vous avec votre clé d’accès pour ouvrir votre espace.',
-    'signIn.action': 'Se connecter avec une clé d’accès',
+    'signIn.headline': 'Votre budget, vos films et séries, et tout ce qui gravite autour de vous, réunis en un seul endroit.',
+    'signIn.action': 'Se connecter',
     'signIn.setUp': 'Configurer une clé d’accès',
     'signIn.setUpPrompt': 'Collez le jeton d’enrôlement défini dans l’environnement du serveur, puis créez votre clé d’accès.',
     'signIn.token': 'Jeton d’enrôlement',
