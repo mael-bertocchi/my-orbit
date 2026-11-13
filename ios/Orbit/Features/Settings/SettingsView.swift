@@ -44,7 +44,7 @@ struct SettingsView: View {
                     .padding(.vertical, 11)
                     .padding(.horizontal, 14)
                     RowDivider()
-                    valueRow(symbol: "powerplug", color: Theme.accent, title: String(appLocalized: "Connected apps"), value: "") {
+                    valueRow(symbol: "powerplug", color: Theme.accent, title: String(appLocalized: "External apps"), value: "") {
                         showConnections = true
                     }
                     RowDivider()

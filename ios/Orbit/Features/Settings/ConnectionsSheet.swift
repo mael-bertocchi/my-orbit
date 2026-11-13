@@ -21,10 +21,10 @@ struct ConnectionsSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                SheetHeader(title: String(appLocalized: "Connected apps")) { dismiss() }
+                SheetHeader(title: String(appLocalized: "External apps")) { dismiss() }
                     .padding(.bottom, 12)
 
-                Text("Apps such as Claude that you authorized with your passkey. They read and change your whole account until you revoke them.")
+                Text("Apps such as Claude that can access your account. You can revoke their access at any time.")
                     .font(Theme.font(12))
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -160,7 +160,7 @@ struct ConnectionsSheet: View {
             connections = try await session.connections()
             failure = nil
         } catch {
-            failure = String(appLocalized: "The connected apps couldn't be loaded.")
+            failure = String(appLocalized: "The external apps couldn't be loaded.")
         }
     }
 
