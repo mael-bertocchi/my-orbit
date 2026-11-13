@@ -6,7 +6,7 @@ import { CalendarDays } from 'lucide-react';
 import type { Maybe } from 'models';
 import { categoriesOf, categoryName, categoryOrFallback } from 'modules/budget/budget-categories';
 import type { DayRange } from 'modules/budget/budget-dates';
-import { dayKey, dayRange, isInRange, parseDayKey } from 'modules/budget/budget-dates';
+import { dayKey, dayRange, isInRange, monthStart, parseDayKey } from 'modules/budget/budget-dates';
 import { useBudgetEditorContext } from 'modules/budget/budget-editor-hooks';
 import { money, rangeTitle, relativeDay } from 'modules/budget/budget-formatting';
 import { useDocument } from 'modules/budget/budget-hooks';
@@ -49,10 +49,32 @@ function isListed(document: BudgetDocument, operation: Operation, categoryIds: r
 }
 
 /**
+ * @constant EVERY_DATE
+ * @description The value of the address's dates parameter once the date filter is cleared, so every date shows
+ * instead of the current month
+ */
+const EVERY_DATE = 'all';
+
+/**
+ * @function monthToDate
+ * @description The days of the current month up to today, the date filter the tab opens with
+ */
+function monthToDate(): DayRange {
+    const today = new Date();
+
+    return dayRange(monthStart(today), today);
+}
+
+/**
  * @function rangeOf
  * @description The date filter in the address: the days from one to the other, or the only one that reads as a day.
+ * With neither, the current month up to today, unless the filter was cleared.
  */
-function rangeOf(from: Maybe<string>, to: Maybe<string>): Maybe<DayRange> {
+function rangeOf(from: Maybe<string>, to: Maybe<string>, dates: Maybe<string>): Maybe<DayRange> {
+    if (from === null && to === null) {
+        return dates !== EVERY_DATE ? monthToDate() : null;
+    }
+
     const start = from !== null ? parseDayKey(from) : null;
     const end = to !== null ? parseDayKey(to) : null;
 
@@ -68,7 +90,7 @@ function rangeOf(from: Maybe<string>, to: Maybe<string>): Maybe<DayRange> {
 /**
  * @function BudgetHistoryComponent
  * @description The History tab: every operation grouped by day with each day's total, a search, and one row of filters:
- * a date filter on one day or a period, then one chip per category, several of which can be picked at once (All shows
+ * a date filter on one day or a period, set to the current month up to today until it is changed or cleared, then one chip per category, several of which can be picked at once (All shows
  * every category). Under a date filter, the total of what is listed comes first. The filters live in the address, so a
  * category opened from Budget survives a reload. On a wide desktop, that total moves to a column beside the list, split
  * between categories, whatever the filters.
@@ -81,7 +103,8 @@ function BudgetHistoryComponent(): JSX.Element {
     const categoryIds = useMemo(() => readList(params, 'category'), [params]);
     const from = params.get('from');
     const to = params.get('to');
-    const range = useMemo(() => rangeOf(from, to), [from, to]);
+    const dates = params.get('dates');
+    const range = useMemo(() => rangeOf(from, to, dates), [from, to, dates]);
     const [isPickingDates, setIsPickingDates] = useState(false);
 
     const groups = useMemo(() => dayGroups(document.operations.filter((operation) => isListed(document, operation, categoryIds, range, query))), [document, categoryIds, range, query]);
@@ -106,10 +129,10 @@ function BudgetHistoryComponent(): JSX.Element {
 
     /**
      * @function filterDates
-     * @description Puts a date filter in the address, or takes it out.
+     * @description Puts a date filter in the address, or takes it out so that every date shows.
      */
     const filterDates = (picked: Maybe<DayRange>): void => {
-        update({ from: picked !== null ? dayKey(picked.start) : null, to: picked !== null ? dayKey(picked.end) : null });
+        update({ from: picked !== null ? dayKey(picked.start) : null, to: picked !== null ? dayKey(picked.end) : null, dates: picked !== null ? null : EVERY_DATE });
         setIsPickingDates(false);
     };
 
