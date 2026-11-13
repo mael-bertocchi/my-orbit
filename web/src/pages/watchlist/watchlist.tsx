@@ -1,9 +1,7 @@
 import FrameActionComponent from 'components/frame-action/frame-action';
-import type { FrameTab } from 'components/frame/frame';
 import FrameComponent from 'components/frame/frame';
 import LoadingScreenComponent from 'components/loading-screen/loading-screen';
 import SheetComponent from 'components/sheet/sheet';
-import { Bookmark, CircleCheckBig, CirclePlay } from 'lucide-react';
 import { t } from 'modules/language/language-service';
 import { useCatchUp, useWatchlist, useWatchlistContext, useWatchlistSheetContext } from 'modules/watchlist/watchlist-hooks';
 import { watchlist } from 'modules/watchlist/watchlist-manifest';
@@ -16,16 +14,6 @@ import WatchlistWatchedComponent from 'pages/watchlist/watchlist-watched/watchli
 import WatchlistWatchingComponent from 'pages/watchlist/watchlist-watching/watchlist-watching';
 import { useState, type JSX } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-
-/**
- * @constant TABS
- * @description To watch, being watched, and watched
- */
-const TABS: readonly FrameTab[] = [
-    { to: '/watchlist', label: 'watchlist.toWatch', icon: Bookmark, end: true },
-    { to: '/watchlist/watching', label: 'watchlist.watching', icon: CirclePlay },
-    { to: '/watchlist/watched', label: 'watchlist.watched', icon: CircleCheckBig }
-];
 
 /**
  * @function AddButtonComponent
@@ -131,7 +119,7 @@ function WatchlistShellComponent(): JSX.Element {
 
     return (
         <WatchlistSheetProvider>
-            <FrameComponent app={watchlist} tabs={TABS} action={<AddButtonComponent />}>
+            <FrameComponent app={watchlist} action={<AddButtonComponent />}>
                 <Routes>
                     <Route index element={<WatchlistQueueComponent />} />
                     <Route path='watching' element={<WatchlistWatchingComponent />} />

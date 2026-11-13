@@ -3,24 +3,12 @@ import { FrameActionContext } from 'components/frame/frame-context';
 import LauncherComponent from 'components/launcher/launcher';
 import LogoComponent from 'components/logo/logo';
 import SidebarComponent from 'components/sidebar/sidebar';
-import { Grip, Settings, type LucideIcon } from 'lucide-react';
+import { Grip, Settings } from 'lucide-react';
 import type { PortalApp } from 'modules/apps/apps-models';
 import { appPath } from 'modules/apps/apps-registry';
-import type { MessageKey } from 'modules/language/language-en';
 import { t } from 'modules/language/language-service';
 import { useEffect, useRef, useState, type JSX, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-
-/**
- * @interface FrameTab
- * @description One of an app's tabs.
- */
-export interface FrameTab {
-    to: string; /*!< Its path */
-    label: MessageKey; /*!< Its name */
-    icon: LucideIcon; /*!< Its icon on a phone's tab bar and in the sidebar */
-    end?: boolean; /*!< Whether it is only current on its exact path, for the tab at the app's root */
-}
 
 /**
  * @interface FrameComponentProps
@@ -28,7 +16,6 @@ export interface FrameTab {
  */
 interface FrameComponentProps {
     app?: PortalApp; /*!< The app shown, none on the portal's own pages */
-    tabs?: readonly FrameTab[]; /*!< The app's tabs */
     action?: ReactNode; /*!< The app's main action, beside the menus */
     children: ReactNode; /*!< The page */
 }
@@ -64,7 +51,7 @@ const LAUNCHER_ID = 'portal-launcher';
  * @param {FrameComponentProps} props The properties of the component
  */
 function FrameComponent(props: FrameComponentProps): JSX.Element {
-    const tabs = props.tabs ?? [];
+    const tabs = props.app?.tabs ?? [];
 
     const [isScrolled, setIsScrolled] = useState(false);
     const [isLaunching, setIsLaunching] = useState(false);
@@ -154,7 +141,7 @@ function FrameComponent(props: FrameComponentProps): JSX.Element {
                 </div>
             </header>
 
-            <SidebarComponent app={props.app} tabs={tabs} />
+            <SidebarComponent app={props.app} />
 
             <main inert={isLaunching} className={`mx-auto max-w-5xl px-5 pt-8 sm:px-8 sm:pb-16 sm:pt-10 lg:ml-[248px] lg:mr-0 lg:max-w-none lg:px-12 ${tabs.length > 0 ? 'pb-28' : 'pb-12'} ${pageClassName}`}>
                 <div className='lg:mx-auto lg:max-w-[1360px]'>

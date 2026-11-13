@@ -1,4 +1,4 @@
-import { Wallet } from 'lucide-react';
+import { ChartLine, ChartPie, History, Settings, Wallet } from 'lucide-react';
 import type { PortalApp } from 'modules/apps/apps-models';
 
 /**
@@ -11,6 +11,12 @@ export const budget: PortalApp = {
     name: 'budget.appName',
     summary: 'budget.appSummary',
     icon: Wallet,
+    tabs: [
+        { to: '/budget', label: 'navigation.budget', icon: ChartPie, end: true },
+        { to: '/budget/history', label: 'navigation.history', icon: History },
+        { to: '/budget/analysis', label: 'navigation.analysis', icon: ChartLine },
+        { to: '/budget/settings', label: 'navigation.settings', icon: Settings }
+    ],
     load: () => import('pages/budget/budget'),
     loadWidget: () => import('pages/budget/budget-widget/budget-widget')
 };

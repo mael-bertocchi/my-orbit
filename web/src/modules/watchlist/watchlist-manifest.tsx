@@ -1,4 +1,4 @@
-import { Clapperboard } from 'lucide-react';
+import { Bookmark, CircleCheckBig, CirclePlay, Clapperboard } from 'lucide-react';
 import type { PortalApp } from 'modules/apps/apps-models';
 
 /**
@@ -11,6 +11,11 @@ export const watchlist: PortalApp = {
     name: 'watchlist.appName',
     summary: 'watchlist.appSummary',
     icon: Clapperboard,
+    tabs: [
+        { to: '/watchlist', label: 'watchlist.toWatch', icon: Bookmark, end: true },
+        { to: '/watchlist/watching', label: 'watchlist.watching', icon: CirclePlay },
+        { to: '/watchlist/watched', label: 'watchlist.watched', icon: CircleCheckBig }
+    ],
     load: () => import('pages/watchlist/watchlist'),
     loadWidget: () => import('pages/watchlist/watchlist-widget/watchlist-widget')
 };

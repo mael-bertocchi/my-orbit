@@ -19,6 +19,17 @@ export interface AppAvailability {
 }
 
 /**
+ * @interface AppTab
+ * @description One of an app's tabs.
+ */
+export interface AppTab {
+    to: string; /*!< Its path */
+    label: MessageKey; /*!< Its name */
+    icon: LucideIcon; /*!< Its icon on a phone's tab bar and in the sidebar */
+    end?: boolean; /*!< Whether it is only current on its exact path, for the tab at the app's root */
+}
+
+/**
  * @interface AvailabilitySource
  * @description Where an app's availability comes from, for `useSyncExternalStore`.
  */
@@ -37,6 +48,7 @@ export interface PortalApp {
     name: MessageKey; /*!< Its name */
     summary: MessageKey; /*!< What it is for, in a few words */
     icon: LucideIcon; /*!< The glyph on its icon */
+    tabs: readonly AppTab[]; /*!< Its tabs, in the bar along the top or the bottom and in the sidebar */
     load: () => AppModule; /*!< The app itself, mounted under `/<id>/*` with its own routes */
     loadWidget?: () => AppModule; /*!< Its tile's content on the home page, a glance at the app */
     availability?: AvailabilitySource; /*!< Whether it can be used right now, always when left out */

@@ -1,12 +1,11 @@
 import AppIconComponent from 'components/app-icon/app-icon';
-import type { FrameTab } from 'components/frame/frame';
 import LogoComponent from 'components/logo/logo';
 import { ChevronRight, House, Settings } from 'lucide-react';
 import { useAppAvailability } from 'modules/apps/apps-hooks';
 import type { PortalApp } from 'modules/apps/apps-models';
-import { APPS, appPath } from 'modules/apps/apps-registry';
+import { APPS } from 'modules/apps/apps-registry';
 import { t } from 'modules/language/language-service';
-import type { JSX } from 'react';
+import { useId, useState, type JSX } from 'react';
 import { Link, NavLink, type NavLinkRenderProps } from 'react-router-dom';
 
 /**
@@ -15,7 +14,6 @@ import { Link, NavLink, type NavLinkRenderProps } from 'react-router-dom';
  */
 interface SidebarComponentProps {
     app?: PortalApp; /*!< The app shown, none on the portal's own pages */
-    tabs: readonly FrameTab[]; /*!< The app's tabs */
 }
 
 /**
@@ -24,7 +22,7 @@ interface SidebarComponentProps {
  */
 interface SidebarAppComponentProps {
     app: PortalApp; /*!< The app */
-    tabs: readonly FrameTab[]; /*!< Its tabs, listed under it while it is the one shown, none otherwise */
+    isShown: boolean; /*!< Whether it is the app shown, which starts unfolded */
 }
 
 /**
@@ -53,14 +51,16 @@ function settingsClassName({ isActive }: NavLinkRenderProps): string {
 
 /**
  * @function SidebarAppComponent
- * @description An app in the sidebar: its icon and name, then its tabs while it is the one shown, or a chevron leading
- * to it otherwise. While it can't be used, it is greyed out and out of reach, and says why on hover.
+ * @description An app in the sidebar: its icon, its name and a chevron. Clicking it folds or unfolds its tabs under it,
+ * without leaving the page; the chevron points down while they show. The app shown starts unfolded. While the app
+ * can't be used, it is greyed out and out of reach, and says why on hover.
  *
  * @param {SidebarAppComponentProps} props The properties of the component
  */
 function SidebarAppComponent(props: SidebarAppComponentProps): JSX.Element {
     const availability = useAppAvailability(props.app);
-    const isShown = props.tabs.length > 0;
+    const [isOpen, setIsOpen] = useState(props.isShown);
+    const tabsId = useId();
 
     if (!availability.isAvailable) {
         return (
@@ -73,14 +73,14 @@ function SidebarAppComponent(props: SidebarAppComponentProps): JSX.Element {
 
     return (
         <div>
-            <Link to={appPath(props.app)} aria-current={isShown ? 'page' : undefined} className={`group flex items-center gap-3 rounded-xl px-2.5 py-2 text-[15px] font-medium transition ${isShown ? 'text-ink' : 'text-ink-secondary hover:text-ink'}`}>
+            <button type='button' aria-expanded={isOpen} aria-controls={tabsId} onClick={() => setIsOpen(!isOpen)} className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-[15px] font-medium transition ${props.isShown ? 'text-ink' : 'text-ink-secondary hover:text-ink'}`}>
                 <AppIconComponent app={props.app} size={26} />
                 <span className='flex-1'>{t(props.app.name)}</span>
-                {!isShown && <ChevronRight size={15} className='text-ink-quaternary transition group-hover:translate-x-0.5' />}
-            </Link>
-            {isShown && (
-                <div className='mb-2 ml-[22px] mt-1 flex flex-col gap-0.5 border-l border-hairline pl-3'>
-                    {props.tabs.map(({ to, label, icon: Icon, end }) => (
+                <ChevronRight size={15} className={`text-ink-quaternary transition-transform duration-200 motion-reduce:transition-none ${isOpen ? 'rotate-90' : ''}`} />
+            </button>
+            {isOpen && (
+                <div id={tabsId} className='mb-2 ml-[22px] mt-1 flex flex-col gap-0.5 border-l border-hairline pl-3'>
+                    {props.app.tabs.map(({ to, label, icon: Icon, end }) => (
                         <NavLink key={to} to={to} end={end} className={tabClassName}>
                             <Icon size={16} strokeWidth={2.1} />
                             {t(label)}
@@ -95,7 +95,7 @@ function SidebarAppComponent(props: SidebarAppComponentProps): JSX.Element {
 /**
  * @function SidebarComponent
  * @description The portal's navigation on a desktop, along the left edge in place of the bar along the top: the logo
- * with the settings button, the home page, then every app, the one shown unfolding its tabs under it.
+ * with the settings button, the home page, then every app, each folding its tabs under it, the one shown unfolded.
  *
  * @param {SidebarComponentProps} props The properties of the component
  */
@@ -122,7 +122,7 @@ function SidebarComponent(props: SidebarComponentProps): JSX.Element {
 
                 <p className='eyebrow mb-1.5 mt-6 px-2.5 text-[11px]'>{t('frame.apps')}</p>
                 {APPS.map((app) => (
-                    <SidebarAppComponent key={app.id} app={app} tabs={props.app?.id !== app.id ? [] : props.tabs} />
+                    <SidebarAppComponent key={app.id} app={app} isShown={props.app?.id === app.id} />
                 ))}
             </nav>
         </aside>

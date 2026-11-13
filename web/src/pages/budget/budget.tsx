@@ -1,8 +1,6 @@
 import FrameActionComponent from 'components/frame-action/frame-action';
-import type { FrameTab } from 'components/frame/frame';
 import FrameComponent from 'components/frame/frame';
 import LoadingScreenComponent from 'components/loading-screen/loading-screen';
-import { ChartLine, ChartPie, History as HistoryIcon, Settings } from 'lucide-react';
 import { useBudgetEditorContext } from 'modules/budget/budget-editor-hooks';
 import { BudgetEditorProvider } from 'modules/budget/budget-editor-provider';
 import { useBudget, useBudgetContext, useCatchUp } from 'modules/budget/budget-hooks';
@@ -19,17 +17,6 @@ import BudgetOverviewComponent from 'pages/budget/budget-overview/budget-overvie
 import BudgetSettingsComponent from 'pages/budget/budget-settings/budget-settings';
 import { useEffect, type JSX } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-
-/**
- * @constant TABS
- * @description Budget, History, Analysis and Settings, like the app's tab bar
- */
-const TABS: readonly FrameTab[] = [
-    { to: '/budget', label: 'navigation.budget', icon: ChartPie, end: true },
-    { to: '/budget/history', label: 'navigation.history', icon: HistoryIcon },
-    { to: '/budget/analysis', label: 'navigation.analysis', icon: ChartLine },
-    { to: '/budget/settings', label: 'navigation.settings', icon: Settings }
-];
 
 /**
  * @function NewOperationButtonComponent
@@ -90,7 +77,7 @@ function BudgetShellComponent(): JSX.Element {
 
     return (
         <BudgetEditorProvider>
-            <FrameComponent app={budget} tabs={TABS} action={<NewOperationButtonComponent />}>
+            <FrameComponent app={budget} action={<NewOperationButtonComponent />}>
                 <Routes>
                     <Route index element={<BudgetOverviewComponent />} />
                     <Route path='history' element={<BudgetHistoryComponent />} />
