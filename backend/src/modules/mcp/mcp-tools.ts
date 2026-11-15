@@ -16,6 +16,7 @@ import type { Variables } from 'src/plugins/environment';
 import { OWNER_ID } from 'src/plugins/identity';
 import type { Maybe, Perhaps } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
+import { ownerDayAfter, ownerDayStart } from 'src/shared/owner-day';
 import { z } from 'zod';
 
 /**
@@ -131,18 +132,17 @@ export function summaryOf(row: BudgetOperation): OperationLine {
 
 /**
  * @function monthBounds
- * @description The first instant of a month and of the next one.
+ * @description The first instant of a month and of the next one, in the owner's time zone, as the apps count months.
  *
  * @param {string} month The month, as `YYYY-MM`.
  *
  * @returns {{ start: Date; end: Date }} Its bounds.
  */
 function monthBounds(month: string): { start: Date; end: Date } {
-    const [year, index] = month.split('-').map(Number);
-    const start = new Date(Date.UTC(year ?? 1970, (index ?? 1) - 1, 1));
-    const end = new Date(Date.UTC(year ?? 1970, index ?? 1, 1));
+    const [year = 1970, index = 1] = month.split('-').map(Number);
+    const next = new Date(Date.UTC(year, index, 1)).toISOString().slice(0, 10);
 
-    return { start, end };
+    return { start: ownerDayStart(`${month}-01`), end: ownerDayStart(next) };
 }
 
 /**
@@ -228,7 +228,7 @@ export const searchOperations: ServerTool = {
             where: {
                 deletedAt: null,
                 categoryId,
-                date: { gte: from !== undefined ? new Date(`${from}T00:00:00.000Z`) : undefined, lte: to !== undefined ? new Date(`${to}T23:59:59.999Z`) : undefined },
+                date: { gte: from !== undefined ? ownerDayStart(from) : undefined, lt: to !== undefined ? ownerDayAfter(to) : undefined },
                 OR: query !== undefined ? [
                     { name: { contains: query, mode: 'insensitive' } },
                     { description: { contains: query, mode: 'insensitive' } },
