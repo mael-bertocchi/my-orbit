@@ -6,6 +6,7 @@ import { createOperation, deleteOperation, updateOperation } from 'src/modules/b
 import { placeNameOf, withPlace, WITH_PLACE } from 'src/modules/budget/places/places-service';
 import { CurrencyCodeSchema } from 'src/modules/budget/rates/rates-models';
 import { rateToEuroOn } from 'src/modules/budget/rates/rates-service';
+import { LOGGED_AT } from 'src/modules/budget/recurring/recurring-service';
 import { StoredCategoryLimitsSchema } from 'src/modules/budget/state/state-models';
 import { DEFAULT_MONTHLY_LIMIT } from 'src/modules/budget/state/state-service';
 import type { CatalogDetails, CatalogTitle } from 'src/modules/watchlist/catalog/catalog-models';
@@ -564,13 +565,6 @@ export const watchlistTitleDetails: ServerTool = {
 };
 
 /**
- * @constant LOGGED_AT
- * @description The time of day an operation logged by a model is dated at, in UTC: noon falls on the same day in every
- * time zone around Europe, where the owner lives, so the apps show it on the day it was given.
- */
-const LOGGED_AT = 'T12:00:00.000Z';
-
-/**
  * @function failed
  * @description The outcome of a call the server refused, telling the model why in the server's words.
  *
@@ -597,21 +591,6 @@ export function failed(error: unknown): ToolOutcome {
  */
 function momentOf(day: string, today: string): Perhaps<Date> {
     return day > today ? undefined : new Date(`${day}${LOGGED_AT}`);
-}
-
-/**
- * @function rateOn
- * @description The euros one unit of a currency cost on a day, the bank's markup included, as the apps price an operation.
- *
- * @param {ToolContext} context What the tool works with.
- * @param {string} code The currency.
- * @param {string} day The day, as `YYYY-MM-DD`.
- *
- * @returns {Promise<Perhaps<number>>} The rate, or undefined when the currency has none. Rejects with 503 when no rate can
- * be had.
- */
-async function rateOn(context: ToolContext, code: string, day: string): Promise<Perhaps<number>> {
-    return await rateToEuroOn(context.prisma, context.logger, code, day);
 }
 
 /**
@@ -697,7 +676,7 @@ export const createOperationTool: ServerTool = {
         }
 
         try {
-            const rateToEuro = await rateOn(context, draft.currencyCode, date);
+            const rateToEuro = await rateToEuroOn(context.prisma, context.logger, draft.currencyCode, date);
 
             if (rateToEuro === undefined) {
                 return { result: { error: `No exchange rate for ${draft.currencyCode}` } };
@@ -792,7 +771,7 @@ export const updateOperationTool: ServerTool = {
         try {
             const isRepriced = date !== undefined || changes.currencyCode !== undefined;
             const code = changes.currencyCode ?? existing.currencyCode;
-            const rateToEuro = isRepriced ? await rateOn(context, code, date ?? existing.date.toISOString().slice(0, 10)) : existing.rateToEuro;
+            const rateToEuro = isRepriced ? await rateToEuroOn(context.prisma, context.logger, code, date ?? existing.date.toISOString().slice(0, 10)) : existing.rateToEuro;
 
             if (rateToEuro === undefined) {
                 return { result: { error: `No exchange rate for ${code}` } };

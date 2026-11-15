@@ -13,10 +13,11 @@ import { RequestError } from 'src/shared/models';
 
 /**
  * @constant LOGGED_AT
- * @description The time of day an occurrence is dated at, in UTC: noon falls on the same day in every time zone around
- * Europe, where the owner lives, so the apps show it on the day it falls on.
+ * @description The time of day an operation the server logs on its own is dated at, in UTC, whether an occurrence or one
+ * logged by a model: noon falls on the same day in every time zone around Europe, where the owner lives, so the apps
+ * show it on the day it was given.
  */
-const LOGGED_AT = 'T12:00:00.000Z';
+export const LOGGED_AT = 'T12:00:00.000Z';
 
 /**
  * @function scheduleOf
