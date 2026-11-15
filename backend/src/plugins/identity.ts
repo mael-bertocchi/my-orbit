@@ -153,10 +153,13 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
 
     /**
      * @function issueTokens
-     * @description Opens a session, starting a connection when a client the owner just authorized is named.
+     * @description Opens a session, starting a connection when a client the owner just authorized is named. It forgets the
+     * sessions that lapsed meanwhile, such as those of a closed browser tab, so they don't pile up.
      */
     const issueTokens = async (userId: string, clientName?: Perhaps<string>): Promise<IdentityTokens> => {
         const connection = clientName !== undefined ? { id: randomUUID(), name: clientName, connectedAt: new Date() } : null;
+
+        await fastify.prisma.identityRefreshSession.deleteMany({ where: { expiresAt: { lt: new Date() } } });
 
         return await openSession(userId, connection);
     };
@@ -216,7 +219,8 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
 
         /**
          * @method rotateTokens
-         * @description Validates a refresh token, forgets its session and opens a new one in its place
+         * @description Validates a refresh token, forgets its session and opens a new one in its place. Of two renewals
+         * with the same token at once, only the one that forgets the session goes through; the other is refused with 401.
          */
         async rotateTokens(refreshToken: string): Promise<IdentityTokens> {
             const { id, sid } = verifyRefresh(refreshToken);
@@ -227,7 +231,11 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
                 throw new RequestError(StatusCodes.UNAUTHORIZED, 'Invalid or expired refresh token');
             }
 
-            await fastify.prisma.identityRefreshSession.delete({ where: { id: sid } });
+            const { count } = await fastify.prisma.identityRefreshSession.deleteMany({ where: { id: sid } });
+
+            if (count === 0) {
+                throw new RequestError(StatusCodes.UNAUTHORIZED, 'Invalid or expired refresh token');
+            }
 
             const connection = session.connectionId !== null && session.clientName !== null ? { id: session.connectionId, name: session.clientName, connectedAt: session.connectedAt } : null;
 

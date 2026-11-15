@@ -70,7 +70,7 @@ interface SessionFilter {
     id?: string; /*!< One session */
     userId?: string; /*!< One owner's */
     connectionId?: string | { not: null }; /*!< One connection's, or any client's */
-    expiresAt?: { gt: Date }; /*!< Only those not lapsed */
+    expiresAt?: { gt?: Date; lt?: Date }; /*!< Only those not lapsed, or only those lapsed */
 }
 
 /**
@@ -79,7 +79,8 @@ interface SessionFilter {
  */
 function matches(session: StoredSession, where: SessionFilter): boolean {
     const connection = where.connectionId === undefined || (typeof where.connectionId !== 'string' ? session.connectionId !== null : session.connectionId === where.connectionId);
-    const live = where.expiresAt === undefined || session.expiresAt > where.expiresAt.gt;
+    const { gt, lt } = where.expiresAt ?? {};
+    const live = (gt === undefined || session.expiresAt > gt) && (lt === undefined || session.expiresAt < lt);
 
     return (where.id === undefined || session.id === where.id) && (where.userId === undefined || session.userId === where.userId) && connection && live;
 }
@@ -153,7 +154,7 @@ function memoryDatabase(): MemoryDatabase {
 
                 return Promise.resolve(row);
             },
-            findUnique: ({ where }: { where: { id: string } }) => Promise.resolve(sessions.get(where.id) ?? null),
+            findUnique: ({ where }: { where: { id: string } }) => new Promise((resolve) => setTimeout(() => resolve(sessions.get(where.id) ?? null), 0)),
             findMany: ({ where }: { where: SessionFilter }) => Promise.resolve([...sessions.values()].filter((session) => matches(session, where))),
             updateMany: ({ where, data }: { where: SessionFilter; data: Partial<StoredSession> }) => {
                 const found = [...sessions.values()].filter((session) => matches(session, where));
@@ -162,7 +163,6 @@ function memoryDatabase(): MemoryDatabase {
 
                 return Promise.resolve({ count: found.length });
             },
-            delete: ({ where }: { where: { id: string } }) => Promise.resolve(sessions.delete(where.id)),
             deleteMany: ({ where }: { where: SessionFilter }) => {
                 const found = [...sessions.values()].filter((session) => matches(session, where));
 
@@ -396,6 +396,16 @@ describe('POST /v1/identity/login', () => {
         authenticator.verifiesUser = true;
 
         expect((await post(app, '/v1/identity/login', { response: authenticator.get(challengeOf(await post(app, '/v1/identity/login/options'))) })).statusCode).toBe(StatusCodes.OK);
+    });
+});
+
+describe('POST /v1/identity/refresh', () => {
+    it('lets only one of two renewals with the same token through', async () => {
+        const { app } = await buildApp();
+        const { refreshToken } = await enroll(app, new SoftwareAuthenticator({ origin: ORIGIN }));
+        const answers = await Promise.all([post(app, '/v1/identity/refresh', { refreshToken }), post(app, '/v1/identity/refresh', { refreshToken })]);
+
+        expect(answers.map((answer) => answer.statusCode).sort()).toEqual([StatusCodes.OK, StatusCodes.UNAUTHORIZED]);
     });
 });
 
