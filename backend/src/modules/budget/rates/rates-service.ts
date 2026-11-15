@@ -104,10 +104,17 @@ async function fetchProvider(day: string): Promise<ProviderPayload> {
 }
 
 /**
+ * @constant RECHECK_DAYS
+ * @description How many days back a finished day still answered by an earlier day's rate is asked again, as long as the
+ * apps reprice their recent operations. A day with no rate of its own, such as a Sunday, never gets one.
+ */
+const RECHECK_DAYS = 7;
+
+/**
  * @function isStale
- * @description Whether a stored snapshot is worth replacing. A finished day never is: its rates can no longer
- * be republished. A day still answered by an earlier day's rate is re-checked often, because its own rate is
- * yet to come.
+ * @description Whether a stored snapshot is worth replacing. A finished day holding its own rate never is: that rate can
+ * no longer be republished. A day still answered by an earlier day's rate is re-checked often, because its own rate may
+ * still come, even once the day is over, if it was only asked for before the rate was published.
  *
  * @param {BudgetExchangeRateSnapshot} snapshot The stored snapshot.
  * @param {string} day The day it was stored for.
@@ -116,7 +123,9 @@ async function fetchProvider(day: string): Promise<ProviderPayload> {
  * @returns {boolean} Whether to ask the provider again.
  */
 function isStale(snapshot: BudgetExchangeRateSnapshot, day: string, settled: boolean): boolean {
-    if (settled) {
+    const horizon = toIsoDay(new Date(Date.now() - RECHECK_DAYS * 24 * 60 * 60 * 1000));
+
+    if (settled && (snapshot.quoteDate === day || day < horizon)) {
         return false;
     }
 

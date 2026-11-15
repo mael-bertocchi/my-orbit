@@ -282,7 +282,24 @@ describe('pullRatesForDay, waiting on a publication', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('never re-checks a finished day, however it was answered', async () => {
+    it('re-checks yesterday when it was only answered before its rate came out', async () => {
+        const fetchMock = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(providerPayload) }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const { prisma } = makePrisma({
+            id: isoDay(-1),
+            quoteDate: isoDay(-2),
+            rates: { EUR: 1, USD: 0.859 },
+            fetchedAt: new Date(Date.now() - 20 * 60 * 60 * 1000)
+        });
+        const { logger } = makeLogger();
+
+        await pullRatesForDay(prisma, logger, isoDay(-1));
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops re-checking a day older than a week, however it was answered', async () => {
         const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
 
