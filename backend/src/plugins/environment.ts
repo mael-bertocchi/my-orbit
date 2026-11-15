@@ -1,6 +1,5 @@
 import fastifyEnv from '@fastify/env';
 import { Type, type Static } from '@sinclair/typebox';
-import addFormats from 'ajv-formats';
 import type { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 
@@ -38,16 +37,6 @@ export type Variables = Static<typeof variables>;
 export default fp(async function (fastify: FastifyInstance): Promise<void> {
     await fastify.register(fastifyEnv, {
         confKey: 'variables',
-        ajv: {
-            /**
-             * @method customOptions
-             * @description Teaches the validator the standard string formats
-             */
-            customOptions(ajvInstance) {
-                addFormats(ajvInstance);
-                return ajvInstance;
-            }
-        },
         schema: variables,
         dotenv: true
     });
