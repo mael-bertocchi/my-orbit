@@ -605,7 +605,8 @@ describe('authorizing an MCP client', () => {
 
         expect(traded.statusCode).toBe(StatusCodes.OK);
         expect(tokens).toMatchObject({ token_type: 'Bearer', expires_in: 900 });
-        expect((await app.inject({ method: 'GET', url: '/v1/identity/me', headers: { authorization: `Bearer ${tokens.access_token}` } })).statusCode).toBe(StatusCodes.OK);
+        expect((await app.inject({ method: 'GET', url: '/v1/identity/me', headers: { authorization: `Bearer ${tokens.access_token}` } })).statusCode).toBe(StatusCodes.UNAUTHORIZED);
+        expect((await app.inject({ method: 'POST', url: '/v1/identity/passkeys/options', headers: { authorization: `Bearer ${tokens.access_token}` } })).statusCode).toBe(StatusCodes.UNAUTHORIZED);
         expect((await token(app, { grant_type: 'authorization_code', code, code_verifier: VERIFIER, client_id: clientId, redirect_uri: CALLBACK })).json()).toMatchObject({ error: 'invalid_grant' });
 
         const refreshed = await token(app, { grant_type: 'refresh_token', refresh_token: tokens.refresh_token });

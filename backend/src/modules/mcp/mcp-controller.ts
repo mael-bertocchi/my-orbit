@@ -20,7 +20,7 @@ const LANGUAGE = 'fr';
  * @returns {Promise<void>} Resolves when both hold; rejects with 401 otherwise.
  */
 async function checkConnection(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    await request.server.identity.authenticate(request, reply);
+    await request.server.identity.authenticateClient(request, reply);
 
     const connectionId = request.user.cid;
 

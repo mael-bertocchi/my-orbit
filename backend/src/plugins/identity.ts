@@ -85,7 +85,8 @@ export interface IdentityService {
     issueTokens: (userId: string, clientName?: Perhaps<string>) => Promise<IdentityTokens>; /*!< Creates a refresh session, for a client the owner just authorized when it is named, and returns a token pair */
     rotateTokens: (refreshToken: string) => Promise<IdentityTokens>; /*!< Validates and rotates a refresh token into a new pair */
     revokeSession: (userId: string, refreshToken: string) => Promise<void>; /*!< Invalidates a single refresh session (logout) */
-    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>; /*!< preHandler guarding a route with a bearer access token */
+    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>; /*!< preHandler guarding a route with the owner's own bearer access token */
+    authenticateClient: (request: FastifyRequest, reply: FastifyReply) => Promise<void>; /*!< preHandler guarding a route with any bearer access token, a client's included */
 }
 
 /**
@@ -161,10 +162,11 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
     };
 
     /**
-     * @function authenticate
-     * @description Guards a route with a bearer access token: a valid, unexpired access token goes through, anything else is refused with 401
+     * @function authenticateClient
+     * @description Guards a route with a bearer access token: a valid, unexpired access token goes through, whether the
+     * owner's or a client's they authorized, anything else is refused with 401
      */
-    const authenticate = async (request: FastifyRequest, _reply: FastifyReply): Promise<void> => {
+    const authenticateClient = async (request: FastifyRequest, _reply: FastifyReply): Promise<void> => {
         try {
             await request.jwtVerify();
         } catch {
@@ -173,6 +175,19 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
 
         if (request.user.type !== 'access') {
             throw new RequestError(StatusCodes.UNAUTHORIZED, 'Invalid access token');
+        }
+    };
+
+    /**
+     * @function authenticate
+     * @description Guards a route with the owner's own bearer access token. A client's token, such as Claude's, is refused
+     * with 401: it only reaches the MCP endpoint, which checks its connection wasn't revoked, and can't manage the passkeys.
+     */
+    const authenticate = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+        await authenticateClient(request, reply);
+
+        if (request.user.cid !== undefined) {
+            throw new RequestError(StatusCodes.UNAUTHORIZED, 'A client\'s token only reaches the MCP endpoint');
         }
     };
 
@@ -233,7 +248,9 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
             await fastify.prisma.identityRefreshSession.deleteMany({ where: { id: sid, userId } });
         },
 
-        authenticate
+        authenticate,
+
+        authenticateClient
     });
 }, {
     name: 'identity',
