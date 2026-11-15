@@ -194,10 +194,11 @@ function BudgetOverviewComponent(): JSX.Element {
                             </p>
                         </RingComponent>
                     </div>
-                    <div className='mt-8 grid w-full grid-cols-3 gap-2.5'>
+                    <div className={`mt-8 grid w-full gap-2.5 ${isCurrent ? 'grid-cols-3' : 'grid-cols-2'}`}>
                         <StatTileComponent label={t('budget.spent')} value={hasOperations ? euro(figures.spent) : '•'} />
-                        <StatTileComponent label={t('budget.daysLeft')} value={hasOperations ? String(figures.daysLeft) : '•'} />
-                        <StatTileComponent label={t('budget.perDay')} value={hasOperations ? euro(figures.perDay) : '•'} />
+                        {isCurrent && <StatTileComponent label={t('budget.daysLeft')} value={hasOperations ? String(figures.daysLeft) : '•'} />}
+                        {isCurrent && <StatTileComponent label={t('budget.perDay')} value={hasOperations ? euro(figures.perDay) : '•'} />}
+                        {!isCurrent && <StatTileComponent label={t('budget.dailyAverage')} value={hasOperations ? euro(figures.dailyAverage) : '•'} />}
                     </div>
                 </section>
 

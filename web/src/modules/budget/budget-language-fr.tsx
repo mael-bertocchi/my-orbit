@@ -63,6 +63,7 @@ export const budgetFr: BudgetMessages = {
     'budget.spent': 'Dépensé',
     'budget.daysLeft': 'Jours restants',
     'budget.perDay': 'Reste par jour',
+    'budget.dailyAverage': 'Moyenne par jour',
     'budget.byCategory': 'Par catégorie',
     'budget.editLimits': 'Modifier les limites',
     'budget.notDispatched': 'Encore {amount} du budget à répartir',

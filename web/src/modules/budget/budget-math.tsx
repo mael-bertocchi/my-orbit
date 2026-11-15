@@ -14,6 +14,7 @@ export interface MonthSummary {
     left: number; /*!< Euros left, negative once overspent */
     daysLeft: number; /*!< Days left in the month, today included */
     perDay: number; /*!< What can still be spent each remaining day */
+    dailyAverage: number; /*!< Euros spent on average each day of the month */
     progress: number; /*!< Share of the budget spent, between 0 and 1 */
 }
 
@@ -161,6 +162,7 @@ export function summary(operations: readonly Operation[], month: Date, budget: M
         left,
         daysLeft: remaining,
         perDay: remaining > 0 ? Math.max(0, left) / remaining : 0,
+        dailyAverage: spent / daysInMonth(month),
         progress
     };
 }

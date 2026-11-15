@@ -61,6 +61,7 @@ export const budgetEn = {
     'budget.spent': 'Spent',
     'budget.daysLeft': 'Days left',
     'budget.perDay': 'Left a day',
+    'budget.dailyAverage': 'A day on average',
     'budget.byCategory': 'By category',
     'budget.editLimits': 'Edit limits',
     'budget.notDispatched': '{amount} of the budget is not dispatched yet',
