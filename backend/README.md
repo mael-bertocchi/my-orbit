@@ -12,7 +12,7 @@ The **Fastify + TypeScript** server behind the Orbit portal: it opens the single
 - **Recurring operations** • a rent or a subscription is kept apart (`/v1/budget/recurring`): what it logs, every 1, 3, 6 or 12 months from a first day, until an end day if any, paused or not. Every read of the budget first logs each occurrence fallen due as a plain operation on its day, priced at that day's rate, under an id made of the recurring operation's and the day's: an occurrence is never logged twice, even by two reads at once, nor again once it went to the trash. A day the month lacks falls on its last day; a paused one has its occurrences skipped.
 - **Watchlist** • films and series to watch, being watched (`startedAt`) or watched (`watchedAt`, with a rating in half stars and a comment) (`/v1/watchlist/entries`). What a title is comes from TMDB, which the server asks itself so its token never leaves it (`/v1/watchlist/catalog`): search, details with where to watch it in France (JustWatch data), sagas and genres, kept in memory for a while. A title and its saga's name are stored in English and in French, so the list reads right in either language.
 - **MCP server** • Claude, or any MCP client, reads and changes the budget and the watchlist through `/mcp` (Streamable HTTP), with tools named after their app. The client is let in with OAuth 2.1: it registers itself, the owner authorizes it on the portal with the passkey, and it gets the same tokens as the apps.
-- **Hardened** • Helmet, CORS open to the portal's origin only, rate limiting, Zod request validation, and a non-root Docker image.
+- **Hardened** • Helmet, CORS open to the portal's origin only, rate limiting per visitor (by the address Cloudflare forwards in `CF-Connecting-IP`), Zod request validation, and a non-root Docker image.
 
 ## Stack
 
@@ -143,7 +143,7 @@ Without it, the watchlist still lists its titles, but searching and opening one 
 
 ## MCP
 
-`/mcp` offers Orbit to Claude and other MCP clients. In Claude, add a custom connector with the URL `https://<api host>/mcp`: Claude registers itself, sends you to the portal's `/authorize` page to confirm with your passkey, then calls the tools as you.
+`/mcp` offers Orbit to Claude and other MCP clients. In Claude, add a custom connector with the URL `https://<api host>/mcp`: Claude registers itself, sends you to the portal's `/authorize` page to confirm with your passkey, then calls the tools as you. Its token only reaches `/mcp`: the rest of the API, the passkeys included, refuses it. Days and months are counted in the owner's time zone, `Europe/Paris`, as the apps count them.
 
 - **Read** • `budget_list_categories`, `budget_search_operations`, `budget_month_summary`, `budget_list_recurring`, `watchlist_search`, and `watchlist_title_details`, which reads a title's synopsis, genres and streaming services from TMDB.
 - **Write** • `budget_create_operation` (priced at its day's rate with the bank's markup, as the apps price it, and dated at noon UTC on its day), `budget_update_operation`, `budget_delete_operation` (to the trash), `budget_create_recurring`, `budget_update_recurring`, `budget_delete_recurring`, `watchlist_rate_title` and `watchlist_add_title`. Each is marked as writing, and the delete as destructive, so the client asks before running them.
