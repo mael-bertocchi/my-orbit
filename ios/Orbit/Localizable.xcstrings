@@ -94,6 +94,16 @@
         }
       }
     },
+    "A day on average" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moyenne par jour"
+          }
+        }
+      }
+    },
     "A typical day" : {
       "localizations" : {
         "fr" : {

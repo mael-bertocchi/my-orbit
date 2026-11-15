@@ -183,13 +183,18 @@ struct BudgetView: View {
 
     /**
      * @method statCards
-     * @description The spent, days-left and per-day figures
+     * @description The spent, days-left and per-day figures for the current month; the spent and daily-average
+     * figures for a past one, whose days are all gone
      */
     private var statCards: some View {
         HStack(spacing: 10) {
             StatCard(label: String(appLocalized: "Spent"), value: hasOperations ? Formatting.euro(summary.spent) : "•")
-            StatCard(label: String(appLocalized: "Days left"), value: hasOperations ? "\(summary.daysLeft)" : "•")
-            StatCard(label: String(appLocalized: "Left a day"), value: hasOperations ? Formatting.euro(summary.perDay) : "•")
+            if isCurrentMonth {
+                StatCard(label: String(appLocalized: "Days left"), value: hasOperations ? "\(summary.daysLeft)" : "•")
+                StatCard(label: String(appLocalized: "Left a day"), value: hasOperations ? Formatting.euro(summary.perDay) : "•")
+            } else {
+                StatCard(label: String(appLocalized: "A day on average"), value: hasOperations ? Formatting.euro(summary.dailyAverage) : "•")
+            }
         }
     }
 

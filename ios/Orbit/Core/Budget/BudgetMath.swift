@@ -32,6 +32,7 @@ struct MonthSummary: Equatable {
     var limit: Double /*!< The month's budget */
     var spent: Double /*!< What was spent, in euros */
     var daysLeft: Int /*!< The days left in the month, today included */
+    var dayCount: Int /*!< How many days the month has */
 
     var left: Double { limit - spent } /*!< What is left to spend, negative once overspent */
 
@@ -55,6 +56,17 @@ struct MonthSummary: Equatable {
             return 0
         }
         return max(0, left) / Double(daysLeft)
+    }
+
+    /**
+     * @method dailyAverage
+     * @description What was spent on average each day of the month
+     */
+    var dailyAverage: Double {
+        guard dayCount > 0 else {
+            return 0
+        }
+        return spent / Double(dayCount)
     }
 }
 
@@ -206,7 +218,8 @@ enum BudgetMath {
         return MonthSummary(
             limit: budget.monthlyLimit,
             spent: spent,
-            daysLeft: daysLeft(in: month, now: now)
+            daysLeft: daysLeft(in: month, now: now),
+            dayCount: calendar.range(of: .day, in: .month, for: month)?.count ?? 0
         )
     }
 
