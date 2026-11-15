@@ -5,6 +5,7 @@ import fastifyRateLimit from '@fastify/rate-limit';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { StatusCodes } from 'http-status-codes';
+import { firstHeader } from 'src/shared/public-origin';
 
 /**
  * @constant PREFLIGHT_CACHE
@@ -47,6 +48,13 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
     await fastify.register(fastifyRateLimit, {
         timeWindow: '1 minute',
         max: 120,
+
+        /**
+         * @function keyGenerator
+         * @description Counts each visitor apart by the address Cloudflare saw. The server only sees the proxy in front of
+         * it, so its own address would put every visitor in one count, and anyone could use up the owner's sign-in tries.
+         */
+        keyGenerator: (request: FastifyRequest): string => firstHeader(request, 'cf-connecting-ip') ?? request.ip,
 
         /**
          * @function errorResponseBuilder

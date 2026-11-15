@@ -16,7 +16,7 @@ const LOOPBACK_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
  *
  * @returns {Perhaps<string>} Its first value, or undefined.
  */
-function firstHeader(request: FastifyRequest, name: string): Perhaps<string> {
+export function firstHeader(request: FastifyRequest, name: string): Perhaps<string> {
     const value = request.headers[name];
     const first = Array.isArray(value) ? value[0] : value;
 

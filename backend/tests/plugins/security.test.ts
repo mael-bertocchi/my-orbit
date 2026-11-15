@@ -76,3 +76,15 @@ describe('CORS', () => {
         expect(response.headers['access-control-allow-origin']).toBeUndefined();
     });
 });
+
+describe('rate limit', () => {
+    it('counts each visitor Cloudflare saw apart, so one can\'t use up another\'s tries', async () => {
+        const fastify = await makeServer(WEB);
+        const flood = Array.from({ length: 120 }, async () => await fastify.inject({ method: 'GET', url: '/v1/budget/state', headers: { 'cf-connecting-ip': '203.0.113.7' } }));
+
+        await Promise.all(flood);
+
+        expect((await fastify.inject({ method: 'GET', url: '/v1/budget/state', headers: { 'cf-connecting-ip': '203.0.113.7' } })).statusCode).toBe(429);
+        expect((await fastify.inject({ method: 'GET', url: '/v1/budget/state', headers: { 'cf-connecting-ip': '198.51.100.4' } })).statusCode).toBe(200);
+    });
+});
