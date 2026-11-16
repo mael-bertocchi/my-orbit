@@ -3,12 +3,6 @@ import { ColorSchema, IdSchema } from 'src/shared/schemas';
 import { z } from 'zod';
 
 /**
- * @constant MAX_ITEMS
- * @description Upper bound on the number of items of each kind a budget document holds.
- */
-const MAX_ITEMS = 5000;
-
-/**
  * @constant CategorySchema
  * @description Zod schema for one budget category.
  */
@@ -71,8 +65,8 @@ export const StoredCategoryLimitsSchema = z.record(z.string(), z.number());
  * @description Zod schema for the whole budget document, as the read endpoint sends it.
  */
 export const StateSchema = z.object({
-    categories: z.array(CategorySchema).max(MAX_ITEMS),
-    operations: z.array(OperationSchema).max(MAX_ITEMS),
+    categories: z.array(CategorySchema),
+    operations: z.array(OperationSchema),
     budget: BudgetSettingsSchema,
     budgetHistory: z.record(z.string().regex(/^\d{4}-\d{2}$/), MonthlyBudgetSchema)
 });
