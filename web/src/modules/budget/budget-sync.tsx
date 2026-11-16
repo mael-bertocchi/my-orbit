@@ -158,13 +158,34 @@ function isStatus(error: unknown, status: number): boolean {
 }
 
 /**
+ * @function updateOrRestore
+ * @description Changes an operation, bringing it back from the trash first when it was deleted elsewhere in the
+ * meantime: an edit beats a deletion, as on the phone, so what was typed is never lost.
+ *
+ * @param {BudgetServer} api The server
+ * @param {Operation} operation The operation, as it should now be
+ * @returns {Promise<void>} Resolves once it is changed. Rejects with a 404 when it is gone for good.
+ */
+async function updateOrRestore(api: BudgetServer, operation: Operation): Promise<void> {
+    await api.updateOperation(operation).catch(async (error: unknown) => {
+        if (!isStatus(error, 404)) {
+            throw error;
+        }
+
+        await api.restoreOperation(operation.id);
+        await api.updateOperation(operation);
+    });
+}
+
+/**
  * @function sendWrite
  * @description Sends one write. Every write can be sent again safely: a creation the server already took (an earlier
- * send whose answer was lost) becomes a change, and deleting what is already gone is a success.
+ * send whose answer was lost) becomes a change, a change to an operation in the trash restores it first, and deleting
+ * what is already gone is a success.
  *
  * @param {BudgetServer} api The server
  * @param {BudgetWrite} write The write
- * @returns {Promise<boolean>} Whether it landed: false when it changes an operation deleted elsewhere in the meantime
+ * @returns {Promise<boolean>} Whether it landed: false when it changes an operation gone for good, even from the trash
  */
 export async function sendWrite(api: BudgetServer, write: BudgetWrite): Promise<boolean> {
     try {
@@ -175,11 +196,11 @@ export async function sendWrite(api: BudgetServer, write: BudgetWrite): Promise<
                         throw error;
                     }
 
-                    await api.updateOperation(write.operation);
+                    await updateOrRestore(api, write.operation);
                 });
                 break;
             case 'updateOperation':
-                await api.updateOperation(write.operation);
+                await updateOrRestore(api, write.operation);
                 break;
             case 'deleteOperation':
                 await api.deleteOperation(write.id);

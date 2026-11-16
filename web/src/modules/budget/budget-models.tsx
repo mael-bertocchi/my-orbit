@@ -200,6 +200,7 @@ export interface BudgetServer {
     createOperation: (operation: Operation) => Promise<void>; /*!< Logs an operation under its id */
     updateOperation: (operation: Operation) => Promise<void>; /*!< Changes an operation */
     deleteOperation: (id: string) => Promise<void>; /*!< Moves an operation to the trash */
+    restoreOperation: (id: string) => Promise<void>; /*!< Brings an operation back from the trash */
     storeCategory: (category: Category, position: number) => Promise<void>; /*!< Creates or replaces a category */
     deleteCategory: (id: string) => Promise<void>; /*!< Removes a category */
     storeSettings: (monthlyLimit: number) => Promise<void>; /*!< Stores the monthly budget */

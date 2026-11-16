@@ -19,7 +19,6 @@ import { isCityChosen } from 'modules/budget/budget-places';
 import { t } from 'modules/language/language-service';
 import BudgetCityFieldComponent from 'pages/budget/budget-city-field/budget-city-field';
 import { useEffect, useMemo, useState, type FormEvent, type JSX, type ReactNode } from 'react';
-import { UserError } from 'utils/errors';
 
 /**
  * @constant FORM_ID
@@ -248,7 +247,8 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
 
     /**
      * @function save
-     * @description Stores the operation. An edit to one deleted on the phone in the meantime is dropped, with a notice.
+     * @description Stores the operation. One deleted on the phone in the meantime comes back with the edit: an edit beats
+     * a deletion, as on the phone.
      */
     const save = (): void => {
         if (!isValid || amount === null || appliedRate === null) {
@@ -258,13 +258,7 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
         const draft = { name, description, amount, currencyCode, categoryId, date, location: city.location, place: city.place, isOnline };
         const operation = { ...toOperation(draft, appliedRate, existing?.id), recurringId: existing?.recurringId ?? null };
 
-        store.apply((current) => {
-            if (existing !== null && !current.operations.some((candidate) => candidate.id === existing.id)) {
-                throw new UserError(t('operation.deletedElsewhere'));
-            }
-
-            return upsertOperation(current, operation);
-        });
+        store.apply((current) => upsertOperation(current, operation));
         rememberCurrency(currencyCode);
         props.onDone();
     };

@@ -178,7 +178,30 @@ describe('BudgetStore', () => {
         expect(store.getSnapshot().status).toBe('synced');
     });
 
-    it('drops a change to an operation deleted elsewhere in the meantime and says so', async () => {
+    it('brings back an operation deleted elsewhere in the meantime, with the change', async () => {
+        const { state, api } = server(document([operation({ id: 'A', date: NOW })]));
+        const store = new BudgetStore(api);
+        const rejected = vi.fn();
+        const trashed = operation({ id: 'A', date: NOW });
+
+        store.onRejected(rejected);
+        await store.refresh();
+        state.stored = { ...state.stored, operations: [] };
+        vi.mocked(api.getState).mockResolvedValueOnce(structuredClone({ ...state.stored, operations: [trashed] }));
+        vi.mocked(api.restoreOperation).mockImplementation(() => {
+            state.stored = { ...state.stored, operations: [trashed] };
+
+            return Promise.resolve();
+        });
+        store.apply((current) => upsertOperation(current, operation({ id: 'A', date: NOW, amount: 99 })));
+        await settle();
+
+        expect(rejected).not.toHaveBeenCalled();
+        expect(state.stored.operations.map((entry) => entry.amount)).toEqual([99]);
+        expect(store.getSnapshot()).toMatchObject({ status: 'synced', hasPendingChanges: false });
+    });
+
+    it('drops a change to an operation gone for good, even from the trash, and says so', async () => {
         const { state, api } = server(document([operation({ id: 'A', date: NOW })]));
         const store = new BudgetStore(api);
         const rejected = vi.fn();
@@ -187,6 +210,7 @@ describe('BudgetStore', () => {
         await store.refresh();
         state.stored = { ...state.stored, operations: [] };
         vi.mocked(api.getState).mockResolvedValueOnce(structuredClone({ ...state.stored, operations: [operation({ id: 'A', date: NOW })] }));
+        vi.mocked(api.restoreOperation).mockRejectedValue(new RequestError(404, 'Unknown operation'));
         store.apply((current) => upsertOperation(current, operation({ id: 'A', date: NOW, amount: 99 })));
         await settle();
 
