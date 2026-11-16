@@ -223,6 +223,42 @@ enum CategoryPalette {
     static let telecom: UInt32 = 0x7B8CFF
 }
 
+/**
+ * @class TextLimits
+ * @description The longest texts the server stores for an operation, as the web page caps them: a longer one is
+ * refused, and a refused write would hold the whole sync back
+ */
+enum TextLimits {
+    static let name = 120 /*!< The name */
+    static let description = 500 /*!< The note */
+    static let location = 200 /*!< The place */
+
+    /**
+     * @method capped
+     * @description A text cut to a limit counted as the server counts it, in UTF-16 units, without splitting a character
+     *
+     * @param text The text
+     * @param limit The most units it may take
+     * @returns The text, cut when it is too long
+     */
+    static func capped(_ text: String, to limit: Int) -> String {
+        guard text.utf16.count > limit else {
+            return text
+        }
+
+        var kept = ""
+
+        for character in text {
+            guard kept.utf16.count + character.utf16.count <= limit else {
+                break
+            }
+            kept.append(character)
+        }
+
+        return kept
+    }
+}
+
 extension Category {
     /**
      * @constant defaults

@@ -80,7 +80,7 @@ struct CityField: View {
         Binding {
             location
         } set: { text in
-            location = text
+            location = TextLimits.capped(text, to: TextLimits.location)
             place = nil
             locateError = nil
         }

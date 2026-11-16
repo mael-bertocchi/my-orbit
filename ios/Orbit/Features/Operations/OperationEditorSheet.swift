@@ -139,6 +139,18 @@ struct OperationEditorSheet: View {
                 amountText = formatted
             }
         }
+        .onChange(of: name) { _, typed in
+            let capped = TextLimits.capped(typed, to: TextLimits.name)
+            if capped != typed {
+                name = capped
+            }
+        }
+        .onChange(of: description) { _, typed in
+            let capped = TextLimits.capped(typed, to: TextLimits.description)
+            if capped != typed {
+                description = capped
+            }
+        }
         .onChange(of: focus) { _, field in
             guard field != nil else {
                 return
