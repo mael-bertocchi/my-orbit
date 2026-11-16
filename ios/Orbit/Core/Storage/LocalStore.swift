@@ -357,9 +357,8 @@ final class LocalStore {
 
     /**
      * @method mergeCatalog
-     * @description Brings the categories in line with the shipped catalogue, keeping their stored limits and any
-     * retired category an operation still uses. A category shipped after the budget was stored joins it with no limit,
-     * so it does not eat into the limits already dispatched, and a dropped one is left out
+     * @description Brings the categories in line with the shipped catalogue, keeping their stored limits. A category
+     * shipped after the budget was stored joins it with no limit, so it does not eat into the limits already dispatched
      */
     private func mergeCatalog() {
         guard !categories.isEmpty else {
@@ -369,7 +368,6 @@ final class LocalStore {
 
         let stored = Dictionary(categories.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let catalogIds = Set(Category.defaults.map(\.id))
-        let used = Set(operations.map(\.categoryId))
 
         let shipped = Category.defaults.map { category in
             var merged = category
@@ -377,12 +375,6 @@ final class LocalStore {
             return merged
         }
 
-        categories = shipped + categories.filter { category in
-            guard !catalogIds.contains(category.id), !Category.dropped.contains(category.id) else {
-                return false
-            }
-
-            return !Category.retired.contains(category.id) || used.contains(category.id)
-        }
+        categories = shipped + categories.filter { !catalogIds.contains($0.id) }
     }
 }

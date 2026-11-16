@@ -279,21 +279,6 @@ extension Category {
     ]
 
     /**
-     * @constant retired
-     * @description Ids that shipped as categories once and no longer do. A document written before they were retired
-     * still carries them, so the catalog merge needs to know they are gone on purpose; otherwise it keeps them for good
-     * as unknown categories parked at the end of the list
-     */
-    static let retired: Set<String> = ["rent", "health"]
-
-    /**
-     * @constant dropped
-     * @description Ids that shipped as categories once and are left out of a document for good, even while an
-     * operation still uses them: such an operation shows under the fallback instead
-     */
-    static let dropped: Set<String> = ["miscellaneous", "housing"]
-
-    /**
      * @constant fallback
      * @description The category an operation shows under once its own is gone
      */
@@ -323,7 +308,6 @@ extension Category {
         case "school": return String(appLocalized: "Study")
         case "administrative": return String(appLocalized: "Administrative")
         case "telecom": return String(appLocalized: "Telecom")
-        case "rent": return String(appLocalized: "Rent")
         case Category.fallback.id: return String(appLocalized: "Uncategorized")
         default: return name
         }

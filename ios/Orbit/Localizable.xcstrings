@@ -1044,16 +1044,6 @@
         }
       }
     },
-    "Rent" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loyer"
-          }
-        }
-      }
-    },
     "Reset" : {
       "localizations" : {
         "fr" : {
