@@ -20,13 +20,6 @@ export const DEFAULT_CATEGORIES: readonly Category[] = [
 ];
 
 /**
- * @constant DROPPED_CATEGORIES
- * @description Ids that shipped as categories once and are left out of a stored budget for good. An operation still
- * filed under one shows under the uncategorized stand-in.
- */
-const DROPPED_CATEGORIES: ReadonlySet<string> = new Set(['miscellaneous', 'housing']);
-
-/**
  * @constant FALLBACK_CATEGORY
  * @description What an operation filed under an unknown category is drawn as.
  */
@@ -57,8 +50,8 @@ const CATALOGUE = new Map(DEFAULT_CATEGORIES.map((category) => [category.id, cat
  * @description The categories to offer: the stored ones, or the shipped catalogue when none were ever stored. As in the
  * app, the catalogue owns how a shipped category looks (its name, symbol and colour) and its order, and the stored copy
  * only its limit, so a new icon reaches a budget stored before it. A category shipped after the budget was stored joins
- * it with no limit, so it does not eat into limits already dispatched; a dropped one is left out, and the rest of the
- * stored ones follow the catalogue.
+ * it with no limit, so it does not eat into limits already dispatched, and the rest of the stored ones follow the
+ * catalogue.
  *
  * @param {readonly Category[]} categories The stored categories.
  *
@@ -72,7 +65,7 @@ export function categoriesOf(categories: readonly Category[]): readonly Category
     const stored = new Map(categories.map((category) => [category.id, category]));
     const shipped = DEFAULT_CATEGORIES.map((category) => ({ ...category, monthlyLimit: stored.get(category.id)?.monthlyLimit ?? 0 }));
 
-    return [...shipped, ...categories.filter((category) => !CATALOGUE.has(category.id) && !DROPPED_CATEGORIES.has(category.id))];
+    return [...shipped, ...categories.filter((category) => !CATALOGUE.has(category.id))];
 }
 
 /**

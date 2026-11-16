@@ -194,7 +194,6 @@ export const budgetFr: BudgetMessages = {
     'category.school': 'Étude',
     'category.administrative': 'Administratif',
     'category.telecom': 'Télécom',
-    'category.rent': 'Loyer',
     'category.uncategorized': 'Sans catégorie',
 
     'currency.EUR': 'Euro',

@@ -192,7 +192,6 @@ export const budgetEn = {
     'category.school': 'Study',
     'category.administrative': 'Administrative',
     'category.telecom': 'Telecom',
-    'category.rent': 'Rent',
     'category.uncategorized': 'Uncategorized',
 
     'currency.EUR': 'Euro',
