@@ -8,10 +8,12 @@
 
 /* Begin PBXFileReference section */
 		B100000000000000000000A5 /* Orbit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Orbit.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B100000000000000000000B0 /* OrbitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrbitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B100000000000000000000A1 /* Orbit */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Orbit; sourceTree = "<group>"; };
+		B100000000000000000000B1 /* OrbitTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = OrbitTests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -22,13 +24,31 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B100000000000000000000B4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		B100000000000000000000B7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B100000000000000000000AA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B100000000000000000000A6;
+			remoteInfo = Orbit;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXGroup section */
 		B100000000000000000000A3 = {
 			isa = PBXGroup;
 			children = (
 				B100000000000000000000A1 /* Orbit */,
+				B100000000000000000000B1 /* OrbitTests */,
 				B100000000000000000000A4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -37,6 +57,7 @@
 			isa = PBXGroup;
 			children = (
 				B100000000000000000000A5 /* Orbit.app */,
+				B100000000000000000000B0 /* OrbitTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -66,6 +87,29 @@
 			productReference = B100000000000000000000A5 /* Orbit.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B100000000000000000000B2 /* OrbitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B100000000000000000000BA /* Build configuration list for PBXNativeTarget "OrbitTests" */;
+			buildPhases = (
+				B100000000000000000000B3 /* Sources */,
+				B100000000000000000000B4 /* Frameworks */,
+				B100000000000000000000B5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B100000000000000000000B6 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B100000000000000000000B1 /* OrbitTests */,
+			);
+			name = OrbitTests;
+			packageProductDependencies = (
+			);
+			productName = OrbitTests;
+			productReference = B100000000000000000000B0 /* OrbitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -78,6 +122,10 @@
 				TargetAttributes = {
 					B100000000000000000000A6 = {
 						CreatedOnToolsVersion = 26.0;
+					};
+					B100000000000000000000B2 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = B100000000000000000000A6;
 					};
 				};
 			};
@@ -97,12 +145,20 @@
 			projectRoot = "";
 			targets = (
 				B100000000000000000000A6 /* Orbit */,
+				B100000000000000000000B2 /* OrbitTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		B100000000000000000000A9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B100000000000000000000B5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -119,7 +175,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B100000000000000000000B3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B100000000000000000000B6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B100000000000000000000A6 /* Orbit */;
+			targetProxy = B100000000000000000000B7 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B100000000000000000000AC /* Debug */ = {
@@ -296,6 +367,38 @@
 			};
 			name = Release;
 		};
+		B100000000000000000000B8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YLR3U54AUC;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "fr.mael-bertocchi.my-orbit.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Orbit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Orbit";
+			};
+			name = Debug;
+		};
+		B100000000000000000000B9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YLR3U54AUC;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "fr.mael-bertocchi.my-orbit.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Orbit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Orbit";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -313,6 +416,15 @@
 			buildConfigurations = (
 				B100000000000000000000AC /* Debug */,
 				B100000000000000000000AD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B100000000000000000000BA /* Build configuration list for PBXNativeTarget "OrbitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B100000000000000000000B8 /* Debug */,
+				B100000000000000000000B9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
