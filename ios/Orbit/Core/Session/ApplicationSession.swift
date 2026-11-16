@@ -101,15 +101,14 @@ final class ApplicationSession {
 
     /**
      * @method signOut
-     * @description Closes the session on the server and forgets it, with the sync base
+     * @description Closes the session on the server and forgets it. The sync base is kept, like the budget on the
+     * device: signing back in then merges what was logged offline instead of taking the server's budget over it
      */
     func signOut() async {
         pushTask?.cancel()
         store.onChange = nil
         await api.logout()
         tokens.clear()
-        base = nil
-        SyncBase.clear()
         syncState = .idle
         lastSyncedAt = nil
         identityState = .signedOut

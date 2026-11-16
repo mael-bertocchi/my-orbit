@@ -36,14 +36,6 @@ struct SyncBase: Codable, Equatable {
     }
 
     /**
-     * @method clear
-     * @description Forgets the base, on signing out
-     */
-    static func clear() {
-        try? FileManager.default.removeItem(at: fileURL)
-    }
-
-    /**
      * @method fileURL
      * @description Where the base is kept
      */
