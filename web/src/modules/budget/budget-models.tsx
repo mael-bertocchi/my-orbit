@@ -1,4 +1,5 @@
 import type { Maybe } from 'models';
+import { fromWallClock } from 'modules/budget/budget-dates';
 import type { ExchangeRates } from 'modules/budget/budget-rates';
 import type { BudgetStore } from 'modules/budget/budget-store';
 import type { ReactNode } from 'react';
@@ -27,12 +28,14 @@ export const PlaceReferenceSchema = z.object({
 });
 
 /**
- * @constant OperationSchema
- * @description Zod schema for one logged operation.
+ * @constant OperationFieldsSchema
+ * @description Zod schema for one logged operation as the server sends it, dated by the day and time it was logged at,
+ * which no time zone moves.
  */
-export const OperationSchema = z.object({
+const OperationFieldsSchema = z.object({
     id: z.string(),
-    date: z.coerce.date(),
+    day: z.string(),
+    time: z.string(),
     name: z.string(),
     description: z.string().nullish(),
     categoryId: z.string(),
@@ -46,6 +49,25 @@ export const OperationSchema = z.object({
     recurringId: z.string().nullish(),
     updatedAt: z.coerce.date().optional()
 });
+
+/**
+ * @function withDate
+ * @description An operation as the page holds it: its day and time made into a date on the device's clock, so every
+ * calendar computation of the page reads them back as they were logged.
+ *
+ * @param {T} operation The operation as the server sends it.
+ *
+ * @returns {Omit<T, 'day' | 'time'> & { date: Date }} The operation, dated.
+ */
+function withDate<T extends { day: string; time: string }>({ day, time, ...operation }: T): Omit<T, 'day' | 'time'> & { date: Date } {
+    return { ...operation, date: fromWallClock(day, time) };
+}
+
+/**
+ * @constant OperationSchema
+ * @description Zod schema for one logged operation, as the page holds it.
+ */
+export const OperationSchema = OperationFieldsSchema.transform(withDate);
 
 /**
  * @constant RecurringOperationSchema
@@ -73,9 +95,9 @@ export const RecurringOperationSchema = z.object({
  * @constant TrashedOperationSchema
  * @description Zod schema for an operation in the trash, with when it was deleted.
  */
-export const TrashedOperationSchema = OperationSchema.extend({
+export const TrashedOperationSchema = OperationFieldsSchema.extend({
     deletedAt: z.coerce.date()
-});
+}).transform(withDate);
 
 /**
  * @constant MonthlyBudgetSchema

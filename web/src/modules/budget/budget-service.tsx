@@ -1,5 +1,6 @@
 import type { Category, MonthlyBudget, Operation, Place, RateSnapshot, RecurringFields, RecurringOperation, StoredState, TrashedOperation } from 'modules/budget/budget-models';
 import { PlaceSchema, RateSnapshotSchema, RecurringOperationSchema, StoredStateSchema, TrashedOperationSchema } from 'modules/budget/budget-models';
+import { dayKey, timeKey } from 'modules/budget/budget-dates';
 import { currentLanguage } from 'modules/language/language-service';
 import { fetchWithAuthentication } from 'utils/request';
 import { z } from 'zod';
@@ -27,16 +28,23 @@ function path(collection: string, id: string): string {
 }
 
 /**
+ * @type OperationFields
+ * @description What an operation holds, as the server takes it on creation or change.
+ */
+type OperationFields = Omit<Operation, 'id' | 'updatedAt' | 'recurringId' | 'place' | 'date'> & { day: string; time: string };
+
+/**
  * @function operationFields
  * @description What an operation holds, as the server takes it on creation or change
  *
  * @param {Operation} operation The operation
- * @returns {Omit<Operation, 'id' | 'updatedAt' | 'recurringId' | 'place'>} Its fields, without its id, its update stamp,
- * the recurring operation it is an occurrence of and its city's names, which the server sets
+ * @returns {OperationFields} Its fields, without its id, its update stamp, the recurring operation it is an occurrence of
+ * and its city's names, which the server sets, and dated by the day and time the device's clock shows
  */
-function operationFields(operation: Operation): Omit<Operation, 'id' | 'updatedAt' | 'recurringId' | 'place'> {
+function operationFields(operation: Operation): OperationFields {
     return {
-        date: operation.date,
+        day: dayKey(operation.date),
+        time: timeKey(operation.date),
         name: operation.name,
         description: operation.description ?? null,
         categoryId: operation.categoryId,

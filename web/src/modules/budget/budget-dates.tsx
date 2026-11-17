@@ -128,6 +128,22 @@ export function atTime(date: Date, key: string): Maybe<Date> {
 }
 
 /**
+ * @function fromWallClock
+ * @description A day and a time as the server stores them, made into a date on the device's clock.
+ *
+ * @param {string} day The day, in YYYY-MM-DD form.
+ * @param {string} time The time, in HH:MM form.
+ *
+ * @returns {Date} The date.
+ */
+export function fromWallClock(day: string, time: string): Date {
+    const [year = 1970, month = 1, date = 1] = day.split('-').map(Number);
+    const [hours = 0, minutes = 0] = time.split(':').map(Number);
+
+    return new Date(year, month - 1, date, hours, minutes);
+}
+
+/**
  * @function parseMonthKey
  * @description Reads a YYYY-MM key back into the month's first day.
  *

@@ -1,3 +1,4 @@
+import { dayKey, timeKey } from 'modules/budget/budget-dates';
 import type { BudgetDocument, BudgetServer, Category, MonthlyBudget, Operation } from 'modules/budget/budget-models';
 import { RequestError } from 'utils/request';
 
@@ -18,10 +19,10 @@ export type BudgetWrite =
 /**
  * @function sameOperation
  * @description Whether two operations hold the same thing, setting aside what the server rewrites on its own (its
- * update stamp, an absent text written as null).
+ * update stamp, an absent text written as null, a date kept to the minute).
  */
 function sameOperation(lhs: Operation, rhs: Operation): boolean {
-    return lhs.date.getTime() === rhs.date.getTime()
+    return dayKey(lhs.date) === dayKey(rhs.date) && timeKey(lhs.date) === timeKey(rhs.date)
         && lhs.name === rhs.name
         && (lhs.description ?? null) === (rhs.description ?? null)
         && lhs.categoryId === rhs.categoryId

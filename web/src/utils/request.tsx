@@ -138,7 +138,7 @@ export function rewording(status: number, message: string): (error: unknown) => 
  * @returns {Promise<Response>} The server's response
  */
 async function send(path: string, init: RequestInit, accessToken?: string): Promise<Response> {
-    const headers: Record<string, string> = { Accept: 'application/json' };
+    const headers: Record<string, string> = { 'Accept': 'application/json', 'X-Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone };
 
     if (init.body !== undefined) {
         headers['Content-Type'] = 'application/json';

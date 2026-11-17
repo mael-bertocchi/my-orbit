@@ -1,3 +1,4 @@
+import { OperationSchema } from 'modules/budget/budget-models';
 import budgetService from 'modules/budget/budget-service';
 import { fetchWithAuthentication } from 'utils/request';
 import { describe, expect, it, vi } from 'vitest';
@@ -8,7 +9,7 @@ vi.mock('utils/request', () => ({ fetchWithAuthentication: vi.fn(() => Promise.r
 
 describe('budgetService', () => {
     it('sends the budget’s requests entry by entry under its own path, through the portal’s session', async () => {
-        const lunch = operation({ id: 'A/B', date: new Date('2026-10-28T12:30:00Z'), description: undefined, updatedAt: new Date() });
+        const lunch = operation({ id: 'A/B', date: new Date(2026, 9, 28, 23, 30, 12), description: undefined, updatedAt: new Date() });
 
         await budgetService.getState();
         await budgetService.createOperation(lunch);
@@ -42,9 +43,16 @@ describe('budgetService', () => {
         const changed = calls[2]?.[1].body;
         const category = calls[4]?.[1].body;
 
-        expect(typeof created !== 'string' ? null : JSON.parse(created)).toMatchObject({ id: 'A/B', description: null, date: '2026-10-28T12:30:00.000Z' });
+        expect(typeof created !== 'string' ? null : JSON.parse(created)).toMatchObject({ id: 'A/B', description: null, day: '2026-10-28', time: '23:30' });
         expect(typeof created !== 'string' ? null : JSON.parse(created)).not.toHaveProperty('updatedAt');
         expect(typeof changed !== 'string' ? null : JSON.parse(changed)).not.toHaveProperty('id');
         expect(typeof category !== 'string' ? null : JSON.parse(category)).toEqual({ name: 'Groceries', symbol: 'cart', colorHex: 0x3ecf8e, monthlyLimit: 400, position: 2 });
+    });
+
+    it('reads an operation\'s day and time as the device\'s clock shows them', () => {
+        const parsed = OperationSchema.parse({ id: 'a', day: '2026-10-28', time: '23:30', name: 'Lunch', categoryId: 'restaurant', amount: 12, currencyCode: 'EUR', rateToEuro: 1, isOnline: false });
+
+        expect(parsed.date).toEqual(new Date(2026, 9, 28, 23, 30));
+        expect(parsed).not.toHaveProperty('day');
     });
 });
