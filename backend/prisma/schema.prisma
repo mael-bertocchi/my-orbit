@@ -52,6 +52,8 @@ model BudgetCategory {
 
 model BudgetOperation {
   id           String       @id
+  day          String
+  time         String
   date         DateTime
   name         String
   description  String?
@@ -69,6 +71,7 @@ model BudgetOperation {
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
   @@index([date])
+  @@index([day])
   @@index([categoryId])
   @@index([deletedAt])
   @@index([recurringId])
@@ -124,6 +127,7 @@ model BudgetState {
   id           String   @id
   monthlyLimit Float    @default(3000) @map("monthly_limit")
   revision     Int      @default(0)
+  timeZone     String   @default("Europe/Paris") @map("time_zone")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("budget_state")

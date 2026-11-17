@@ -49,7 +49,7 @@ async function buildApp(): Promise<TestApp> {
     const prisma = {
         budgetOperation: operations,
         budgetCategory: { findMany: vi.fn(() => Promise.resolve([{ id: 'groceries', name: 'Groceries', monthlyLimit: 400 }])) },
-        budgetState: { upsert: vi.fn(() => Promise.resolve({ revision: 2 })) },
+        budgetState: { upsert: vi.fn(() => Promise.resolve({ revision: 2 })), findUnique: vi.fn(() => Promise.resolve({ revision: 2, timeZone: 'Asia/Seoul' })) },
         budgetRecurringOperation: { findMany: vi.fn(() => Promise.resolve([])) },
         identityRefreshSession: { updateMany: vi.fn(({ where }: { where: { connectionId: string } }) => Promise.resolve({ count: where.connectionId !== LIVE_CONNECTION ? 0 : 1 })) },
         $transaction: <T>(work: (transaction: unknown) => Promise<T>): Promise<T> => work(prisma)
@@ -153,7 +153,7 @@ describe('the MCP endpoint', () => {
 
         expect(isError).toBe(false);
         expect(result).toMatchObject({ status: 'Logged', operation: { name: 'Monoprix', euroAmount: 42.5 } });
-        expect(operations.create.mock.calls[0]?.[0]).toMatchObject({ data: { date: new Date('2026-10-28T12:00:00.000Z'), rateToEuro: 1, isOnline: false } });
+        expect(operations.create.mock.calls[0]?.[0]).toMatchObject({ data: { day: '2026-10-28', time: '12:00', date: new Date('2026-10-28T03:00:00.000Z'), rateToEuro: 1, isOnline: false } });
     });
 
     it('refuses an unknown category, a day to come and an unknown operation, telling the model why', async () => {

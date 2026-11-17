@@ -1,5 +1,6 @@
 import type { RequestGenericInterface } from 'fastify';
-import { OperationSchema } from 'src/modules/budget/state/state-models';
+import { DaySchema } from 'src/modules/budget/recurring/recurring-models';
+import { OperationSchema, TimeSchema } from 'src/modules/budget/state/state-models';
 import { IdSchema } from 'src/shared/schemas';
 import { z } from 'zod';
 
@@ -7,8 +8,9 @@ import { z } from 'zod';
  * @constant OperationCreateSchema
  * @description Zod schema for logging an operation. The client mints its id, so a retried creation names the same one;
  * the server owns the update stamp, links an operation to the recurring one it is an occurrence of, and names its city.
+ * It is dated by its `day` and `time`, or by the instant `date` alone from an app that predates them.
  */
-export const OperationCreateSchema = OperationSchema.omit({ updatedAt: true, recurringId: true, place: true });
+export const OperationCreateSchema = OperationSchema.omit({ updatedAt: true, recurringId: true, place: true }).extend({ day: DaySchema.optional(), time: TimeSchema.optional(), date: z.coerce.date().optional() });
 
 /**
  * @constant OperationUpdateSchema

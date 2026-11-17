@@ -28,7 +28,9 @@ const OPERATION_ID = '5f1b2c3d-4e5f-4a1b-8c2d-3e4f5a6b7c8d';
  */
 interface Row {
     id: string; /*!< Its identifier */
-    date: Date; /*!< When it happened */
+    day: string; /*!< The day it happened */
+    time: string; /*!< The time it happened */
+    date: Date; /*!< When it happened, as an instant */
     name: string; /*!< What it was */
     description: Maybe<string>; /*!< What was said about it */
     categoryId: string; /*!< Its category */
@@ -50,6 +52,8 @@ interface Row {
 function groceriesRow(): Row {
     return {
         id: OPERATION_ID,
+        day: '2026-10-24',
+        time: '20:00',
         date: new Date('2026-10-24T18:00:00Z'),
         name: 'Whole Foods',
         description: null,
@@ -113,7 +117,8 @@ async function buildApp(authenticate: () => Promise<void> = () => Promise.resolv
     const table = new OperationsTable();
     const upsert = vi.fn(() => Promise.resolve({ id: 'owner', monthlyLimit: 3000, revision: 1 }));
     const places = { findUnique: vi.fn(() => Promise.resolve(null)), upsert: vi.fn(() => Promise.resolve(null)) };
-    const client = { budgetOperation: table, budgetState: { upsert }, budgetPlace: places };
+    const findUnique = vi.fn(() => Promise.resolve({ id: 'owner', monthlyLimit: 3000, revision: 1, timeZone: 'Asia/Seoul' }));
+    const client = { budgetOperation: table, budgetState: { upsert, findUnique }, budgetPlace: places };
     const app = Fastify();
 
     app.setValidatorCompiler(validatorCompiler);
@@ -146,7 +151,8 @@ async function buildApp(authenticate: () => Promise<void> = () => Promise.resolv
  */
 const newOperation = {
     id: '0d9e8f7a-6b5c-4d3e-8f1a-2b3c4d5e6f70',
-    date: '2026-10-28T12:30:00.000Z',
+    day: '2026-10-28',
+    time: '23:30',
     name: 'Déjeuner',
     categoryId: 'restaurant',
     location: 'Genève',
@@ -179,6 +185,38 @@ describe('POST /v1/budget/operations', () => {
         expect(response.json<{ data: { id: string; isOnline: boolean; description: Maybe<string> } }>().data).toMatchObject({ id: newOperation.id, isOnline: false, description: null });
         expect(table.rows).toHaveLength(2);
         expect(upsert).toHaveBeenCalledOnce();
+
+        await app.close();
+    });
+
+    it('keeps the day and time as written and dates the instant in the owner\'s time zone', async () => {
+        const { app, table } = await buildApp();
+        const response = await app.inject({ method: 'POST', url: '/v1/budget/operations', payload: newOperation });
+
+        expect(response.statusCode).toBe(StatusCodes.CREATED);
+        expect(table.rows[1]).toMatchObject({ day: '2026-10-28', time: '23:30', date: new Date('2026-10-28T14:30:00.000Z') });
+
+        await app.close();
+    });
+
+    it('reads the instant of an app that predates days and times in the owner\'s time zone', async () => {
+        const { app, table } = await buildApp();
+        const { day: _day, time: _time, ...legacy } = newOperation;
+        const response = await app.inject({ method: 'POST', url: '/v1/budget/operations', payload: { ...legacy, date: '2026-10-28T15:10:00.000Z' } });
+
+        expect(response.statusCode).toBe(StatusCodes.CREATED);
+        expect(table.rows[1]).toMatchObject({ day: '2026-10-29', time: '00:10' });
+
+        await app.close();
+    });
+
+    it('refuses an operation with neither a day and a time nor an instant', async () => {
+        const { app, table } = await buildApp();
+        const { time: _time, ...undated } = newOperation;
+        const response = await app.inject({ method: 'POST', url: '/v1/budget/operations', payload: undated });
+
+        expect(response.statusCode).toBe(StatusCodes.BAD_REQUEST);
+        expect(table.create).not.toHaveBeenCalled();
 
         await app.close();
     });
@@ -244,6 +282,16 @@ describe('PATCH /v1/budget/operations/:operationId', () => {
 
         expect(response.statusCode).toBe(StatusCodes.OK);
         expect(response.json<{ data: { amount: number; description: string; name: string; isOnline: boolean } }>().data).toMatchObject({ amount: 60, description: 'Courses de la semaine', name: 'Whole Foods', isOnline: false });
+
+        await app.close();
+    });
+
+    it('moves the time alone and keeps the day', async () => {
+        const { app, table } = await buildApp();
+        const response = await app.inject({ method: 'PATCH', url: `/v1/budget/operations/${OPERATION_ID}`, payload: { time: '08:15' } });
+
+        expect(response.statusCode).toBe(StatusCodes.OK);
+        expect(table.rows[0]).toMatchObject({ day: '2026-10-24', time: '08:15', date: new Date('2026-10-23T23:15:00.000Z') });
 
         await app.close();
     });

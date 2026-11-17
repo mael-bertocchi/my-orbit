@@ -3,21 +3,20 @@ import { StatusCodes } from 'http-status-codes';
 import type { Prisma, PrismaClient } from 'prisma/generated/prisma/client';
 import type { RecurringRow } from 'src/modules/budget/places/places-service';
 import { placeReferenceOf, WITH_PLACE } from 'src/modules/budget/places/places-service';
-import { toIsoDay } from 'src/modules/budget/rates/rates-models';
 import { rateToEuroOn } from 'src/modules/budget/rates/rates-service';
 import type { RecurringCreate, RecurringOperation, RecurringUpdate, Schedule } from 'src/modules/budget/recurring/recurring-models';
 import { nextOccurrence, pendingOccurrences } from 'src/modules/budget/recurring/recurring-schedule';
-import { bumpRevision } from 'src/modules/budget/state/state-service';
+import { bumpRevision, ownerTimeZone } from 'src/modules/budget/state/state-service';
 import type { Maybe } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
+import { dayAt, instantAt } from 'src/shared/owner-day';
 
 /**
- * @constant LOGGED_AT
- * @description The time of day an operation the server logs on its own is dated at, in UTC, whether an occurrence or one
- * logged by a model: noon falls on the same day in every time zone around Europe, where the owner lives, so the apps
- * show it on the day it was given.
+ * @constant LOGGED_TIME
+ * @description The time of day an operation the server logs on its own is dated at, whether an occurrence or one logged
+ * by a model, which only give its day.
  */
-export const LOGGED_AT = 'T12:00:00.000Z';
+export const LOGGED_TIME = '12:00';
 
 /**
  * @function scheduleOf
@@ -76,12 +75,14 @@ export function occurrenceId(recurringId: string, day: string): string {
 
 /**
  * @function todayOf
- * @description The current day, as the schedules count it: in UTC.
+ * @description The owner's current day, in the time zone the apps last said they are in.
  *
- * @returns {string} The day, as `YYYY-MM-DD`.
+ * @param {PrismaClient} prisma The database client.
+ *
+ * @returns {Promise<string>} The day, as `YYYY-MM-DD`.
  */
-export function todayOf(): string {
-    return toIsoDay(new Date());
+export async function todayOf(prisma: PrismaClient): Promise<string> {
+    return dayAt(new Date(), await ownerTimeZone(prisma));
 }
 
 /**
@@ -97,6 +98,7 @@ export function todayOf(): string {
  * @returns {Promise<Prisma.BudgetOperationCreateManyInput[]>} The operations they log.
  */
 async function pricedOccurrences(prisma: PrismaClient, logger: FastifyBaseLogger, row: RecurringRow, days: string[]): Promise<Prisma.BudgetOperationCreateManyInput[]> {
+    const timeZone = await ownerTimeZone(prisma);
     const operations: Prisma.BudgetOperationCreateManyInput[] = [];
 
     for (const day of days) {
@@ -110,7 +112,7 @@ async function pricedOccurrences(prisma: PrismaClient, logger: FastifyBaseLogger
             break;
         }
 
-        operations.push({ id: occurrenceId(row.id, day), date: new Date(`${day}${LOGGED_AT}`), name: row.name, description: row.description, categoryId: row.categoryId, location: row.location, placeId: row.placeId, amount: row.amount, currencyCode: row.currencyCode, rateToEuro, isOnline: row.isOnline, recurringId: row.id });
+        operations.push({ id: occurrenceId(row.id, day), day, time: LOGGED_TIME, date: instantAt(day, LOGGED_TIME, timeZone), name: row.name, description: row.description, categoryId: row.categoryId, location: row.location, placeId: row.placeId, amount: row.amount, currencyCode: row.currencyCode, rateToEuro, isOnline: row.isOnline, recurringId: row.id });
     }
 
     return operations;
@@ -166,7 +168,7 @@ async function catchUpOne(prisma: PrismaClient, logger: FastifyBaseLogger, row: 
  *
  * @returns {Promise<RecurringRow[]>} Every recurring operation, as it stands after, in the order they were created.
  */
-export async function catchUpRecurring(prisma: PrismaClient, logger: FastifyBaseLogger, today: string = todayOf()): Promise<RecurringRow[]> {
+export async function catchUpRecurring(prisma: PrismaClient, logger: FastifyBaseLogger, today: string): Promise<RecurringRow[]> {
     const rows = await prisma.budgetRecurringOperation.findMany({ orderBy: { createdAt: 'asc' }, include: WITH_PLACE });
     const updated: RecurringRow[] = [];
 
@@ -187,7 +189,7 @@ export async function catchUpRecurring(prisma: PrismaClient, logger: FastifyBase
  * @returns {Promise<RecurringOperation[]>} The recurring operations, in the order they were created.
  */
 export async function listRecurring(prisma: PrismaClient, logger: FastifyBaseLogger): Promise<RecurringOperation[]> {
-    const rows = await catchUpRecurring(prisma, logger);
+    const rows = await catchUpRecurring(prisma, logger, await todayOf(prisma));
 
     return rows.map(recurringOf);
 }
@@ -230,7 +232,7 @@ export async function createRecurring(prisma: PrismaClient, logger: FastifyBaseL
         include: WITH_PLACE
     });
 
-    return recurringOf(await catchUpOne(prisma, logger, row, todayOf()));
+    return recurringOf(await catchUpOne(prisma, logger, row, await todayOf(prisma)));
 }
 
 /**
@@ -265,7 +267,7 @@ export async function updateRecurring(prisma: PrismaClient, logger: FastifyBaseL
 
     const row = await prisma.budgetRecurringOperation.update({ where: { id }, data: body, include: WITH_PLACE });
 
-    return recurringOf(await catchUpOne(prisma, logger, row, todayOf()));
+    return recurringOf(await catchUpOne(prisma, logger, row, await todayOf(prisma)));
 }
 
 /**

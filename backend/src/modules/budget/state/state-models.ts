@@ -1,4 +1,5 @@
 import { PlaceIdSchema, PlaceReferenceSchema } from 'src/modules/budget/places/places-models';
+import { DaySchema } from 'src/modules/budget/recurring/recurring-models';
 import { ColorSchema, IdSchema } from 'src/shared/schemas';
 import { z } from 'zod';
 
@@ -15,13 +16,23 @@ export const CategorySchema = z.object({
 });
 
 /**
+ * @constant TimeSchema
+ * @description Zod schema for a time of day, as `HH:MM`.
+ */
+export const TimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+
+/**
  * @constant OperationSchema
  * @description Zod schema for one logged operation. The client-supplied `updatedAt` is accepted but the server owns the persisted value.
+ * `day` and `time` are the wall clock it was logged at, in whatever time zone the owner was in, and never move with a
+ * time zone; `date` is the same moment as an instant, kept for the apps that predate `day` and `time`.
  * `placeId` names the city it took place in, which the server checks and sends back named in each language as `place`;
  * `location` stays the place as written, for an operation logged before cities were checked.
  */
 export const OperationSchema = z.object({
     id: IdSchema,
+    day: DaySchema,
+    time: TimeSchema,
     date: z.coerce.date(),
     name: z.string().min(1).max(120),
     description: z.string().max(500).nullish(),

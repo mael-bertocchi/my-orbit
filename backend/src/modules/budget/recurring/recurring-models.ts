@@ -17,7 +17,7 @@ export const INTERVALS = [1, 3, 6, 12] as const;
  * @constant DaySchema
  * @description Zod schema for a day of the calendar, as `YYYY-MM-DD`.
  */
-const DaySchema = IsoDaySchema.refine(isRealDay, { message: 'Not a day of the calendar' });
+export const DaySchema = IsoDaySchema.refine(isRealDay, { message: 'Not a day of the calendar' });
 
 /**
  * @constant RecurringFieldsSchema

@@ -143,7 +143,7 @@ Without it, the watchlist still lists its titles, but searching and opening one 
 
 ## MCP
 
-`/mcp` offers Orbit to Claude and other MCP clients. In Claude, add a custom connector with the URL `https://<api host>/mcp`: Claude registers itself, sends you to the portal's `/authorize` page to confirm with your passkey, then calls the tools as you. Its token only reaches `/mcp`: the rest of the API, the passkeys included, refuses it. Days and months are counted in the owner's time zone, `Europe/Paris`, as the apps count them.
+`/mcp` offers Orbit to Claude and other MCP clients. In Claude, add a custom connector with the URL `https://<api host>/mcp`: Claude registers itself, sends you to the portal's `/authorize` page to confirm with your passkey, then calls the tools as you. Its token only reaches `/mcp`: the rest of the API, the passkeys included, refuses it. Operations are dated by their day and time as the owner logged them, whatever the time zone; today is counted in the time zone the apps last sent in `X-Time-Zone`, `Europe/Paris` until one has.
 
 - **Read** • `budget_list_categories`, `budget_search_operations`, `budget_month_summary`, `budget_list_recurring`, `watchlist_search`, and `watchlist_title_details`, which reads a title's synopsis, genres and streaming services from TMDB.
 - **Write** • `budget_create_operation` (priced at its day's rate with the bank's markup, as the apps price it, and dated at noon UTC on its day), `budget_update_operation`, `budget_delete_operation` (to the trash), `budget_create_recurring`, `budget_update_recurring`, `budget_delete_recurring`, `watchlist_rate_title` and `watchlist_add_title`. Each is marked as writing, and the delete as destructive, so the client asks before running them.

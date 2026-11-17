@@ -19,6 +19,8 @@ const validCategory = {
  */
 const validOperation = {
     id: '5f1b2c3d-4e5f-4a1b-8c2d-3e4f5a6b7c8d',
+    day: '2026-07-24',
+    time: '20:00',
     date: '2026-07-24T18:00:00.000Z',
     name: 'Whole Foods',
     categoryId: 'groceries',

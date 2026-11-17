@@ -6,7 +6,7 @@ import { createOperation, deleteOperation, updateOperation } from 'src/modules/b
 import { placeNameOf, withPlace, WITH_PLACE } from 'src/modules/budget/places/places-service';
 import { CurrencyCodeSchema } from 'src/modules/budget/rates/rates-models';
 import { rateToEuroOn } from 'src/modules/budget/rates/rates-service';
-import { LOGGED_AT } from 'src/modules/budget/recurring/recurring-service';
+import { LOGGED_TIME } from 'src/modules/budget/recurring/recurring-service';
 import { StoredCategoryLimitsSchema } from 'src/modules/budget/state/state-models';
 import { DEFAULT_MONTHLY_LIMIT } from 'src/modules/budget/state/state-service';
 import type { CatalogDetails, CatalogTitle } from 'src/modules/watchlist/catalog/catalog-models';
@@ -17,7 +17,7 @@ import type { Variables } from 'src/plugins/environment';
 import { OWNER_ID } from 'src/plugins/identity';
 import type { Maybe, Perhaps } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
-import { ownerDayAfter, ownerDayStart } from 'src/shared/owner-day';
+import { instantAt } from 'src/shared/owner-day';
 import { z } from 'zod';
 
 /**
@@ -36,6 +36,7 @@ export interface ToolContext {
     logger: FastifyBaseLogger; /*!< The request logger */
     language: 'en' | 'fr'; /*!< The language the owner reads */
     today: string; /*!< The owner's day, as `YYYY-MM-DD` */
+    timeZone: string; /*!< The owner's time zone, as the apps last named it */
 }
 
 /**
@@ -103,7 +104,8 @@ export function euros(value: number): number {
  */
 export interface OperationLine {
     id: string; /*!< Its id */
-    date: Date; /*!< When it happened */
+    day: string; /*!< The day it happened, as `YYYY-MM-DD` */
+    time: string; /*!< The time it happened, as `HH:MM` */
     name: string; /*!< What it was */
     categoryId: string; /*!< Its category */
     amount: number; /*!< Its amount, in its currency */
@@ -122,7 +124,8 @@ export interface OperationLine {
 export function summaryOf(row: BudgetOperation): OperationLine {
     return {
         id: row.id,
-        date: row.date,
+        day: row.day,
+        time: row.time,
         name: row.name,
         categoryId: row.categoryId,
         amount: row.amount,
@@ -133,17 +136,17 @@ export function summaryOf(row: BudgetOperation): OperationLine {
 
 /**
  * @function monthBounds
- * @description The first instant of a month and of the next one, in the owner's time zone, as the apps count months.
+ * @description The first day of a month and of the next one.
  *
  * @param {string} month The month, as `YYYY-MM`.
  *
- * @returns {{ start: Date; end: Date }} Its bounds.
+ * @returns {{ start: string; end: string }} Its bounds, as `YYYY-MM-DD`.
  */
-function monthBounds(month: string): { start: Date; end: Date } {
+function monthBounds(month: string): { start: string; end: string } {
     const [year = 1970, index = 1] = month.split('-').map(Number);
     const next = new Date(Date.UTC(year, index, 1)).toISOString().slice(0, 10);
 
-    return { start: ownerDayStart(`${month}-01`), end: ownerDayStart(next) };
+    return { start: `${month}-01`, end: next };
 }
 
 /**
@@ -229,7 +232,7 @@ export const searchOperations: ServerTool = {
             where: {
                 deletedAt: null,
                 categoryId,
-                date: { gte: from !== undefined ? ownerDayStart(from) : undefined, lt: to !== undefined ? ownerDayAfter(to) : undefined },
+                day: { gte: from, lte: to },
                 OR: query !== undefined ? [
                     { name: { contains: query, mode: 'insensitive' } },
                     { description: { contains: query, mode: 'insensitive' } },
@@ -238,7 +241,7 @@ export const searchOperations: ServerTool = {
                     { place: { nameFr: { contains: query, mode: 'insensitive' } } }
                 ] : undefined
             },
-            orderBy: { date: 'desc' },
+            orderBy: [{ day: 'desc' }, { time: 'desc' }],
             take: SEARCH_SCAN_MAX,
             include: WITH_PLACE
         });
@@ -288,7 +291,7 @@ export const monthSummary: ServerTool = {
 
         const { start, end } = monthBounds(parsed.data.month);
         const [rows, categories, frozen, state] = await Promise.all([
-            context.prisma.budgetOperation.findMany({ where: { deletedAt: null, date: { gte: start, lt: end } } }),
+            context.prisma.budgetOperation.findMany({ where: { deletedAt: null, day: { gte: start, lt: end } } }),
             context.prisma.budgetCategory.findMany({ orderBy: { position: 'asc' } }),
             context.prisma.budgetHistory.findUnique({ where: { month: parsed.data.month } }),
             context.prisma.budgetState.findUnique({ where: { id: OWNER_ID } })
@@ -581,19 +584,6 @@ export function failed(error: unknown): ToolOutcome {
 }
 
 /**
- * @function momentOf
- * @description The moment an operation dated on a day is stored at.
- *
- * @param {string} day The day, as `YYYY-MM-DD`.
- * @param {string} today The owner's day, as `YYYY-MM-DD`.
- *
- * @returns {Perhaps<Date>} The moment, or undefined for a day still to come.
- */
-function momentOf(day: string, today: string): Perhaps<Date> {
-    return day > today ? undefined : new Date(`${day}${LOGGED_AT}`);
-}
-
-/**
  * @constant listCategories
  * @description Lists the budget's categories, for their ids.
  */
@@ -614,6 +604,19 @@ export const listCategories: ServerTool = {
         return { result: { categories: categories.map((category) => ({ id: category.id, name: category.name, limitEuros: category.monthlyLimit })) } };
     }
 };
+
+/**
+ * @function momentOf
+ * @description The instant a title watched on a day is stored at: noon of that day, in the owner's time zone.
+ *
+ * @param {string} day The day, as `YYYY-MM-DD`.
+ * @param {ToolContext} context The owner's day and time zone.
+ *
+ * @returns {Perhaps<Date>} The instant, or undefined for a day still to come.
+ */
+function momentOf(day: string, context: ToolContext): Perhaps<Date> {
+    return day > context.today ? undefined : instantAt(day, LOGGED_TIME, context.timeZone);
+}
 
 /**
  * @constant CreateOperationSchema
@@ -669,9 +672,7 @@ export const createOperationTool: ServerTool = {
             return refusal;
         }
 
-        const moment = momentOf(date, context.today);
-
-        if (moment === undefined) {
+        if (date > context.today) {
             return { result: { error: 'The day is still to come: an operation is logged on the day it happened or after' } };
         }
 
@@ -683,7 +684,7 @@ export const createOperationTool: ServerTool = {
             }
 
             const placed = await withPlace(context, { location: location ?? null });
-            const operation = await createOperation(context.prisma, { ...draft, ...placed, id: randomUUID().toUpperCase(), date: moment, description: description ?? null, rateToEuro });
+            const operation = await createOperation(context.prisma, { ...draft, ...placed, id: randomUUID().toUpperCase(), day: date, time: LOGGED_TIME, description: description ?? null, rateToEuro }, context.timeZone);
 
             return { result: { status: 'Logged', operation: { ...operation, euroAmount: euros(operation.amount * operation.rateToEuro) } } };
         } catch (error: unknown) {
@@ -762,23 +763,21 @@ export const updateOperationTool: ServerTool = {
             return refusal;
         }
 
-        const moment = date !== undefined ? momentOf(date, context.today) : undefined;
-
-        if (date !== undefined && moment === undefined) {
+        if (date !== undefined && date > context.today) {
             return { result: { error: 'The day is still to come: an operation is dated on the day it happened or before' } };
         }
 
         try {
             const isRepriced = date !== undefined || changes.currencyCode !== undefined;
             const code = changes.currencyCode ?? existing.currencyCode;
-            const rateToEuro = isRepriced ? await rateToEuroOn(context.prisma, context.logger, code, date ?? existing.date.toISOString().slice(0, 10)) : existing.rateToEuro;
+            const rateToEuro = isRepriced ? await rateToEuroOn(context.prisma, context.logger, code, date ?? existing.day) : existing.rateToEuro;
 
             if (rateToEuro === undefined) {
                 return { result: { error: `No exchange rate for ${code}` } };
             }
 
             const placed = await withPlace(context, changes);
-            const operation = await updateOperation(context.prisma, existing.id, { ...placed, date: moment, rateToEuro });
+            const operation = await updateOperation(context.prisma, existing.id, { ...placed, day: date, rateToEuro }, context.timeZone);
 
             return { result: { status: 'Changed', operation: { ...operation, euroAmount: euros(operation.amount * operation.rateToEuro) } } };
         } catch (error: unknown) {
@@ -875,7 +874,7 @@ export const rateTitleTool: ServerTool = {
             return invalid(parsed.error);
         }
 
-        const moment = momentOf(parsed.data.watchedAt ?? context.today, context.today);
+        const moment = momentOf(parsed.data.watchedAt ?? context.today, context);
 
         if (moment === undefined) {
             return { result: { error: 'The day is still to come: a title is marked watched on the day it was watched' } };

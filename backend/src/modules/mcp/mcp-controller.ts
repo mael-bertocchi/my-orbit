@@ -1,10 +1,11 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { StatusCodes } from 'http-status-codes';
+import { ownerTimeZone } from 'src/modules/budget/state/state-service';
 import { answerMcp } from 'src/modules/mcp/mcp-service';
 import type { ToolContext } from 'src/modules/mcp/mcp-tools';
 import { useConnection } from 'src/modules/oauth/oauth-service';
 import { RequestError } from 'src/shared/models';
-import { ownerDayOf } from 'src/shared/owner-day';
+import { dayAt } from 'src/shared/owner-day';
 import { publicOrigin } from 'src/shared/public-origin';
 
 /**
@@ -55,7 +56,8 @@ async function authenticate(request: FastifyRequest, reply: FastifyReply): Promi
  */
 async function message(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const { prisma, variables } = request.server;
-    const context: ToolContext = { prisma, variables, logger: request.log, language: LANGUAGE, today: ownerDayOf(new Date()) };
+    const timeZone = await ownerTimeZone(prisma);
+    const context: ToolContext = { prisma, variables, logger: request.log, language: LANGUAGE, today: dayAt(new Date(), timeZone), timeZone };
     const answer = await answerMcp(request, context);
 
     reply.status(answer.status).headers(answer.headers).send(answer.body);

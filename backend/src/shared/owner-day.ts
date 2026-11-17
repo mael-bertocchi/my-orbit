@@ -1,86 +1,99 @@
 /**
- * @constant OWNER_TIME_ZONE
- * @description The time zone the owner's days and months are counted in, as the web and iOS apps count them on the
- * owner's own device. The server can't see that device, so it assumes the owner's home: while they travel, the first and
- * last hours of a day may land on the next or previous one.
+ * @constant DEFAULT_TIME_ZONE
+ * @description The time zone the owner's days are counted in until an app has told the server the one of its device.
  */
-export const OWNER_TIME_ZONE = 'Europe/Paris';
+export const DEFAULT_TIME_ZONE = 'Europe/Paris';
 
 /**
- * @constant DAY_FORMAT
- * @description Writes an instant as the owner's calendar day, `YYYY-MM-DD`.
- */
-const DAY_FORMAT = new Intl.DateTimeFormat('en-CA', { timeZone: OWNER_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
-
-/**
- * @constant OFFSET_FORMAT
- * @description Writes an instant's offset from UTC in the owner's time zone, such as `GMT+01:00`, or `GMT` when there is none.
- */
-const OFFSET_FORMAT = new Intl.DateTimeFormat('en-US', { timeZone: OWNER_TIME_ZONE, timeZoneName: 'longOffset' });
-
-/**
- * @constant DAY_LENGTH
- * @description One day, in milliseconds.
- */
-const DAY_LENGTH = 24 * 60 * 60 * 1000;
-
-/**
- * @function offsetOf
- * @description How far ahead of UTC the owner's clock is at an instant.
+ * @function isTimeZone
+ * @description Whether a name is an IANA time zone the runtime knows, such as `Asia/Seoul`.
  *
- * @param {Date} instant The instant.
+ * @param {string} name The name.
  *
- * @returns {number} The offset, in milliseconds.
+ * @returns {boolean} Whether it is one.
  */
-function offsetOf(instant: Date): number {
-    const name = OFFSET_FORMAT.formatToParts(instant).find((part) => part.type === 'timeZoneName')?.value ?? '';
-    const match = /GMT([+-])(\d{2}):(\d{2})/.exec(name);
+export function isTimeZone(name: string): boolean {
+    try {
+        new Intl.DateTimeFormat('en-US', { timeZone: name });
 
-    if (match === null) {
-        return 0;
+        return true;
+    } catch {
+        return false;
     }
-
-    const minutes = Number(match[2]) * 60 + Number(match[3]);
-
-    return (match[1] !== '-' ? minutes : -minutes) * 60 * 1000;
 }
 
 /**
- * @function ownerDayOf
- * @description The owner's calendar day at an instant.
+ * @function wallClockOf
+ * @description The wall clock of a time zone at an instant, as `YYYY-MM-DDTHH:MM`.
  *
  * @param {Date} instant The instant.
+ * @param {string} timeZone The time zone.
+ *
+ * @returns {string} The wall clock.
+ */
+function wallClockOf(instant: Date, timeZone: string): string {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(instant);
+    const part = (type: Intl.DateTimeFormatPartTypes): string => parts.find((candidate) => candidate.type === type)?.value ?? '00';
+
+    return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
+}
+
+/**
+ * @function dayAt
+ * @description The calendar day of a time zone at an instant.
+ *
+ * @param {Date} instant The instant.
+ * @param {string} timeZone The time zone.
  *
  * @returns {string} The day, as `YYYY-MM-DD`.
  */
-export function ownerDayOf(instant: Date): string {
-    return DAY_FORMAT.format(instant);
+export function dayAt(instant: Date, timeZone: string): string {
+    return wallClockOf(instant, timeZone).slice(0, 10);
 }
 
 /**
- * @function ownerDayStart
- * @description The instant one of the owner's days starts at: their midnight.
+ * @function timeAt
+ * @description The time of day of a time zone at an instant.
  *
- * @param {string} day The day, as `YYYY-MM-DD`.
+ * @param {Date} instant The instant.
+ * @param {string} timeZone The time zone.
  *
- * @returns {Date} Its first instant.
+ * @returns {string} The time, as `HH:MM`.
  */
-export function ownerDayStart(day: string): Date {
-    const utcMidnight = new Date(`${day}T00:00:00.000Z`);
-
-    return new Date(utcMidnight.getTime() - offsetOf(utcMidnight));
+export function timeAt(instant: Date, timeZone: string): string {
+    return wallClockOf(instant, timeZone).slice(11);
 }
 
 /**
- * @function ownerDayAfter
- * @description The instant the day after one of the owner's days starts at, the end of a range that includes that day.
+ * @function offsetAt
+ * @description How far ahead of UTC a time zone's clock is at an instant, to the minute.
+ *
+ * @param {Date} instant The instant.
+ * @param {string} timeZone The time zone.
+ *
+ * @returns {number} The offset, in milliseconds.
+ */
+function offsetAt(instant: Date, timeZone: string): number {
+    const wallClock = new Date(`${wallClockOf(instant, timeZone)}:00.000Z`).getTime();
+    const minute = Math.floor(instant.getTime() / 60_000) * 60_000;
+
+    return wallClock - minute;
+}
+
+/**
+ * @function instantAt
+ * @description The instant a time zone's clock shows a day and a time. The offset is read again at the first guess, so a
+ * day that changes to or from summer time lands on the right hour.
  *
  * @param {string} day The day, as `YYYY-MM-DD`.
+ * @param {string} time The time, as `HH:MM`.
+ * @param {string} timeZone The time zone.
  *
- * @returns {Date} The first instant of the next day.
+ * @returns {Date} The instant.
  */
-export function ownerDayAfter(day: string): Date {
-    const next = new Date(new Date(`${day}T00:00:00.000Z`).getTime() + DAY_LENGTH);
+export function instantAt(day: string, time: string, timeZone: string): Date {
+    const wallClock = new Date(`${day}T${time}:00.000Z`).getTime();
+    const guess = new Date(wallClock - offsetAt(new Date(wallClock), timeZone));
 
-    return ownerDayStart(next.toISOString().slice(0, 10));
+    return new Date(wallClock - offsetAt(guess, timeZone));
 }

@@ -48,7 +48,9 @@ interface RecurringRow {
  */
 interface OperationRow {
     id: string; /*!< Its identifier */
-    date: Date; /*!< When it happened */
+    day?: string; /*!< The day it happened */
+    time?: string; /*!< The time it happened */
+    date: Date; /*!< When it happened, as an instant */
     rateToEuro: number; /*!< Euros per unit of its currency */
     recurringId: Maybe<string>; /*!< The recurring operation it is an occurrence of */
 }
@@ -121,7 +123,8 @@ class Database {
     };
 
     budgetState = {
-        upsert: vi.fn(() => Promise.resolve({ id: 'owner', monthlyLimit: 3000, revision: 1 }))
+        upsert: vi.fn(() => Promise.resolve({ id: 'owner', monthlyLimit: 3000, revision: 1 })),
+        findUnique: vi.fn(() => Promise.resolve({ id: 'owner', monthlyLimit: 3000, revision: 1, timeZone: 'Asia/Seoul' }))
     };
 
     $transaction = async <T>(work: (transaction: Database) => Promise<T>): Promise<T> => await work(this);
@@ -200,9 +203,21 @@ describe('GET /v1/budget/recurring', () => {
         expect(first.statusCode).toBe(StatusCodes.OK);
         expect(first.json<{ data: { id: string; nextDate: string }[] }>().data).toMatchObject([{ id: RENT_ID, nextDate: '2026-12-05' }]);
         expect(second.statusCode).toBe(StatusCodes.OK);
-        expect(database.operations).toEqual([{ id: `${RENT_ID}-20261105`, date: new Date('2026-11-05T12:00:00.000Z'), name: 'Loyer', description: null, categoryId: 'housing', location: null, placeId: null, amount: 900, currencyCode: 'EUR', rateToEuro: 1, isOnline: true, recurringId: RENT_ID }]);
+        expect(database.operations).toEqual([{ id: `${RENT_ID}-20261105`, day: '2026-11-05', time: '12:00', date: new Date('2026-11-05T03:00:00.000Z'), name: 'Loyer', description: null, categoryId: 'housing', location: null, placeId: null, amount: 900, currencyCode: 'EUR', rateToEuro: 1, isOnline: true, recurringId: RENT_ID }]);
         expect(database.recurring[0]?.generatedThrough).toBe('2026-11-05');
         expect(database.budgetState.upsert).toHaveBeenCalledOnce();
+
+        await app.close();
+    });
+
+    it('counts the day in the owner\'s time zone, not the server\'s', async () => {
+        vi.setSystemTime(new Date('2026-11-04T16:00:00Z'));
+
+        const { app, database } = await buildApp();
+
+        await app.inject({ method: 'GET', url: '/v1/budget/recurring' });
+
+        expect(database.operations).toMatchObject([{ id: `${RENT_ID}-20261105`, day: '2026-11-05' }]);
 
         await app.close();
     });

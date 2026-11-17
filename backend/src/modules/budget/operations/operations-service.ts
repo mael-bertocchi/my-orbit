@@ -4,8 +4,45 @@ import type { Operation, OperationCreate, OperationUpdate, TrashedOperation } fr
 import type { OperationRow } from 'src/modules/budget/places/places-service';
 import { placeReferenceOf, WITH_PLACE } from 'src/modules/budget/places/places-service';
 import { bumpRevision } from 'src/modules/budget/state/state-service';
-import type { Maybe } from 'src/shared/models';
+import type { Maybe, Perhaps } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
+import { dayAt, instantAt, timeAt } from 'src/shared/owner-day';
+
+/**
+ * @interface Moment
+ * @description When an operation happened, as it is stored.
+ */
+interface Moment {
+    day: string; /*!< Its day, as `YYYY-MM-DD` */
+    time: string; /*!< Its time, as `HH:MM` */
+    date: Date; /*!< The same moment as an instant, in the owner's time zone */
+}
+
+/**
+ * @function momentOf
+ * @description When a request dates an operation. A `day` or a `time` alone keeps the other from the operation as it
+ * stands; an instant `date` alone, from an app that predates them, is read in the owner's time zone.
+ *
+ * @param {OperationUpdate} body The request.
+ * @param {Maybe<Pick<Moment, 'day' | 'time'>>} current The operation as it stands, or null for a new one.
+ * @param {string} timeZone The owner's time zone.
+ *
+ * @returns {Perhaps<Moment>} When it happened, or undefined when the request does not date it.
+ */
+function momentOf(body: OperationUpdate, current: Maybe<Pick<Moment, 'day' | 'time'>>, timeZone: string): Perhaps<Moment> {
+    if (body.day === undefined && body.time === undefined) {
+        return body.date !== undefined ? { day: dayAt(body.date, timeZone), time: timeAt(body.date, timeZone), date: body.date } : undefined;
+    }
+
+    const day = body.day ?? current?.day;
+    const time = body.time ?? current?.time;
+
+    if (day === undefined || time === undefined) {
+        throw new RequestError(StatusCodes.BAD_REQUEST, 'An operation is dated by both its day and its time');
+    }
+
+    return { day, time, date: instantAt(day, time, timeZone) };
+}
 
 /**
  * @function operationOf
@@ -18,6 +55,8 @@ import { RequestError } from 'src/shared/models';
 export function operationOf(row: OperationRow): Operation {
     return {
         id: row.id,
+        day: row.day,
+        time: row.time,
         date: row.date,
         name: row.name,
         description: row.description,
@@ -81,17 +120,24 @@ export async function listTrash(prisma: PrismaClient): Promise<TrashedOperation[
  *
  * @param {PrismaClient} prisma The database client.
  * @param {OperationCreate} body The operation.
+ * @param {string} timeZone The owner's time zone.
  *
  * @returns {Promise<Operation>} The stored operation.
  */
-export async function createOperation(prisma: PrismaClient, body: OperationCreate): Promise<Operation> {
+export async function createOperation(prisma: PrismaClient, body: OperationCreate, timeZone: string): Promise<Operation> {
+    const moment = momentOf(body, null, timeZone);
+
+    if (moment === undefined) {
+        throw new RequestError(StatusCodes.BAD_REQUEST, 'An operation is dated by its day and its time');
+    }
+
     return await prisma.$transaction(async (transaction) => {
         if (await findOperation(transaction, body.id) !== null) {
             throw new RequestError(StatusCodes.CONFLICT, 'An operation with this id already exists');
         }
 
         const row = await transaction.budgetOperation.create({
-            data: { ...body, description: body.description ?? null, location: body.location ?? null, placeId: body.placeId ?? null },
+            data: { ...body, ...moment, description: body.description ?? null, location: body.location ?? null, placeId: body.placeId ?? null },
             include: WITH_PLACE
         });
 
@@ -109,10 +155,11 @@ export async function createOperation(prisma: PrismaClient, body: OperationCreat
  * @param {PrismaClient} prisma The database client.
  * @param {string} id The operation's id.
  * @param {OperationUpdate} body What changes.
+ * @param {string} timeZone The owner's time zone.
  *
  * @returns {Promise<Operation>} The stored operation.
  */
-export async function updateOperation(prisma: PrismaClient, id: string, body: OperationUpdate): Promise<Operation> {
+export async function updateOperation(prisma: PrismaClient, id: string, body: OperationUpdate, timeZone: string): Promise<Operation> {
     return await prisma.$transaction(async (transaction) => {
         const existing = await findOperation(transaction, id);
 
@@ -120,7 +167,7 @@ export async function updateOperation(prisma: PrismaClient, id: string, body: Op
             throw new RequestError(StatusCodes.NOT_FOUND, 'Unknown operation');
         }
 
-        const row = await transaction.budgetOperation.update({ where: { id }, data: body, include: WITH_PLACE });
+        const row = await transaction.budgetOperation.update({ where: { id }, data: { ...body, ...momentOf(body, existing, timeZone) }, include: WITH_PLACE });
 
         await bumpRevision(transaction);
 
