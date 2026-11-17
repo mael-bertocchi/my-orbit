@@ -106,4 +106,21 @@ final class SyncTests: XCTestCase {
         XCTAssertEqual(TextLimits.capped(String(repeating: "a", count: 130), to: TextLimits.name).utf16.count, 120)
         XCTAssertEqual(TextLimits.capped("ab😀", to: 3), "ab")
     }
+
+    /**
+     * @method testReadsTheServersDayAndTimeOnThePhonesClock
+     * @description An operation from the server is dated by its day and time as the phone's clock shows them, and one
+     * saved on the phone keeps its date
+     */
+    func testReadsTheServersDayAndTimeOnThePhonesClock() throws {
+        let remote = Data(#"{"id":"a","day":"2026-10-28","time":"23:30","date":"2026-10-28T14:30:00Z","name":"Bakery","categoryId":"groceries","amount":4,"currencyCode":"EUR","rateToEuro":1,"isOnline":false,"updatedAt":"2026-10-28T14:30:00Z"}"#.utf8)
+        let decoded = try JSONCoding.decoder.decode(Orbit.Operation.self, from: remote)
+
+        XCTAssertEqual(decoded.day, "2026-10-28")
+        XCTAssertEqual(decoded.time, "23:30")
+
+        let saved = try JSONCoding.decoder.decode(Orbit.Operation.self, from: JSONCoding.encoder.encode(operation("b", "Bakery", 4)))
+
+        XCTAssertEqual(saved.date, day)
+    }
 }

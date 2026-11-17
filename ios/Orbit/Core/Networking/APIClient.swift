@@ -82,7 +82,8 @@ private struct OperationFields: Encodable {
      */
     private enum CodingKeys: String, CodingKey {
         case id /*!< Its identifier */
-        case date /*!< When it happened */
+        case day /*!< The day it happened */
+        case time /*!< The time it happened */
         case name /*!< Its name */
         case description /*!< Its note */
         case categoryId /*!< Its category */
@@ -105,7 +106,8 @@ private struct OperationFields: Encodable {
         if includesId {
             try container.encode(operation.id, forKey: .id)
         }
-        try container.encode(operation.date, forKey: .date)
+        try container.encode(operation.day, forKey: .day)
+        try container.encode(operation.time, forKey: .time)
         try container.encode(operation.name, forKey: .name)
         try container.encode(operation.description, forKey: .description)
         try container.encode(operation.categoryId, forKey: .categoryId)
@@ -710,6 +712,7 @@ final class APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(TimeZone.current.identifier, forHTTPHeaderField: "X-Time-Zone")
 
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

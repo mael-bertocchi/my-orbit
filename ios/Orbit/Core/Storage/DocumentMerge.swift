@@ -64,7 +64,7 @@ enum DocumentMerge {
 
     /**
      * @method comparable
-     * @description An operation with its date rounded to the second, its update stamp blanked, and its recurring operation
+     * @description An operation with its date rounded to the minute, as the server keeps it, its update stamp blanked, and its recurring operation
      * and its city's names left out, which only the server sets, as both sides can compare it
      *
      * @param operation The operation
@@ -72,7 +72,7 @@ enum DocumentMerge {
      */
     private static func comparable(_ operation: Operation) -> Operation {
         var copy = operation
-        copy.date = Date(timeIntervalSince1970: operation.date.timeIntervalSince1970.rounded(.down))
+        copy.date = Date(timeIntervalSince1970: (operation.date.timeIntervalSince1970 / 60).rounded(.down) * 60)
         copy.updatedAt = .distantPast
         copy.recurringId = nil
         copy.place = operation.place.map { PlaceReference(id: $0.id, nameEn: "", nameFr: "") }

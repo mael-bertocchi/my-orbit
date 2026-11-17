@@ -125,6 +125,82 @@ struct Operation: Codable, Identifiable, Equatable, Hashable {
     var euroAmount: Double { amount * rateToEuro } /*!< The amount in euros */
 
     var whereabouts: String { place?.name ?? (location ?? "").trimmingCharacters(in: .whitespaces) } /*!< Where it happened, as shown: its city in the interface's language, else the place as written before cities were checked, else nothing */
+
+    var day: String { Self.wallClock(of: date).day } /*!< The day it happened on the phone's clock, `YYYY-MM-DD`, as the server stores it */
+
+    var time: String { Self.wallClock(of: date).time } /*!< The time it happened on the phone's clock, `HH:MM`, as the server stores it */
+
+    /**
+     * @type WallClockKeys
+     * @description The keys the server dates an operation under: the day and time it was logged at, which no time zone
+     * moves
+     */
+    private enum WallClockKeys: String, CodingKey {
+        case day /*!< Its day */
+        case time /*!< Its time */
+    }
+
+    /**
+     * @constructor init
+     * @description Reads an operation. One from the server is dated by its day and time, made into a date on the
+     * phone's clock; one saved on the phone keeps the date it was saved with
+     *
+     * @param decoder The decoder
+     */
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let wallClock = try decoder.container(keyedBy: WallClockKeys.self)
+        let day = try wallClock.decodeIfPresent(String.self, forKey: .day)
+        let time = try wallClock.decodeIfPresent(String.self, forKey: .time)
+        id = try container.decode(String.self, forKey: .id)
+        if let day, let time, let dated = Self.date(day: day, time: time) {
+            date = dated
+        } else {
+            date = try container.decode(Date.self, forKey: .date)
+        }
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        categoryId = try container.decode(String.self, forKey: .categoryId)
+        location = try container.decodeIfPresent(String.self, forKey: .location)
+        place = try container.decodeIfPresent(PlaceReference.self, forKey: .place)
+        amount = try container.decode(Double.self, forKey: .amount)
+        currencyCode = try container.decode(String.self, forKey: .currencyCode)
+        rateToEuro = try container.decode(Double.self, forKey: .rateToEuro)
+        isOnline = try container.decode(Bool.self, forKey: .isOnline)
+        recurringId = try container.decodeIfPresent(String.self, forKey: .recurringId)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+    }
+
+    /**
+     * @method wallClock
+     * @description The day and time the phone's clock shows at a date
+     *
+     * @param date The date
+     * @returns Its day, `YYYY-MM-DD`, and its time, `HH:MM`
+     */
+    static func wallClock(of date: Date) -> (day: String, time: String) {
+        let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        let day = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 1, parts.day ?? 1)
+        let time = String(format: "%02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
+        return (day, time)
+    }
+
+    /**
+     * @method date
+     * @description The date the phone's clock shows a day and a time at
+     *
+     * @param day The day, `YYYY-MM-DD`
+     * @param time The time, `HH:MM`
+     * @returns The date, or nil when either is malformed
+     */
+    static func date(day: String, time: String) -> Date? {
+        let dayParts = day.split(separator: "-").compactMap { Int($0) }
+        let timeParts = time.split(separator: ":").compactMap { Int($0) }
+        guard dayParts.count == 3, timeParts.count == 2 else {
+            return nil
+        }
+        return Calendar.current.date(from: DateComponents(year: dayParts[0], month: dayParts[1], day: dayParts[2], hour: timeParts[0], minute: timeParts[1]))
+    }
 }
 
 /**
