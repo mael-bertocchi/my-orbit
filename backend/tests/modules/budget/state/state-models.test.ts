@@ -21,7 +21,6 @@ const validOperation = {
     id: '5f1b2c3d-4e5f-4a1b-8c2d-3e4f5a6b7c8d',
     day: '2026-07-24',
     time: '20:00',
-    date: '2026-07-24T18:00:00.000Z',
     name: 'Whole Foods',
     categoryId: 'groceries',
     location: 'Berlin Mitte',
@@ -42,11 +41,15 @@ describe('CategorySchema', () => {
 });
 
 describe('OperationSchema', () => {
-    it('accepts an operation and coerces its date', () => {
+    it('accepts an operation dated by its day and time', () => {
         const parsed = OperationSchema.safeParse(validOperation);
 
         expect(parsed.success).toBe(true);
-        expect(parsed.data?.date).toBeInstanceOf(Date);
+        expect(parsed.data).toMatchObject({ day: '2026-07-24', time: '20:00' });
+    });
+
+    it('refuses a time that is not one', () => {
+        expect(OperationSchema.safeParse({ ...validOperation, time: '24:00' }).success).toBe(false);
     });
 
     it('accepts a null location', () => {

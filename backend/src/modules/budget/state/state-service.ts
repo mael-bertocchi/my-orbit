@@ -40,7 +40,6 @@ export async function pullState(prisma: PrismaClient): Promise<StoredStateBody> 
             id: operation.id,
             day: operation.day,
             time: operation.time,
-            date: operation.date,
             name: operation.name,
             description: operation.description,
             categoryId: operation.categoryId,

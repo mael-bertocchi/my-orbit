@@ -52,19 +52,6 @@ export function dayAt(instant: Date, timeZone: string): string {
 }
 
 /**
- * @function timeAt
- * @description The time of day of a time zone at an instant.
- *
- * @param {Date} instant The instant.
- * @param {string} timeZone The time zone.
- *
- * @returns {string} The time, as `HH:MM`.
- */
-export function timeAt(instant: Date, timeZone: string): string {
-    return wallClockOf(instant, timeZone).slice(11);
-}
-
-/**
  * @function offsetAt
  * @description How far ahead of UTC a time zone's clock is at an instant, to the minute.
  *

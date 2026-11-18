@@ -189,23 +189,23 @@ describe('POST /v1/budget/operations', () => {
         await app.close();
     });
 
-    it('keeps the day and time as written and dates the instant in the owner\'s time zone', async () => {
+    it('keeps the day and time as written', async () => {
         const { app, table } = await buildApp();
         const response = await app.inject({ method: 'POST', url: '/v1/budget/operations', payload: newOperation });
 
         expect(response.statusCode).toBe(StatusCodes.CREATED);
-        expect(table.rows[1]).toMatchObject({ day: '2026-10-28', time: '23:30', date: new Date('2026-10-28T14:30:00.000Z') });
+        expect(table.rows[1]).toMatchObject({ day: '2026-10-28', time: '23:30' });
 
         await app.close();
     });
 
-    it('reads the instant of an app that predates days and times in the owner\'s time zone', async () => {
+    it('refuses an operation dated by an instant alone, as apps did before days and times', async () => {
         const { app, table } = await buildApp();
         const { day: _day, time: _time, ...legacy } = newOperation;
         const response = await app.inject({ method: 'POST', url: '/v1/budget/operations', payload: { ...legacy, date: '2026-10-28T15:10:00.000Z' } });
 
-        expect(response.statusCode).toBe(StatusCodes.CREATED);
-        expect(table.rows[1]).toMatchObject({ day: '2026-10-29', time: '00:10' });
+        expect(response.statusCode).toBe(StatusCodes.BAD_REQUEST);
+        expect(table.create).not.toHaveBeenCalled();
 
         await app.close();
     });
@@ -291,7 +291,7 @@ describe('PATCH /v1/budget/operations/:operationId', () => {
         const response = await app.inject({ method: 'PATCH', url: `/v1/budget/operations/${OPERATION_ID}`, payload: { time: '08:15' } });
 
         expect(response.statusCode).toBe(StatusCodes.OK);
-        expect(table.rows[0]).toMatchObject({ day: '2026-10-24', time: '08:15', date: new Date('2026-10-23T23:15:00.000Z') });
+        expect(table.rows[0]).toMatchObject({ day: '2026-10-24', time: '08:15' });
 
         await app.close();
     });

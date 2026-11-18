@@ -684,7 +684,7 @@ export const createOperationTool: ServerTool = {
             }
 
             const placed = await withPlace(context, { location: location ?? null });
-            const operation = await createOperation(context.prisma, { ...draft, ...placed, id: randomUUID().toUpperCase(), day: date, time: LOGGED_TIME, description: description ?? null, rateToEuro }, context.timeZone);
+            const operation = await createOperation(context.prisma, { ...draft, ...placed, id: randomUUID().toUpperCase(), day: date, time: LOGGED_TIME, description: description ?? null, rateToEuro });
 
             return { result: { status: 'Logged', operation: { ...operation, euroAmount: euros(operation.amount * operation.rateToEuro) } } };
         } catch (error: unknown) {
@@ -777,7 +777,7 @@ export const updateOperationTool: ServerTool = {
             }
 
             const placed = await withPlace(context, changes);
-            const operation = await updateOperation(context.prisma, existing.id, { ...placed, day: date, rateToEuro }, context.timeZone);
+            const operation = await updateOperation(context.prisma, existing.id, { ...placed, day: date, rateToEuro });
 
             return { result: { status: 'Changed', operation: { ...operation, euroAmount: euros(operation.amount * operation.rateToEuro) } } };
         } catch (error: unknown) {

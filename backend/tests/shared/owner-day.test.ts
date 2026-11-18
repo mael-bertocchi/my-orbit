@@ -1,13 +1,11 @@
-import { dayAt, instantAt, isTimeZone, timeAt } from 'src/shared/owner-day';
+import { dayAt, instantAt, isTimeZone } from 'src/shared/owner-day';
 import { describe, expect, it } from 'vitest';
 
 describe('the owner\'s wall clock', () => {
-    it('reads an instant as the day and time of a time zone', () => {
+    it('reads an instant as the day of a time zone', () => {
         expect(dayAt(new Date('2026-10-31T23:30:00.000Z'), 'Europe/Paris')).toBe('2026-11-01');
-        expect(timeAt(new Date('2026-10-31T23:30:00.000Z'), 'Europe/Paris')).toBe('00:30');
+        expect(dayAt(new Date('2026-11-16T15:05:00.000Z'), 'Asia/Seoul')).toBe('2026-11-17');
         expect(dayAt(new Date('2026-11-16T14:45:00.000Z'), 'Asia/Seoul')).toBe('2026-11-16');
-        expect(timeAt(new Date('2026-11-16T14:45:00.000Z'), 'Asia/Seoul')).toBe('23:45');
-        expect(timeAt(new Date('2026-11-16T15:05:00.000Z'), 'Asia/Seoul')).toBe('00:05');
     });
 
     it('finds the instant a time zone shows a day and a time, summer time or not', () => {

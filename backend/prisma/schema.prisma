@@ -54,7 +54,7 @@ model BudgetOperation {
   id           String       @id
   day          String
   time         String
-  date         DateTime
+  date         DateTime?
   name         String
   description  String?
   categoryId   String       @map("category_id")

@@ -203,7 +203,7 @@ describe('GET /v1/budget/recurring', () => {
         expect(first.statusCode).toBe(StatusCodes.OK);
         expect(first.json<{ data: { id: string; nextDate: string }[] }>().data).toMatchObject([{ id: RENT_ID, nextDate: '2026-12-05' }]);
         expect(second.statusCode).toBe(StatusCodes.OK);
-        expect(database.operations).toEqual([{ id: `${RENT_ID}-20261105`, day: '2026-11-05', time: '12:00', date: new Date('2026-11-05T03:00:00.000Z'), name: 'Loyer', description: null, categoryId: 'housing', location: null, placeId: null, amount: 900, currencyCode: 'EUR', rateToEuro: 1, isOnline: true, recurringId: RENT_ID }]);
+        expect(database.operations).toEqual([{ id: `${RENT_ID}-20261105`, day: '2026-11-05', time: '12:00', name: 'Loyer', description: null, categoryId: 'housing', location: null, placeId: null, amount: 900, currencyCode: 'EUR', rateToEuro: 1, isOnline: true, recurringId: RENT_ID }]);
         expect(database.recurring[0]?.generatedThrough).toBe('2026-11-05');
         expect(database.budgetState.upsert).toHaveBeenCalledOnce();
 

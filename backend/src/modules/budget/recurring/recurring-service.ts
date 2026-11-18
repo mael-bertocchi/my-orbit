@@ -9,7 +9,7 @@ import { nextOccurrence, pendingOccurrences } from 'src/modules/budget/recurring
 import { bumpRevision, ownerTimeZone } from 'src/modules/budget/state/state-service';
 import type { Maybe } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
-import { dayAt, instantAt } from 'src/shared/owner-day';
+import { dayAt } from 'src/shared/owner-day';
 
 /**
  * @constant LOGGED_TIME
@@ -98,7 +98,6 @@ export async function todayOf(prisma: PrismaClient): Promise<string> {
  * @returns {Promise<Prisma.BudgetOperationCreateManyInput[]>} The operations they log.
  */
 async function pricedOccurrences(prisma: PrismaClient, logger: FastifyBaseLogger, row: RecurringRow, days: string[]): Promise<Prisma.BudgetOperationCreateManyInput[]> {
-    const timeZone = await ownerTimeZone(prisma);
     const operations: Prisma.BudgetOperationCreateManyInput[] = [];
 
     for (const day of days) {
@@ -112,7 +111,7 @@ async function pricedOccurrences(prisma: PrismaClient, logger: FastifyBaseLogger
             break;
         }
 
-        operations.push({ id: occurrenceId(row.id, day), day, time: LOGGED_TIME, date: instantAt(day, LOGGED_TIME, timeZone), name: row.name, description: row.description, categoryId: row.categoryId, location: row.location, placeId: row.placeId, amount: row.amount, currencyCode: row.currencyCode, rateToEuro, isOnline: row.isOnline, recurringId: row.id });
+        operations.push({ id: occurrenceId(row.id, day), day, time: LOGGED_TIME, name: row.name, description: row.description, categoryId: row.categoryId, location: row.location, placeId: row.placeId, amount: row.amount, currencyCode: row.currencyCode, rateToEuro, isOnline: row.isOnline, recurringId: row.id });
     }
 
     return operations;
