@@ -3,7 +3,7 @@ import IconTileComponent from 'components/icon-tile/icon-tile';
 import ListGroupComponent from 'components/list-group/list-group';
 import ListRowComponent from 'components/list-row/list-row';
 import PageHeaderComponent from 'components/page-header/page-header';
-import { ArchiveRestore, ChevronRight, Euro, LayoutGrid, List, Target, Trash2 } from 'lucide-react';
+import { ArchiveRestore, ChevronRight, Euro, LayoutGrid, List, Repeat, Target, Trash2 } from 'lucide-react';
 import { categoriesOf, DEFAULT_CATEGORIES } from 'modules/budget/budget-categories';
 import { BANK_MARKUP, bankRate, CURRENCIES, currencyName, EURO } from 'modules/budget/budget-currencies';
 import { monthStart } from 'modules/budget/budget-dates';
@@ -13,6 +13,7 @@ import { useBudgetContext } from 'modules/budget/budget-hooks';
 import { defaultCurrency, rememberCurrency } from 'modules/budget/budget-preferences';
 import { t } from 'modules/language/language-service';
 import BudgetLimitsComponent from 'pages/budget/budget-limits/budget-limits';
+import BudgetRecurringListComponent from 'pages/budget/budget-recurring-list/budget-recurring-list';
 import BudgetTrashComponent from 'pages/budget/budget-trash/budget-trash';
 import { useState, type ChangeEvent, type JSX } from 'react';
 
@@ -30,7 +31,7 @@ const NEGATIVE = '#FF3B30';
 
 /**
  * @function BudgetSettingsComponent
- * @description The Settings tab: the budget and limits with the default currency, the exchange rates and
+ * @description The Settings tab: the budget and limits with the recurring operations and the default currency, the exchange rates and
  * what the budget holds. The language and signing out live in the portal's account settings, as they span every app.
  * On a desktop, its lists keep the width of a settings column, centred, rather than stretching across the screen.
  */
@@ -39,6 +40,7 @@ function BudgetSettingsComponent(): JSX.Element {
     const rates = useRates();
     const { store } = useBudgetContext();
     const [showLimits, setShowLimits] = useState(false);
+    const [showRecurring, setShowRecurring] = useState(false);
     const [currency, setCurrency] = useState(defaultCurrency);
     const [isConfirmingReset, setIsConfirmingReset] = useState(false);
     const [showTrash, setShowTrash] = useState(false);
@@ -80,6 +82,9 @@ function BudgetSettingsComponent(): JSX.Element {
                     <span className='text-[15px] text-ink-secondary tabular-nums'>
                         {euro(document.budget.monthlyLimit)}
                     </span>
+                    <ChevronRight size={17} className='text-ink-quaternary' />
+                </ListRowComponent>
+                <ListRowComponent icon={<IconTileComponent icon={Repeat} color={ACCENT} size={30} />} title={t('recurring.title')} onClick={() => setShowRecurring(true)}>
                     <ChevronRight size={17} className='text-ink-quaternary' />
                 </ListRowComponent>
                 <ListRowComponent icon={<IconTileComponent icon={Euro} color={ACCENT} size={30} />} title={<label htmlFor='default-currency'>{t('settings.defaultCurrency')}</label>}>
@@ -130,6 +135,7 @@ function BudgetSettingsComponent(): JSX.Element {
             </ListGroupComponent>
 
             <BudgetLimitsComponent month={currentMonth} open={showLimits} onClose={() => setShowLimits(false)} />
+            <BudgetRecurringListComponent open={showRecurring} onClose={() => setShowRecurring(false)} />
             <BudgetTrashComponent open={showTrash} onClose={() => setShowTrash(false)} />
             <AlertComponent open={isConfirmingReset} title={t('settings.confirmReset')} message={t('settings.resetMessage')} action={t('settings.resetAction')} onConfirm={reset} onCancel={() => setIsConfirmingReset(false)} />
         </div>

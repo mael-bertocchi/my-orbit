@@ -45,9 +45,15 @@ function SheetComponent(props: SheetComponentProps): JSX.Element {
 
     /**
      * @function cancel
-     * @description Answers Escape like the close button, rather than letting the browser close the sheet on its own
+     * @description Answers Escape like the close button, rather than letting the browser close the sheet on its own. A
+     * sheet opened from within this one answers its own Escape, which React still passes up here, so only this sheet's
+     * own Escape closes it.
      */
     const cancel = (event: SyntheticEvent<HTMLDialogElement>): void => {
+        if (event.target !== dialog.current) {
+            return;
+        }
+
         event.preventDefault();
         props.onClose();
     };
