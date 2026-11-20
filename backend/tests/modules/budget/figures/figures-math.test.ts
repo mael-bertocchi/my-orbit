@@ -75,6 +75,16 @@ describe('spendingHabits', () => {
         expect(habits.inPerson).toBe(20);
         expect(habits.places).toEqual([{ place: null, location: 'Café', spent: 20, count: 1 }]);
     });
+
+    it('counts a place written by hand that names a city as that city', () => {
+        const seoul = { id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul', createdAt: new Date(0), updatedAt: new Date(0) };
+        const rows = [
+            row({ day: '2026-11-09', amount: 5, location: 'Séoul', placeId: seoul.id, place: seoul }),
+            row({ day: '2026-11-08', amount: 7, location: 'seoul ' })
+        ];
+
+        expect(spendingHabits(rows, '2026-11-10').places).toEqual([{ place: { id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul' }, location: 'Séoul', spent: 12, count: 2 }]);
+    });
 });
 
 describe('suggestions', () => {

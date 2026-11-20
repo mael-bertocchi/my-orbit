@@ -208,12 +208,26 @@ export function monthTotals(rows: readonly Pick<OperationRow, 'day' | 'amount' |
 }
 
 /**
- * @function placeKeyOf
- * @description What tells one place from another: its city, else the place as written, regardless of case. Empty when
- * the operation names no place.
+ * @function placeKeys
+ * @description What tells one place from another: its city, else the place as written, accents and case aside. A place
+ * written by hand that names one of the cities, in either language, counts as that city. Empty when the operation names
+ * no place.
+ *
+ * @param {readonly OperationRow[]} rows The operations measured.
+ *
+ * @returns {(row: OperationRow) => string} The key of an operation's place.
  */
-function placeKeyOf(row: OperationRow): string {
-    return row.placeId ?? row.location?.trim().toLowerCase() ?? '';
+function placeKeys(rows: readonly OperationRow[]): (row: OperationRow) => string {
+    const cities = new Map<string, string>();
+
+    for (const row of rows) {
+        if (row.place !== null) {
+            cities.set(foldText(row.place.nameEn), row.place.id);
+            cities.set(foldText(row.place.nameFr), row.place.id);
+        }
+    }
+
+    return (row) => row.placeId ?? (row.location !== null ? cities.get(foldText(row.location)) ?? foldText(row.location) : '');
 }
 
 /**
@@ -232,6 +246,7 @@ export function spendingHabits(rows: readonly OperationRow[], today: string): Sp
     const totals = Array.from({ length: 7 }, () => 0);
     const counts = Array.from({ length: 7 }, () => 0);
     const places = new Map<string, PlaceSpend>();
+    const placeKeyOf = placeKeys(operations);
 
     for (let day = since; day <= today; day = shiftDay(day, 1)) {
         counts[weekdayOf(day)] = (counts[weekdayOf(day)] ?? 0) + 1;
@@ -245,7 +260,7 @@ export function spendingHabits(rows: readonly OperationRow[], today: string): Sp
         if (!row.isOnline && key !== '') {
             const known = places.get(key);
 
-            places.set(key, { place: placeReferenceOf(row.place), location: row.location, spent: (known?.spent ?? 0) + euroAmount(row), count: (known?.count ?? 0) + 1 });
+            places.set(key, { place: placeReferenceOf(row.place) ?? known?.place ?? null, location: row.location, spent: (known?.spent ?? 0) + euroAmount(row), count: (known?.count ?? 0) + 1 });
         }
     }
 

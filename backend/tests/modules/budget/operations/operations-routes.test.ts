@@ -116,7 +116,7 @@ interface TestApp {
 async function buildApp(authenticate: () => Promise<void> = () => Promise.resolve()): Promise<TestApp> {
     const table = new OperationsTable();
     const upsert = vi.fn(() => Promise.resolve({ id: 'owner', monthlyLimit: 3000, revision: 1 }));
-    const places = { findUnique: vi.fn(() => Promise.resolve(null)), upsert: vi.fn(() => Promise.resolve(null)) };
+    const places = { findUnique: vi.fn(() => Promise.resolve(null)), findFirst: vi.fn(() => Promise.resolve(null)), upsert: vi.fn(() => Promise.resolve(null)) };
     const findUnique = vi.fn(() => Promise.resolve({ id: 'owner', monthlyLimit: 3000, revision: 1, timeZone: 'Asia/Seoul' }));
     const client = { budgetOperation: table, budgetState: { upsert, findUnique }, budgetPlace: places };
     const app = Fastify();

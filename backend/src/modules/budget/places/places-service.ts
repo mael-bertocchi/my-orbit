@@ -417,14 +417,22 @@ export async function locatePlace(context: PlacesContext, latitude: number, long
 
 /**
  * @function keepPlace
- * @description Stores a city once checked, so an operation can name it.
+ * @description Stores a city once checked, so an operation can name it. Geoapify may give the same city under another
+ * identity (the city's area found by name, its centre found by position): a city already stored under the same names
+ * in both languages is taken instead, so it is never counted as two.
  *
  * @param {PrismaClient} prisma The database client.
  * @param {PlaceReference} place The city.
  *
- * @returns {Promise<PlaceReference>} The city.
+ * @returns {Promise<PlaceReference>} The city, as stored.
  */
 async function keepPlace(prisma: PrismaClient, place: PlaceReference): Promise<PlaceReference> {
+    const twin = await prisma.budgetPlace.findFirst({ where: { nameEn: place.nameEn, nameFr: place.nameFr, id: { not: place.id } }, orderBy: { createdAt: 'asc' } });
+
+    if (twin !== null) {
+        return { id: twin.id, nameEn: twin.nameEn, nameFr: twin.nameFr };
+    }
+
     await prisma.budgetPlace.upsert({ where: { id: place.id }, update: { nameEn: place.nameEn, nameFr: place.nameFr }, create: place });
 
     return place;

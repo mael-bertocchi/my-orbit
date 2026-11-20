@@ -34,6 +34,8 @@ class PlacesTable {
 
     findUnique = vi.fn(({ where }: { where: { id: string } }) => Promise.resolve(this.rows.find((row) => row.id === where.id) ?? null));
 
+    findFirst = vi.fn(({ where }: { where: { nameEn: string; nameFr: string; id: { not: string } } }) => Promise.resolve(this.rows.find((row) => row.nameEn === where.nameEn && row.nameFr === where.nameFr && row.id !== where.id.not) ?? null));
+
     upsert = vi.fn(({ create }: { create: PlaceReference }) => {
         this.rows = [...this.rows.filter((row) => row.id !== create.id), create];
 
@@ -174,6 +176,15 @@ describe('checkPlace', () => {
 
         expect((await checkPlace(context, 'R2297418', 'Séoul')).nameEn).toBe('Seoul');
         expect(await statusOf(checkPlace(context, 'R1', 'Séoul'))).toBe(StatusCodes.UNPROCESSABLE_ENTITY);
+    });
+
+    it('takes the city already stored under the same names, whatever identity Geoapify gives it now', async () => {
+        stubCities([{ ...SEOUL, id: 'N2' }]);
+        const table = new PlacesTable();
+        table.rows = [{ id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul' }];
+
+        expect(await checkPlace(contextWith(table), 'N2', 'Séoul')).toEqual({ id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul' });
+        expect(table.rows).toHaveLength(1);
     });
 });
 
