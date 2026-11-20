@@ -14,7 +14,6 @@ import { dayGroups } from 'modules/budget/budget-math';
 import type { BudgetDocument, Operation } from 'modules/budget/budget-models';
 import { t } from 'modules/language/language-service';
 import BudgetDatesComponent from 'pages/budget/budget-dates/budget-dates';
-import BudgetHistorySummaryComponent from 'pages/budget/budget-history-summary/budget-history-summary';
 import OperationRowComponent from 'pages/budget/budget-operation-row/budget-operation-row';
 import { useMemo, useState, type JSX } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -91,9 +90,8 @@ function rangeOf(from: Maybe<string>, to: Maybe<string>, dates: Maybe<string>): 
  * @function BudgetHistoryComponent
  * @description The History tab: every operation grouped by day with each day's total, a search, and one row of filters:
  * a date filter on one day or a period, set to the current month up to today until it is changed or cleared, then one chip per category, several of which can be picked at once (All shows
- * every category). Under a date filter, the total of what is listed comes first. The filters live in the address, so a
- * category opened from Budget survives a reload. On a wide desktop, that total moves to a column beside the list, split
- * between categories, whatever the filters.
+ * every category). The filters live in the address, so a
+ * category opened from Budget survives a reload.
  */
 function BudgetHistoryComponent(): JSX.Element {
     const document = useDocument();
@@ -163,49 +161,29 @@ function BudgetHistoryComponent(): JSX.Element {
                 <h1 className='mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('history.title')}</h1>
             </PageHeaderComponent>
 
-            <div className='xl:grid xl:grid-cols-12 xl:gap-6'>
-                <div className='xl:col-span-8'>
-                    <SearchFieldComponent value={query} onChange={(next) => update({ q: next })} placeholder={t('history.search')} clearLabel={t('history.clearSearch')} className='mt-6' />
+            <SearchFieldComponent value={query} onChange={(next) => update({ q: next })} placeholder={t('history.search')} clearLabel={t('history.clearSearch')} className='mt-6' />
 
-                    <FilterChipsComponent label={t('history.filters')} allLabel={t('history.all')} options={options} selected={categoryIds} onChange={filterCategories} leading={dateChip} className='mt-2' />
+            <FilterChipsComponent label={t('history.filters')} allLabel={t('history.all')} options={options} selected={categoryIds} onChange={filterCategories} leading={dateChip} className='mt-2' />
 
-                    <div className='mt-2'>
-                        {groups.length === 0 && (
-                            <div className='mt-6'>
-                                <EmptyStateComponent message={isFiltered ? t('history.noMatch') : t('history.empty')} />
-                            </div>
-                        )}
-                        {range !== null && groups.length > 0 && (
-                            <div className='card mt-6 flex items-baseline justify-between gap-4 px-5 py-4 xl:hidden'>
-                                <span className='text-[15px] font-medium text-ink-secondary'>{t('history.totalSpent')}</span>
-                                <span className='text-[20px] font-semibold tracking-tight tabular-nums'>
-                                    {money(groups.reduce((total, group) => total + group.spent, 0))}
-                                </span>
-                            </div>
-                        )}
-                        {groups.map((group) => (
-                            <section key={group.date.getTime()}>
-                                <div className='flex items-baseline justify-between px-1 pb-2 pt-7'>
-                                    <h2 className='eyebrow'>{relativeDay(group.date)}</h2>
-                                    <span className='text-[13px] text-ink-tertiary tabular-nums'>{money(group.spent)}</span>
-                                </div>
-                                <div className='card divide-y divide-hairline overflow-hidden'>
-                                    {group.operations.map((operation) => (
-                                        <OperationRowComponent key={operation.id} document={document} operation={operation} onOpen={() => openEdit(operation.id)} />
-                                    ))}
-                                </div>
-                            </section>
-                        ))}
+            <div className='mt-2'>
+                {groups.length === 0 && (
+                    <div className='mt-6'>
+                        <EmptyStateComponent message={isFiltered ? t('history.noMatch') : t('history.empty')} />
                     </div>
-                </div>
-
-                {groups.length > 0 && (
-                    <aside className='hidden xl:col-span-4 xl:block'>
-                        <div className='sticky top-10 mt-6'>
-                            <BudgetHistorySummaryComponent document={document} groups={groups} range={range} />
-                        </div>
-                    </aside>
                 )}
+                {groups.map((group) => (
+                    <section key={group.date.getTime()}>
+                        <div className='flex items-baseline justify-between px-1 pb-2 pt-7'>
+                            <h2 className='eyebrow'>{relativeDay(group.date)}</h2>
+                            <span className='text-[13px] text-ink-tertiary tabular-nums'>{money(group.spent)}</span>
+                        </div>
+                        <div className='card divide-y divide-hairline overflow-hidden'>
+                            {group.operations.map((operation) => (
+                                <OperationRowComponent key={operation.id} document={document} operation={operation} onOpen={() => openEdit(operation.id)} />
+                            ))}
+                        </div>
+                    </section>
+                ))}
             </div>
 
             <BudgetDatesComponent open={isPickingDates} range={range} onApply={filterDates} onClear={() => filterDates(null)} onClose={() => setIsPickingDates(false)} />
