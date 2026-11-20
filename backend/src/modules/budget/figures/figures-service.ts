@@ -1,6 +1,6 @@
 import type { PrismaClient } from 'prisma/generated/prisma/client';
 import type { MonthComparison, MonthTotal, Spending, SpendingHabits } from 'src/modules/budget/figures/figures-math';
-import { compareMonth, latestPlace, monthOf, monthTotals, nameSuggestions, placeSuggestions, spendingHabits, spendingOf } from 'src/modules/budget/figures/figures-math';
+import { compareMonth, latestPlace, monthOf, monthTotals, nameSuggestions, placeSuggestions, shiftMonth, spendingHabits, spendingOf } from 'src/modules/budget/figures/figures-math';
 import type { PlaceReference } from 'src/modules/budget/places/places-models';
 import type { OperationRow } from 'src/modules/budget/places/places-service';
 import { WITH_PLACE } from 'src/modules/budget/places/places-service';
@@ -50,9 +50,16 @@ async function liveRows(prisma: PrismaClient): Promise<OperationRow[]> {
 }
 
 /**
+ * @constant MONEY_COLUMNS
+ * @description The only columns the month's figures read: no city, no name, no note.
+ */
+const MONEY_COLUMNS = { day: true, amount: true, rateToEuro: true, categoryId: true } as const;
+
+/**
  * @function monthFigures
  * @description Works out what a month spent, in all and per category, and in the current month how it compares with
- * what the past months usually had by the same day, which needs every month: the whole budget is read.
+ * what the past months usually had by the same day. A past month reads only its own operations; the current one reads
+ * every earlier month too, since the usual is taken from the latest months that hold operations, whatever the gaps.
  *
  * @param {PrismaClient} prisma The database client.
  * @param {string} month The month, as `YYYY-MM`.
@@ -61,10 +68,12 @@ async function liveRows(prisma: PrismaClient): Promise<OperationRow[]> {
  * @returns {Promise<MonthFigures>} The figures.
  */
 export async function monthFigures(prisma: PrismaClient, month: string, today: string): Promise<MonthFigures> {
-    const rows = await liveRows(prisma);
+    const isCurrent = month === monthOf(today);
+    const days = { gte: isCurrent ? undefined : `${month}-01`, lt: `${shiftMonth(month, 1)}-01` };
+    const rows = await prisma.budgetOperation.findMany({ where: { deletedAt: null, day: days }, select: MONEY_COLUMNS });
     const inMonth = rows.filter((row) => monthOf(row.day) === month);
 
-    return { month, today, operationCount: inMonth.length, ...spendingOf(inMonth), comparison: month === monthOf(today) ? compareMonth(rows, today) : null };
+    return { month, today, operationCount: inMonth.length, ...spendingOf(inMonth), comparison: isCurrent ? compareMonth(rows, today) : null };
 }
 
 /**
