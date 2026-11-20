@@ -83,7 +83,6 @@ describe('StateSchema', () => {
     it('accepts a complete budget document', () => {
         const state = {
             categories: [validCategory],
-            operations: [validOperation],
             budget: { monthlyLimit: 3000 },
             budgetHistory: {
                 '2026-07': { monthlyLimit: 2800, categoryLimits: { groceries: 380 } }
@@ -96,8 +95,7 @@ describe('StateSchema', () => {
     it('rejects a document with a missing collection', () => {
         const state = {
             categories: [validCategory],
-            budget: { monthlyLimit: 3000 },
-            budgetHistory: {}
+            budget: { monthlyLimit: 3000 }
         };
 
         expect(StateSchema.safeParse(state).success).toBe(false);

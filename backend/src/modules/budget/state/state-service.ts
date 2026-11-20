@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from 'prisma/generated/prisma/client';
-import { placeReferenceOf, WITH_PLACE } from 'src/modules/budget/places/places-service';
 import type { StoredStateBody } from 'src/modules/budget/state/state-models';
 import { StoredCategoryLimitsSchema } from 'src/modules/budget/state/state-models';
 import { OWNER_ID } from 'src/plugins/identity';
@@ -13,17 +12,16 @@ export const DEFAULT_MONTHLY_LIMIT = 3000;
 
 /**
  * @function pullState
- * @description Reads the whole budget document back for the owner, in the order the client expects to render it. The
- * operations in the trash are left out.
+ * @description Reads the budget document back for the owner, in the order the client expects to render it, with how
+ * many operations it holds outside the trash. The operations themselves are read a page at a time.
  *
  * @param {PrismaClient} prisma The database client.
  *
- * @returns {Promise<StoredStateBody>} The full budget document and its revision.
+ * @returns {Promise<StoredStateBody>} The budget document and its revision.
  */
 export async function pullState(prisma: PrismaClient): Promise<StoredStateBody> {
-    const [categories, operations, history, state, operationCount] = await Promise.all([
+    const [categories, history, state, operationCount] = await Promise.all([
         prisma.budgetCategory.findMany({ orderBy: { position: 'asc' } }),
-        prisma.budgetOperation.findMany({ where: { deletedAt: null }, orderBy: [{ day: 'desc' }, { time: 'desc' }], include: WITH_PLACE }),
         prisma.budgetHistory.findMany({ orderBy: { month: 'asc' } }),
         prisma.budgetState.findUnique({ where: { id: OWNER_ID } }),
         prisma.budgetOperation.count({ where: { deletedAt: null } })
@@ -36,23 +34,6 @@ export async function pullState(prisma: PrismaClient): Promise<StoredStateBody> 
             symbol: category.symbol,
             colorHex: category.colorHex,
             monthlyLimit: category.monthlyLimit
-        })),
-        operations: operations.map((operation) => ({
-            id: operation.id,
-            day: operation.day,
-            time: operation.time,
-            name: operation.name,
-            description: operation.description,
-            categoryId: operation.categoryId,
-            location: operation.location,
-            placeId: operation.placeId,
-            place: placeReferenceOf(operation.place),
-            amount: operation.amount,
-            currencyCode: operation.currencyCode,
-            rateToEuro: operation.rateToEuro,
-            isOnline: operation.isOnline,
-            recurringId: operation.recurringId,
-            updatedAt: operation.updatedAt
         })),
         budget: { monthlyLimit: state?.monthlyLimit ?? DEFAULT_MONTHLY_LIMIT },
         budgetHistory: Object.fromEntries(
