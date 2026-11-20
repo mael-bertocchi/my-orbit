@@ -197,9 +197,10 @@ export function endSession(): void {
 
 /**
  * @function renewSession
- * @description Rotates the refresh token into a new pair. Concurrent calls share one rotation.
+ * @description Rotates the refresh token into a new pair. Concurrent calls share one rotation. Only a refusal (401)
+ * ends the session: a server down for a deployment answers 502, and the session is still good once it is back.
  *
- * @returns {Promise<boolean>} Whether the session was renewed
+ * @returns {Promise<boolean>} Whether the session was renewed, false when the server refused it
  */
 async function renewSession(): Promise<boolean> {
     renewalInFlight ??= (async () => {
@@ -212,7 +213,7 @@ async function renewSession(): Promise<boolean> {
 
             const response = await send('/v1/identity/refresh', { method: 'POST', body: JSON.stringify({ refreshToken: tokens.refreshToken }) });
 
-            if (!response.ok) {
+            if (response.status === 401) {
                 return false;
             }
 

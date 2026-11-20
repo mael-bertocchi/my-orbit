@@ -63,6 +63,21 @@ describe('fetchWithAuthentication', () => {
 
         window.removeEventListener(IDENTITY_SESSION_ENDED_EVENT, ended);
     });
+
+    it('keeps the session when the server is down while renewing it', async () => {
+        setTokens(TOKENS);
+        answers([401, { message: 'Invalid or expired access token' }], [502, null]);
+
+        const ended = vi.fn();
+
+        window.addEventListener(IDENTITY_SESSION_ENDED_EVENT, ended);
+
+        await expect(fetchWithAuthentication('/v1/budget/state', { method: 'GET' }, z.string())).rejects.toBeInstanceOf(RequestError);
+        expect(ended).not.toHaveBeenCalled();
+        expect(getTokens()).toEqual(TOKENS);
+
+        window.removeEventListener(IDENTITY_SESSION_ENDED_EVENT, ended);
+    });
 });
 
 describe('fetchPublic', () => {
