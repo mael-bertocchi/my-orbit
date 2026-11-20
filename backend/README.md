@@ -26,7 +26,7 @@ Node 24 · Fastify 5 · TypeScript · Prisma 7 · PostgreSQL · Zod · SimpleWeb
 | `POST /v1/identity/login` | public | Exchange the passkey's signed `{ response }` for an access/refresh token pair |
 | `POST /v1/identity/connect` | public | For the portal's connect page: exchange a signed `{ response }` and the app's PKCE `{ challenge }` for a one-time `code` |
 | `POST /v1/identity/connect/token` | public | For the app: exchange the `{ code, verifier }` for a token pair, once |
-| `GET /v1/identity/enrollment` | public | Whether an enrollment token is set (`{ open }`) |
+| `GET /v1/identity/enrollment` | public | Whether a passkey can be created with the enrollment token: one is set and no passkey is stored yet (`{ open }`) |
 | `POST /v1/identity/enrollment/options` | token | A challenge to create a passkey, for whoever holds the enrollment `{ token }` |
 | `POST /v1/identity/enrollment` | token | Store that passkey and sign in with it |
 | `GET /v1/identity/passkeys` | access | List the owner's passkeys |
@@ -131,7 +131,7 @@ Every passkey is bound to the host of `IDENTITY_ORIGIN`, and the server only acc
 IDENTITY_ENROLLMENT_TOKEN="$(openssl rand -base64 32)"
 ```
 
-While it is set, the portal's sign-in page offers **Set up a passkey**: paste the token, create the passkey, and you are signed in. Then **remove the variable** and redeploy: enrollment closes, and new passkeys are only added from the account settings, signed in. If you ever lose every passkey, set a new token the same way.
+While it is set, the portal's sign-in page offers **Set up a passkey**: paste the token, create the passkey, and you are signed in. Enrollment closes by itself once that first passkey is stored, even if the variable stays set; still **remove the variable** and redeploy. New passkeys are then only added from the account settings, signed in. If you ever lose every passkey, empty the `identity_passkeys` table, then set a new token the same way.
 
 **The iOS app** can't use the portal's passkeys directly (that takes the Associated Domains capability, out of reach of a free developer team), so it signs in through the portal: it opens `/connect` in a browser sheet with a PKCE challenge, the page signs in with the passkey and gets a one-time code bound to that challenge (`POST /v1/identity/connect`), and the app trades it with its verifier (`POST /v1/identity/connect/token`). A code lives two minutes, works once, and is useless without the verifier.
 

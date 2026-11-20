@@ -262,6 +262,15 @@ describe('enrollment', () => {
         expect((await post(closed.app, '/v1/identity/enrollment/options', { token: TOKEN })).statusCode).toBe(StatusCodes.FORBIDDEN);
     });
 
+    it('closes once the first passkey is stored, even with the token still set', async () => {
+        const { app } = await buildApp();
+
+        await enroll(app, new SoftwareAuthenticator({ origin: ORIGIN }));
+
+        expect((await app.inject({ method: 'GET', url: '/v1/identity/enrollment' })).json()).toEqual({ data: { open: false } });
+        expect((await post(app, '/v1/identity/enrollment/options', { token: TOKEN })).statusCode).toBe(StatusCodes.FORBIDDEN);
+    });
+
     it('files the passkey under the portal and the owner’s name', async () => {
         const { app } = await buildApp();
         const options = (await post(app, '/v1/identity/enrollment/options', { token: TOKEN })).json<{ data: { rp: { id: string; name: string }; user: { name: string }; authenticatorSelection: { residentKey: string; userVerification: string } } }>().data;
@@ -338,9 +347,9 @@ describe('POST /v1/identity/login', () => {
         const { app } = await buildApp();
         const authenticator = new SoftwareAuthenticator({ origin: ORIGIN });
 
-        await enroll(app, authenticator);
+        const tokens = await enroll(app, authenticator);
 
-        const registration = await post(app, '/v1/identity/enrollment/options', { token: TOKEN });
+        const registration = await post(app, '/v1/identity/passkeys/options', {}, tokens.accessToken);
 
         expect((await post(app, '/v1/identity/login', { response: authenticator.get(challengeOf(registration)) })).statusCode).toBe(StatusCodes.UNAUTHORIZED);
         expect((await post(app, '/v1/identity/login', { response: authenticator.get('bWFkZS11cA') })).statusCode).toBe(StatusCodes.UNAUTHORIZED);

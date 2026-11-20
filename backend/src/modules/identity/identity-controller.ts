@@ -6,14 +6,25 @@ import { OWNER_ID } from 'src/plugins/identity';
 import { RequestError } from 'src/shared/models';
 
 /**
- * @function requireEnrollmentToken
- * @description Lets a request through only with the enrollment token set in the environment. Without one set, enrollment
- * is closed and every token is refused.
+ * @function isEnrollmentOpen
+ * @description Whether a passkey can be created with the enrollment token: one must be set, and no passkey stored yet.
+ * Once the first one exists, the others are added from the account page, so a token left set can't open the account.
  *
- * @returns {void} Returns when the token holds; throws 403 otherwise.
+ * @returns {Promise<boolean>} Whether enrollment is open.
  */
-function requireEnrollmentToken(request: FastifyRequest, token: string): void {
-    if (!request.server.identity.isEnrollmentToken(token)) {
+async function isEnrollmentOpen(request: FastifyRequest): Promise<boolean> {
+    return request.server.variables.IDENTITY_ENROLLMENT_TOKEN !== '' && await request.server.prisma.identityPasskey.count() === 0;
+}
+
+/**
+ * @function requireEnrollmentToken
+ * @description Lets a request through only with the enrollment token set in the environment, while no passkey is
+ * stored. Otherwise enrollment is closed and every token is refused.
+ *
+ * @returns {Promise<void>} Resolves when the token holds; throws 403 otherwise.
+ */
+async function requireEnrollmentToken(request: FastifyRequest, token: string): Promise<void> {
+    if (!request.server.identity.isEnrollmentToken(token) || !await isEnrollmentOpen(request)) {
         throw new RequestError(StatusCodes.FORBIDDEN, 'Enrollment is closed or the token is wrong');
     }
 }
@@ -79,13 +90,13 @@ async function connectToken(request: FastifyRequest<ConnectTokenRequest>, reply:
 
 /**
  * @function enrollment
- * @description Tells the sign-in page whether an enrollment token is set, so it only offers to create a passkey when one
+ * @description Tells the sign-in page whether enrollment is open, so it only offers to create a passkey when one
  * could be.
  *
- * @returns {void} Returns when the answer is sent.
+ * @returns {Promise<void>} Resolves when the answer is sent.
  */
-function enrollment(request: FastifyRequest, reply: FastifyReply): void {
-    reply.status(StatusCodes.OK).send({ data: { open: request.server.variables.IDENTITY_ENROLLMENT_TOKEN !== '' } });
+async function enrollment(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    reply.status(StatusCodes.OK).send({ data: { open: await isEnrollmentOpen(request) } });
 }
 
 /**
@@ -95,7 +106,7 @@ function enrollment(request: FastifyRequest, reply: FastifyReply): void {
  * @returns {Promise<void>} Resolves when the options are sent.
  */
 async function enrollmentOptions(request: FastifyRequest<EnrollmentOptionsRequest>, reply: FastifyReply): Promise<void> {
-    requireEnrollmentToken(request, request.body.token);
+    await requireEnrollmentToken(request, request.body.token);
 
     const options = await passkeyOptions(request.server.prisma, request.server.identity);
 
@@ -111,7 +122,7 @@ async function enrollmentOptions(request: FastifyRequest<EnrollmentOptionsReques
 async function enroll(request: FastifyRequest<EnrollmentRequest>, reply: FastifyReply): Promise<void> {
     const { identity, prisma } = request.server;
 
-    requireEnrollmentToken(request, request.body.token);
+    await requireEnrollmentToken(request, request.body.token);
 
     await addPasskey(prisma, identity, request.body.response, true);
 
