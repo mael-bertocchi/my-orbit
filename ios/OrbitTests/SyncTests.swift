@@ -3,8 +3,8 @@ import XCTest
 
 /**
  * @class SyncTests
- * @description The merge and the diff that decide what the device and the server keep of each other's edits, and the
- * text limits that keep a write from being refused
+ * @description The merge and the diff that decide what the device and the server keep of each other's edits, the
+ * changes to the operations waiting on the device, and the text limits that keep a write from being refused
  */
 final class SyncTests: XCTestCase {
     /**
@@ -27,74 +27,109 @@ final class SyncTests: XCTestCase {
     }
 
     /**
-     * @method document
-     * @description A budget holding only operations
+     * @method category
+     * @description A category with the limit the tests change
      *
-     * @param operations Its operations
+     * @param id Its id
+     * @param limit Its monthly limit
+     * @returns The category
+     */
+    private func category(_ id: String, _ limit: Double) -> Orbit.Category {
+        Orbit.Category(id: id, name: id, symbol: "cart", colorHex: 0, monthlyLimit: limit)
+    }
+
+    /**
+     * @method document
+     * @description A budget holding only categories
+     *
+     * @param categories Its categories
      * @returns The budget
      */
-    private func document(_ operations: [Orbit.Operation]) -> BudgetDocument {
-        BudgetDocument(categories: Orbit.Category.defaults, operations: operations, budget: .default, budgetHistory: [:])
+    private func document(_ categories: [Orbit.Category]) -> BudgetDocument {
+        BudgetDocument(categories: categories, budget: .default, budgetHistory: [:])
     }
 
     /**
      * @method testKeepsEachSideEdits
-     * @description An operation changed on each side, and one added on each side, all end up in the merge
+     * @description A category changed on each side, and one added on each side, all end up in the merge
      */
     func testKeepsEachSideEdits() {
-        let base = document([operation("a", "Bakery", 4), operation("b", "Market", 20)])
-        let local = document([operation("a", "Bakery", 5), operation("b", "Market", 20), operation("c", "Cinema", 12)])
-        let remote = document([operation("a", "Bakery", 4), operation("b", "Market", 22), operation("d", "Train", 30)])
+        let base = document([category("a", 4), category("b", 20)])
+        let local = document([category("a", 5), category("b", 20), category("c", 12)])
+        let remote = document([category("a", 4), category("b", 22), category("d", 30)])
 
         let merged = DocumentMerge.merge(base: base, local: local, remote: remote)
-        let amounts = Dictionary(uniqueKeysWithValues: merged.operations.map { ($0.id, $0.amount) })
+        let limits = Dictionary(uniqueKeysWithValues: merged.categories.map { ($0.id, $0.monthlyLimit) })
 
-        XCTAssertEqual(amounts, ["a": 5, "b": 22, "c": 12, "d": 30])
+        XCTAssertEqual(limits, ["a": 5, "b": 22, "c": 12, "d": 30])
     }
 
     /**
      * @method testEditBeatsDeletion
-     * @description An operation edited on the device while the server deleted it is kept with the edit, as the web page
-     * does too
+     * @description A category edited on the device while the server deleted it is kept with the edit, and sent back
      */
     func testEditBeatsDeletion() {
-        let base = document([operation("a", "Bakery", 4)])
-        let local = document([operation("a", "Bakery", 6)])
+        let base = document([category("a", 4)])
+        let local = document([category("a", 6)])
         let remote = document([])
 
         let merged = DocumentMerge.merge(base: base, local: local, remote: remote)
 
-        XCTAssertEqual(merged.operations.map(\.amount), [6])
-        XCTAssertEqual(DocumentDiff.writes(from: remote, to: merged), [.createOperation(operation("a", "Bakery", 6))])
+        XCTAssertEqual(merged.categories.map(\.monthlyLimit), [6])
+        XCTAssertEqual(DocumentDiff.writes(from: remote, to: merged), [.storeCategory(category("a", 6), position: 0)])
     }
 
     /**
-     * @method testDeletionOfAnUntouchedOperation
-     * @description An operation left alone on the device and deleted on the server is deleted, with nothing to send back
+     * @method testDeletionOfAnUntouchedCategory
+     * @description A category left alone on the device and deleted on the server is deleted, with nothing to send back
      */
-    func testDeletionOfAnUntouchedOperation() {
-        let base = document([operation("a", "Bakery", 4)])
-        let local = document([operation("a", "Bakery", 4)])
+    func testDeletionOfAnUntouchedCategory() {
+        let base = document([category("a", 4)])
+        let local = document([category("a", 4)])
         let remote = document([])
 
         let merged = DocumentMerge.merge(base: base, local: local, remote: remote)
 
-        XCTAssertTrue(merged.operations.isEmpty)
+        XCTAssertTrue(merged.categories.isEmpty)
         XCTAssertTrue(DocumentDiff.writes(from: remote, to: merged).isEmpty)
     }
 
     /**
-     * @method testNothingToSendWhenInStep
-     * @description Two budgets alike, down to the server's update stamps, need no write
+     * @method testFoldsThePendingChanges
+     * @description The changes waiting on the device show as they now read, and move the month's figures: a new
+     * operation changed again counts once, a change counts its difference, a deletion takes the operation off, and a
+     * reset hides every operation the server sent
      */
-    func testNothingToSendWhenInStep() {
-        var stamped = operation("a", "Bakery", 4)
-        stamped.updatedAt = .now
-        let remote = document([stamped])
-        let local = document([operation("a", "Bakery", 4)])
+    func testFoldsThePendingChanges() {
+        var edited = operation("a", "Bakery", 6)
+        edited.date = day.addingTimeInterval(60)
+        let pending = PendingOperations.folding([.save(operation("a", "Bakery", 4), previous: nil), .save(edited, previous: operation("a", "Bakery", 4)), .save(operation("b", "Market", 22), previous: operation("b", "Market", 20)), .delete(operation("c", "Cinema", 12))])
 
-        XCTAssertTrue(DocumentMerge.sameContent(local, remote))
-        XCTAssertTrue(DocumentDiff.writes(from: remote, to: local).isEmpty)
+        XCTAssertEqual(pending.saved.map(\.amount), [6, 22])
+        XCTAssertTrue(pending.hides("b"))
+        XCTAssertTrue(pending.hides("c"))
+        XCTAssertFalse(pending.hides("d"))
+        XCTAssertEqual(pending.spendingChange(in: day).spent, 6 + 2 - 12)
+
+        let reset = PendingOperations.folding([.delete(operation("c", "Cinema", 12)), .deleteEvery, .save(operation("e", "Cinema", 12), previous: nil)])
+
+        XCTAssertTrue(reset.hides("d"))
+        XCTAssertEqual(reset.saved.map(\.id), ["e"])
+    }
+
+    /**
+     * @method testTurnsTheStoredOperationsIntoPendingChanges
+     * @description The operations an older version kept on the device are sent when they were logged, changed or deleted
+     * since the last sync, and left alone otherwise
+     */
+    func testTurnsTheStoredOperationsIntoPendingChanges() throws {
+        let local = try JSONCoding.encoder.encode(["operations": [operation("a", "Bakery", 4), operation("b", "Market", 22), operation("c", "Cinema", 12)]])
+        let base = try JSONCoding.encoder.encode(["document": ["operations": [operation("a", "Bakery", 4), operation("b", "Market", 20), operation("d", "Train", 30)]]])
+
+        let changes = LegacyDocument.pendingChanges(local: local, base: base)
+
+        XCTAssertEqual(changes, [.save(operation("b", "Market", 22), previous: operation("b", "Market", 20)), .save(operation("c", "Cinema", 12), previous: nil), .delete(operation("d", "Train", 30))])
+        XCTAssertTrue(LegacyDocument.pendingChanges(local: try JSONCoding.encoder.encode(["budgetHistory": [String: Int]()]), base: base).isEmpty)
     }
 
     /**

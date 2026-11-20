@@ -93,6 +93,7 @@ struct RecurringEditorSheet: View {
     @Environment(ApplicationSession.self) private var session /*!< The session with the server */
     @Environment(\.dismiss) private var dismiss /*!< Closes the sheet */
 
+    @State private var nameSuggestions: [String] = [] /*!< The names of earlier operations matching the name typed */
     @State private var amountText = "" /*!< The amount, as typed */
     @State private var currencyCode = Currency.euro.code /*!< The currency the amount is in */
     @State private var categoryId = "" /*!< The category picked */
@@ -201,6 +202,9 @@ struct RecurringEditorSheet: View {
             Text("No occurrence will be logged anymore. Those already logged stay in the budget.")
         }
         .onAppear(perform: loadValues)
+        .task(id: focus == .name ? name.trimmingCharacters(in: .whitespaces) : "") {
+            await suggestNames(focus == .name ? name.trimmingCharacters(in: .whitespaces) : "")
+        }
         .onChange(of: amountText) { _, typed in
             let formatted = Formatting.groupedAmountInput(Formatting.sanitizeAmountInput(typed))
             if formatted != typed {
@@ -416,7 +420,25 @@ struct RecurringEditorSheet: View {
         guard focus == .name else {
             return []
         }
-        return BudgetMath.nameSuggestions(store.operations, typed: name).map { Suggestion(value: $0) }
+        return nameSuggestions.map { Suggestion(value: $0) }
+    }
+
+    /**
+     * @method suggestNames
+     * @description Asks the server for the names of earlier operations matching the name typed, once typing pauses
+     *
+     * @param typed The name typed, empty while it isn't being typed
+     */
+    private func suggestNames(_ typed: String) async {
+        guard !typed.isEmpty else {
+            nameSuggestions = []
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(250))
+        guard !Task.isCancelled, let found = await session.suggestions(name: typed, city: ""), !Task.isCancelled else {
+            return
+        }
+        nameSuggestions = found.names
     }
 
     /**

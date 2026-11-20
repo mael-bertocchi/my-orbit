@@ -29,16 +29,20 @@ enum JSONCoding {
 
 /**
  * @class LocalStore
- * @description The budget kept on the device, as a JSON file in Application Support: the working copy the server syncs
- * with. Every change is saved at once and announced, so the session can push it
+ * @description The budget's settings kept on the device, as a JSON file in Application Support: the working copy the
+ * server syncs with. The operations stay on the server; only the changes to them not yet stored there are kept, in
+ * their own file, until the session sends them. Every change is saved at once and announced, so the session can push it
  */
 @MainActor
 @Observable
 final class LocalStore {
     private(set) var categories: [Category] = [] /*!< The spending categories: the shipped catalogue first, then any kept for their operations */
-    private(set) var operations: [Operation] = [] /*!< Every operation, latest first */
     private(set) var budget: BudgetSettings = .default /*!< The monthly budget */
     private(set) var budgetHistory: [String: MonthlyBudget] = [:] /*!< Each finished month's own budget, by month */
+    private(set) var pending: [PendingChange] = [] /*!< The changes to the operations not yet stored on the server, oldest first */
+    private(set) var pendingOperations = PendingOperations() /*!< What those changes add up to, for showing them */
+    private(set) var revision = 0 /*!< The server's latest known revision, which moves on with every write: the views read the server again when it does */
+    private(set) var operationCount = 0 /*!< How many operations the server holds, as it last said */
 
     @ObservationIgnored var onChange: (() -> Void)? /*!< Called after every local change, to push it */
     @ObservationIgnored private var isApplyingRemote = false /*!< Whether the change comes from the server, which needs no pushing back */
@@ -49,6 +53,8 @@ final class LocalStore {
      */
     init() {
         load()
+        loadPending()
+        migrateOperations()
         let stored = categories
         mergeCatalog()
         if categories != stored {
@@ -63,12 +69,7 @@ final class LocalStore {
      * @returns The budget
      */
     func document() -> BudgetDocument {
-        BudgetDocument(
-            categories: categories,
-            operations: operations,
-            budget: budget,
-            budgetHistory: budgetHistory
-        )
+        BudgetDocument(categories: categories, budget: budget, budgetHistory: budgetHistory)
     }
 
     /**
@@ -81,12 +82,22 @@ final class LocalStore {
         isApplyingRemote = true
         defer { isApplyingRemote = false }
         categories = document.categories
-        operations = document.operations
         budget = document.budget
         budgetHistory = document.budgetHistory
         mergeCatalog()
-        sortOperations()
         persist()
+    }
+
+    /**
+     * @method applyServer
+     * @description Takes what the server last said of its operations: its revision and how many it holds
+     *
+     * @param revision The revision
+     * @param operationCount How many operations it holds
+     */
+    func applyServer(revision: Int, operationCount: Int) {
+        self.revision = revision
+        self.operationCount = operationCount
     }
 
     /**
@@ -112,69 +123,29 @@ final class LocalStore {
     }
 
     /**
-     * @method upsertOperation
-     * @description Adds an operation, or replaces the one with its id, stamped as just updated
+     * @method enqueue
+     * @description Keeps a change to the operations until the server takes it, and announces it
      *
-     * @param operation The operation
+     * @param change The change
      */
-    func upsertOperation(_ operation: Operation) {
-        var updated = operation
-        updated.updatedAt = .now
-        if let index = operations.firstIndex(where: { $0.id == operation.id }) {
-            operations[index] = updated
-        } else {
-            operations.append(updated)
-        }
-        sortOperations()
-        save()
+    func enqueue(_ change: PendingChange) {
+        pending.append(change)
+        pendingOperations = PendingOperations.folding(pending)
+        savePending()
+        onChange?()
     }
 
     /**
-     * @method reprice
-     * @description Rewrites the rate of the operations a later publication priced differently
-     *
-     * @param rates The new rate to the euro, by operation id
+     * @method settleFirstPending
+     * @description Forgets the oldest change waiting, once the server took it or turned it away for good
      */
-    func reprice(_ rates: [String: Double]) {
-        var changed = false
-
-        for (id, rate) in rates {
-            guard let index = operations.firstIndex(where: { $0.id == id }), operations[index].rateToEuro != rate else {
-                continue
-            }
-
-            operations[index].rateToEuro = rate
-            operations[index].updatedAt = .now
-            changed = true
-        }
-
-        guard changed else {
+    func settleFirstPending() {
+        guard !pending.isEmpty else {
             return
         }
-
-        save()
-    }
-
-    /**
-     * @method deleteOperation
-     * @description Deletes an operation
-     *
-     * @param id Its id
-     */
-    func deleteOperation(id: String) {
-        operations.removeAll { $0.id == id }
-        save()
-    }
-
-    /**
-     * @method operation
-     * @description An operation by its id
-     *
-     * @param id Its id
-     * @returns The operation, or nil when there is none
-     */
-    func operation(id: String) -> Operation? {
-        operations.first { $0.id == id }
+        pending.removeFirst()
+        pendingOperations = PendingOperations.folding(pending)
+        savePending()
     }
 
     /**
@@ -197,42 +168,6 @@ final class LocalStore {
      */
     func monthlyBudget(for month: Date) -> MonthlyBudget {
         budgetHistory[BudgetMath.monthKey(month)] ?? liveBudget
-    }
-
-    /**
-     * @method sealCompletedMonths
-     * @description Gives every finished month that has none yet a budget of its own, copied from the live one, so
-     * changing the live limits later doesn't rewrite the past. That budget stays editable on its own
-     *
-     * @param now The current date
-     */
-    func sealCompletedMonths(now: Date = .now) {
-        guard let earliest = operations.map(\.date).min() else {
-            return
-        }
-        let snapshot = liveBudget
-        let currentMonth = BudgetMath.monthStart(now)
-        var month = BudgetMath.monthStart(earliest)
-        var sealed = false
-        while month < currentMonth {
-            let key = BudgetMath.monthKey(month)
-            if budgetHistory[key] == nil {
-                budgetHistory[key] = snapshot
-                sealed = true
-            }
-            month = BudgetMath.shiftMonth(month, by: 1)
-        }
-        if sealed {
-            save()
-        }
-    }
-
-    /**
-     * @method latestPlace
-     * @description The city of the latest in-person operation that has one, to suggest it for the next one
-     */
-    var latestPlace: PlaceReference? {
-        operations.first { !$0.isOnline && $0.place != nil }?.place
     }
 
     /**
@@ -269,22 +204,15 @@ final class LocalStore {
 
     /**
      * @method replaceAll
-     * @description Replaces the whole budget, for the demonstration
+     * @description Replaces the budget's settings, for the demonstration
      *
      * @param categories The categories
-     * @param operations The operations
      * @param budget The monthly budget
      */
-    func replaceAll(
-        categories: [Category],
-        operations: [Operation],
-        budget: BudgetSettings
-    ) {
+    func replaceAll(categories: [Category], budget: BudgetSettings) {
         self.categories = categories
-        self.operations = operations
         self.budget = budget
         budgetHistory = [:]
-        sortOperations()
         save()
     }
 
@@ -294,10 +222,10 @@ final class LocalStore {
      */
     func clearAll() {
         categories = Category.defaults
-        operations = []
         budget = .default
         budgetHistory = [:]
         save()
+        enqueue(.deleteEvery)
     }
 
     /**
@@ -320,10 +248,57 @@ final class LocalStore {
             return
         }
         categories = document.categories
-        operations = document.operations
         budget = document.budget
         budgetHistory = document.budgetHistory
-        sortOperations()
+    }
+
+    /**
+     * @method pendingURL
+     * @description Where the changes to the operations not yet stored on the server are kept
+     */
+    private static var pendingURL: URL {
+        fileURL.deletingLastPathComponent().appending(path: "pending-operations.json")
+    }
+
+    /**
+     * @method loadPending
+     * @description Reads back the changes to the operations not yet stored on the server
+     */
+    private func loadPending() {
+        guard let data = try? Data(contentsOf: Self.pendingURL),
+              let changes = try? JSONCoding.decoder.decode([PendingChange].self, from: data) else {
+            return
+        }
+        pending = changes
+        pendingOperations = PendingOperations.folding(changes)
+    }
+
+    /**
+     * @method savePending
+     * @description Writes the changes to the operations not yet stored on the server
+     */
+    private func savePending() {
+        if let data = try? JSONCoding.encoder.encode(pending) {
+            try? data.write(to: Self.pendingURL, options: .atomic)
+        }
+    }
+
+    /**
+     * @method migrateOperations
+     * @description Turns the operations an older version of the app kept on the device into changes to send, for those
+     * it logged, changed or deleted since its last sync, then writes the budget file without them, so it runs once
+     */
+    private func migrateOperations() {
+        guard let data = try? Data(contentsOf: Self.fileURL), data.range(of: Data("\"operations\"".utf8)) != nil else {
+            return
+        }
+        let changes = LegacyDocument.pendingChanges(local: data, base: SyncBase.storedData())
+        if !changes.isEmpty {
+            pending += changes
+            pendingOperations = PendingOperations.folding(pending)
+            savePending()
+        }
+        persist()
     }
 
     /**
@@ -345,14 +320,6 @@ final class LocalStore {
         if let data = try? JSONCoding.encoder.encode(document()) {
             try? data.write(to: Self.fileURL, options: .atomic)
         }
-    }
-
-    /**
-     * @method sortOperations
-     * @description Puts the operations latest first
-     */
-    private func sortOperations() {
-        operations.sort { $0.date > $1.date }
     }
 
     /**

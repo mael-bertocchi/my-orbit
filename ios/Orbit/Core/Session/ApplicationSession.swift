@@ -4,7 +4,8 @@ import Observation
 /**
  * @class ApplicationSession
  * @description The session with the server, and the sync of the budget: it signs in through the portal, pushes every
- * local change, and reconciles with what the web interface wrote whenever the app becomes active
+ * local change, sends the changes to the operations kept on the device, and reconciles with what the web interface
+ * wrote whenever the app becomes active. The operations and the figures worked out from them are read from the server
  */
 @MainActor
 @Observable
@@ -45,6 +46,7 @@ final class ApplicationSession {
     private var syncTask: Task<Void, Never>? /*!< The sync under way, which the next one waits for */
     private var base: SyncBase? /*!< The last budget both sides agreed on, which the merge measures each side's edits against */
     private var isDemo = false /*!< Whether the app runs the demonstration, which never touches the network */
+    private var demoOperations: [Operation] = [] /*!< The demonstration's sample operations, served in place of the server's */
 
     /**
      * @constructor init
@@ -78,7 +80,6 @@ final class ApplicationSession {
         wireLocalChanges()
         refreshRates()
         await reconcile()
-        repriceRecentOperations()
     }
 
     /**
@@ -96,7 +97,6 @@ final class ApplicationSession {
         wireLocalChanges()
         refreshRates()
         await reconcile()
-        repriceRecentOperations()
     }
 
     /**
@@ -235,62 +235,87 @@ final class ApplicationSession {
 
         Task {
             await reconcile()
-            repriceRecentOperations()
         }
+    }
+
+    /**
+     * @method operations
+     * @description Reads a page of the operations matching the filters, the latest first
+     *
+     * @param query The filters
+     * @param offset How many operations to skip
+     * @param limit How many operations to read
+     * @returns The page, with how many operations match in all
+     */
+    func operations(_ query: OperationQuery, offset: Int, limit: Int) async throws -> OperationPage {
+        #if DEBUG
+        if isDemo {
+            return DemoFigures.page(demoOperations, query: query, offset: offset, limit: limit)
+        }
+        #endif
+        return try await api.listOperations(query, offset: offset, limit: limit)
+    }
+
+    /**
+     * @method monthFigures
+     * @description Reads what a month spent, worked out by the server
+     *
+     * @param month Any day of the month
+     * @returns The figures
+     */
+    func monthFigures(_ month: Date) async throws -> MonthFigures {
+        #if DEBUG
+        if isDemo {
+            return DemoFigures.month(demoOperations, month: month)
+        }
+        #endif
+        return try await api.monthFigures(BudgetMath.monthKey(month))
+    }
+
+    /**
+     * @method analysisFigures
+     * @description Reads what the Analysis tab shows, worked out by the server
+     *
+     * @returns The figures
+     */
+    func analysisFigures() async throws -> AnalysisFigures {
+        #if DEBUG
+        if isDemo {
+            return DemoFigures.analysis(demoOperations)
+        }
+        #endif
+        return try await api.analysisFigures()
+    }
+
+    /**
+     * @method suggestions
+     * @description Reads what the editors suggest for what is typed: earlier names and cities, and the city of the
+     * latest operation in person. Nothing when the server can't be reached
+     *
+     * @param name The name typed
+     * @param city The city typed
+     * @returns The suggestions, nil when they couldn't be read
+     */
+    func suggestions(name: String, city: String) async -> Suggestions? {
+        guard !isDemo else {
+            return nil
+        }
+        return try? await api.suggestions(name: name, city: city)
     }
 
     #if DEBUG
     /**
      * @method enterDemo
      * @description Runs the demonstration: signed in, without ever touching the network
+     *
+     * @param operations The sample operations, served in place of the server's
      */
-    func enterDemo() {
+    func enterDemo(operations: [Operation]) {
         isDemo = true
+        demoOperations = operations
         identityState = .signedIn
     }
     #endif
-
-    /**
-     * @method repriceRecentOperations
-     * @description Prices the recent foreign operations again at their own day's published rate, which may have been
-     * missing when they were logged
-     */
-    private func repriceRecentOperations() {
-        guard !isDemo else {
-            return
-        }
-
-        Task { [store, rates] in
-            guard let horizon = Calendar.current.date(byAdding: .day, value: -Self.repriceWindowDays, to: .now) else {
-                return
-            }
-
-            let candidates = store.operations.filter { $0.date >= horizon && $0.currencyCode != Currency.euro.code }
-
-            guard !candidates.isEmpty else {
-                return
-            }
-
-            for day in Set(candidates.map { ExchangeRates.day(from: $0.date) }) {
-                await rates.load(day: day)
-            }
-
-            var corrected: [String: Double] = [:]
-
-            for operation in candidates {
-                let day = ExchangeRates.day(from: operation.date)
-
-                guard let published = rates.rate(code: operation.currencyCode, on: day),
-                      abs(published - operation.rateToEuro) > Self.rateEpsilon else {
-                    continue
-                }
-
-                corrected[operation.id] = published
-            }
-
-            store.reprice(corrected)
-        }
-    }
 
     /**
      * @method refreshRates
@@ -375,7 +400,7 @@ final class ApplicationSession {
      * to send
      */
     private func performPush() async {
-        if let base, DocumentMerge.sameContent(store.document(), base.document) {
+        if store.pending.isEmpty, let base, DocumentMerge.sameContent(store.document(), base.document) {
             markSynced()
             return
         }
@@ -387,7 +412,8 @@ final class ApplicationSession {
      * @method performReconcile
      * @description Pulls the server's budget, merges it with the device's against the base, applies the result, then
      * sends the server only the entries it lacks, one write each: no write can replace the whole budget, so what
-     * another device wrote to other entries in between is never touched
+     * another device wrote to other entries in between is never touched. The changes to the operations kept on the
+     * device go after them, in order; the server is then read again, so the views catch up with what it holds
      */
     private func performReconcile() async {
         syncState = .syncing
@@ -405,28 +431,62 @@ final class ApplicationSession {
                 try await api.write(write)
             }
 
+            let hadPending = !store.pending.isEmpty
+            let dropped = try await sendPending()
+            var latest = remote
+
+            if hadPending {
+                latest = try await api.getState()
+            }
+
+            store.applyServer(revision: latest.revision, operationCount: latest.operationCount)
             commit(result, revision: remote.revision)
+
+            if dropped > 0 {
+                syncState = .error(String(appLocalized: "The server refused an operation logged on this device, which was dropped."))
+            }
         } catch {
             fail(error)
         }
     }
 
     /**
+     * @method sendPending
+     * @description Sends the changes to the operations kept on the device, oldest first, forgetting each once the server
+     * took it. One the server turns away for good, such as a change it finds invalid, is dropped so it can't hold the
+     * others back; one that fails otherwise stops the send, to be tried again at the next sync
+     *
+     * @returns How many changes were dropped
+     */
+    private func sendPending() async throws -> Int {
+        var dropped = 0
+
+        while let change = store.pending.first {
+            do {
+                try await api.write(change.write)
+            } catch let error as APIError where error.isRefusal {
+                dropped += 1
+            }
+            store.settleFirstPending()
+        }
+
+        return dropped
+    }
+
+    /**
      * @method resolve
      * @description The budget to keep from the server's: merged against the base when there is one, the server's
-     * otherwise, or the device's when the server is empty
+     * otherwise
      *
      * @param remote The server's budget and revision
      * @returns The budget to keep
      */
     private func resolve(_ remote: RemoteState) -> BudgetDocument {
-        let local = store.document()
-
         guard let base, remote.revision >= base.revision else {
-            return remote.document.isEmpty && !local.isEmpty ? local : remote.document
+            return remote.document
         }
 
-        return DocumentMerge.merge(base: base.document, local: local, remote: remote.document)
+        return DocumentMerge.merge(base: base.document, local: store.document(), remote: remote.document)
     }
 
     /**
@@ -495,17 +555,6 @@ final class ApplicationSession {
         }
     }
 
-    /**
-     * @constant repriceWindowDays
-     * @description How far back the re-pricing sweep looks. Only recent operations can still be waiting on a
-     * publication
-     */
-    private static let repriceWindowDays = 7
-    /**
-     * @constant rateEpsilon
-     * @description The smallest rate difference worth rewriting an operation for
-     */
-    private static let rateEpsilon = 1e-9
     /**
      * @constant serverURL
      * @description The server's address

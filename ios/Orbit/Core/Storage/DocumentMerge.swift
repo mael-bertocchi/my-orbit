@@ -20,7 +20,6 @@ enum DocumentMerge {
     static func merge(base: BudgetDocument, local: BudgetDocument, remote: BudgetDocument) -> BudgetDocument {
         BudgetDocument(
             categories: merge(base: base.categories, local: local.categories, remote: remote.categories, same: ==),
-            operations: merge(base: base.operations, local: local.operations, remote: remote.operations, same: sameOperation),
             budget: local.budget != base.budget ? local.budget : remote.budget,
             budgetHistory: merge(base: base.budgetHistory, local: local.budgetHistory, remote: remote.budgetHistory)
         )
@@ -28,26 +27,14 @@ enum DocumentMerge {
 
     /**
      * @method sameContent
-     * @description Whether two budgets hold the same thing, ignoring what the server rewrites on its own (sub-second
-     * dates, update stamps)
+     * @description Whether two budgets hold the same thing
      *
      * @param lhs One budget
      * @param rhs The other
      * @returns Whether they match
      */
     static func sameContent(_ lhs: BudgetDocument, _ rhs: BudgetDocument) -> Bool {
-        guard lhs.categories == rhs.categories,
-              lhs.budget == rhs.budget,
-              lhs.budgetHistory == rhs.budgetHistory,
-              lhs.operations.count == rhs.operations.count else {
-            return false
-        }
-
-        let indexed = Dictionary(rhs.operations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-
-        return lhs.operations.allSatisfy { operation in
-            indexed[operation.id].map { sameOperation(operation, $0) } ?? false
-        }
+        lhs == rhs
     }
 
     /**

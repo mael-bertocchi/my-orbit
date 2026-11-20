@@ -121,8 +121,25 @@ struct DayRange: Hashable {
  * @class HistoryView
  * @description The History tab: operations grouped by day with day totals, a search, a date filter and one row of
  * filter chips. Several categories can be picked at once; All shows every category and is lit while none is picked.
+ * The server sends the latest operations under the filters and the search, pageSize at a time: Show more, at the end of
+ * the list, adds the next ones, and changing the filters or the search starts over from the first page. When the server's
+ * budget changes, what is shown is read again. The changes logged on the device that haven't reached the server show
+ * among them, with a marker.
  */
 struct HistoryView: View {
+    /**
+     * @constant pageSize
+     * @description How many operations the list shows at most at first, and each tap on Show more adds: the server
+     * sends whole days only, so a day is never split between two pages
+     */
+    static let pageSize = 40
+    /**
+     * @constant reloadLimit
+     * @description How many operations already shown are read again at most when the budget changes, as the server sends
+     * no more at once
+     */
+    static let reloadLimit = 100
+
     @Binding var filter: HistoryFilter /*!< The category filter, which the Budget tab can set */
     @Binding var dateRange: DayRange? /*!< The days shown, every date when nil, which the Budget tab can set */
     var onSelect: (Operation) -> Void = { _ in } /*!< Opens an operation */
@@ -131,8 +148,35 @@ struct HistoryView: View {
     @Environment(LocalStore.self) private var store /*!< The budget */
     @Environment(Preferences.self) private var preferences /*!< The device's settings, for the haptics */
 
+    @Environment(ApplicationSession.self) private var session /*!< The session, which reads the operations from the server */
+
     @State private var query = "" /*!< The search typed */
+    @State private var search = "" /*!< The search sent to the server, once typing pauses */
     @State private var showDateSheet = false /*!< Whether the date filter sheet is open */
+    @State private var loaded: LoadedOperations? /*!< The operations read so far, for the filters they were read for */
+    @State private var failure: String? /*!< Why they couldn't be read, nil when they could */
+    @State private var isLoadingMore = false /*!< Whether the next page is being read */
+
+    /**
+     * @class LoadedOperations
+     * @description The operations read so far for some filters
+     */
+    private struct LoadedOperations {
+        var query: OperationQuery /*!< The filters they were read for */
+        var operations: [Operation] /*!< The operations read, the latest first */
+        var total: Int /*!< How many operations match the filters */
+    }
+
+    /**
+     * @class ReloadKey
+     * @description What the operations shown are read again on: the filters, the server's revision, and the changes
+     * waiting on the device, each of which the server holds once it leaves the queue
+     */
+    private struct ReloadKey: Hashable {
+        var query: OperationQuery /*!< The filters */
+        var revision: Int /*!< The server's revision */
+        var pendingCount: Int /*!< How many changes wait on the device */
+    }
 
     /**
      * @method body
@@ -145,6 +189,12 @@ struct HistoryView: View {
         }
         .sheet(isPresented: $showDateSheet) {
             HistoryDateSheet(range: $dateRange)
+        }
+        .task(id: query) {
+            await settleSearch()
+        }
+        .task(id: ReloadKey(query: operationQuery, revision: store.revision, pendingCount: store.pending.count)) {
+            await readShown()
         }
     }
 
@@ -205,7 +255,16 @@ struct HistoryView: View {
      */
     @ViewBuilder
     private var operationList: some View {
-        if groups.isEmpty {
+        let current = currentOperations
+        let groups = BudgetMath.dayGroups(listedOperations(current))
+        if current == nil && groups.isEmpty {
+            ScrollView {
+                loadingState
+                    .padding(.horizontal, Theme.screenPadding)
+                    .padding(.top, 12)
+            }
+            .scrollIndicators(.hidden)
+        } else if groups.isEmpty {
             ScrollView {
                 EmptyStateCard(message: emptyMessage)
                     .padding(.horizontal, Theme.screenPadding)
@@ -235,7 +294,8 @@ struct HistoryView: View {
                                 } label: {
                                     OperationRow(
                                         operation: operation,
-                                        category: store.categoryOrFallback(id: operation.categoryId)
+                                        category: store.categoryOrFallback(id: operation.categoryId),
+                                        isPending: store.pendingOperations.saved.contains { $0.id == operation.id }
                                     )
                                 }
                                 .buttonStyle(.plain)
@@ -245,6 +305,17 @@ struct HistoryView: View {
                             }
                         }
                         .glassCard()
+                    }
+                    if let current, current.operations.count < current.total {
+                        FilterChip(title: String(appLocalized: "Show more"), isActive: false) {
+                            preferences.tap()
+                            Task {
+                                await showMore()
+                            }
+                        }
+                        .disabled(isLoadingMore)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 20)
                     }
                 }
                 .padding(.horizontal, Theme.screenPadding)
@@ -267,21 +338,129 @@ struct HistoryView: View {
     }
 
     /**
-     * @method groups
-     * @description The operations the filters and the search let through, grouped by day
+     * @method loadingState
+     * @description A spinner while the first page is read, or why it couldn't be
      */
-    private var groups: [DayGroup] {
-        let trimmed = query.trimmingCharacters(in: .whitespaces)
-        let filtered = store.operations.filter { operation in
-            matchesFilter(operation) && (dateRange?.contains(operation.date) ?? true) && matchesQuery(operation, trimmed)
+    @ViewBuilder
+    private var loadingState: some View {
+        if let failure {
+            EmptyStateCard(message: failure)
+        } else {
+            ProgressView()
+                .tint(Theme.accent)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 24)
         }
-        return BudgetMath.dayGroups(filtered)
+    }
+
+    /**
+     * @method operationQuery
+     * @description The filters and the search, as the server takes them: the search also matches the categories whose
+     * name holds it in the interface's language, which the server doesn't know
+     */
+    private var operationQuery: OperationQuery {
+        let trimmed = search.trimmingCharacters(in: .whitespaces)
+        let named = trimmed.isEmpty ? [] : store.categories.filter { $0.title.localizedCaseInsensitiveContains(trimmed) }.map(\.id)
+        let days = dateRange.map { (ExchangeRates.day(from: $0.start), ExchangeRates.day(from: $0.end)) }
+        return OperationQuery(categories: filter.categoryIds.sorted(), from: days?.0, to: days?.1, query: trimmed, queryCategories: named)
+    }
+
+    /**
+     * @method currentOperations
+     * @description The operations read for the filters shown, nil until they are
+     */
+    private var currentOperations: LoadedOperations? {
+        guard let loaded, loaded.query == operationQuery else {
+            return nil
+        }
+        return loaded
+    }
+
+    /**
+     * @method listedOperations
+     * @description The operations to show, the latest first: those the server sent, with the changes logged on the
+     * device that haven't reached it in their place, the ones that pass the filters and the search
+     *
+     * @param current The operations the server sent for the filters
+     * @returns The operations
+     */
+    private func listedOperations(_ current: LoadedOperations?) -> [Operation] {
+        let pending = store.pendingOperations
+        let trimmed = search.trimmingCharacters(in: .whitespaces)
+        let sent = (current?.operations ?? []).filter { !pending.hides($0.id) }
+        let waiting = pending.saved.filter { matchesFilter($0) && (dateRange?.contains($0.date) ?? true) && matchesQuery($0, trimmed) }
+        return (sent + waiting).sorted { $0.date > $1.date }
+    }
+
+    /**
+     * @method settleSearch
+     * @description Sends the search typed to the server once typing pauses
+     */
+    private func settleSearch() async {
+        guard query != search else {
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(250))
+        guard !Task.isCancelled else {
+            return
+        }
+        search = query
+    }
+
+    /**
+     * @method readShown
+     * @description Reads the operations under the filters again: as many as are shown, or a first page
+     */
+    private func readShown() async {
+        let query = operationQuery
+        let shown = currentOperations?.operations.count ?? 0
+        let count = min(HistoryView.reloadLimit, max(HistoryView.pageSize, shown))
+
+        do {
+            let page = try await session.operations(query, offset: 0, limit: count)
+            guard !Task.isCancelled else {
+                return
+            }
+            loaded = LoadedOperations(query: query, operations: page.operations, total: page.total)
+            failure = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            failure = error.userMessage
+        }
+    }
+
+    /**
+     * @method showMore
+     * @description Reads the next pageSize operations under the same filters and search, and adds them to the list, each
+     * once: one logged meanwhile shifts the next page by one
+     */
+    private func showMore() async {
+        guard let current = currentOperations else {
+            return
+        }
+        isLoadingMore = true
+        defer {
+            isLoadingMore = false
+        }
+
+        do {
+            let page = try await session.operations(current.query, offset: current.operations.count, limit: HistoryView.pageSize)
+            guard let latest = loaded, latest.query == current.query else {
+                return
+            }
+            var seen = Set(latest.operations.map(\.id))
+            let added = page.operations.filter { seen.insert($0.id).inserted }
+            loaded = LoadedOperations(query: latest.query, operations: latest.operations + added, total: page.total)
+        } catch {
+            failure = error.userMessage
+        }
     }
 
     /**
      * @method matchesFilter
-     * @description Whether an operation passes the category filter: any operation while no category is picked, otherwise
-     * one of a category picked
+     * @description Whether an operation logged on the device passes the category filter: any operation while no category
+     * is picked, otherwise one of a category picked
      *
      * @param operation The operation
      * @returns Whether it passes
@@ -292,7 +471,7 @@ struct HistoryView: View {
 
     /**
      * @method matchesQuery
-     * @description Whether an operation matches the search: its name, note, place or category
+     * @description Whether an operation logged on the device matches the search: its name, note, place or category
      *
      * @param operation The operation
      * @param query The search
@@ -329,6 +508,7 @@ struct HistoryView: View {
 struct OperationRow: View {
     let operation: Operation /*!< The operation */
     let category: Category /*!< Its category */
+    var isPending = false /*!< Whether it was logged or changed on the device and hasn't reached the server yet */
 
     /**
      * @method body
@@ -359,6 +539,11 @@ struct OperationRow: View {
                         Image(systemName: "text.alignleft")
                             .font(.system(size: 11))
                             .foregroundStyle(Theme.faint)
+                    }
+                    if isPending {
+                        Image(systemName: "icloud.slash")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.warning)
                     }
                 }
                 HStack(spacing: 8) {
@@ -427,6 +612,9 @@ struct OperationRow: View {
         }
         if hasDescription {
             parts.append(String(appLocalized: "has a note"))
+        }
+        if isPending {
+            parts.append(String(appLocalized: "not synced with the server"))
         }
         return parts.joined(separator: ", ")
     }

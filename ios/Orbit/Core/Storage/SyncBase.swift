@@ -16,11 +16,21 @@ struct SyncBase: Codable, Equatable {
      * @returns The base, or nil when there is none yet
      */
     static func load() -> SyncBase? {
-        guard let data = try? Data(contentsOf: fileURL) else {
+        guard let data = storedData() else {
             return nil
         }
 
         return try? JSONCoding.decoder.decode(SyncBase.self, from: data)
+    }
+
+    /**
+     * @method storedData
+     * @description The base as it is written in Application Support
+     *
+     * @returns Its JSON, or nil when there is none yet
+     */
+    static func storedData() -> Data? {
+        try? Data(contentsOf: fileURL)
     }
 
     /**

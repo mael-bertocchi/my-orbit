@@ -6,7 +6,7 @@ import SwiftUI
  */
 enum OperationEditorRoute: Identifiable {
     case new /*!< A new operation */
-    case edit(String) /*!< An existing operation, by its id */
+    case edit(Operation) /*!< An existing operation, as it was shown */
 
     /**
      * @method id
@@ -15,7 +15,7 @@ enum OperationEditorRoute: Identifiable {
     var id: String {
         switch self {
         case .new: return "new"
-        case .edit(let operationId): return operationId
+        case .edit(let operation): return operation.id
         }
     }
 }
@@ -32,6 +32,7 @@ struct OperationEditorSheet: View {
     let route: OperationEditorRoute /*!< What the sheet is open on */
 
     @Environment(LocalStore.self) private var store /*!< The budget */
+    @Environment(ApplicationSession.self) private var session /*!< The session, which reads the suggestions from the server */
     @Environment(ExchangeRates.self) private var rates /*!< The exchange rates */
     @Environment(Preferences.self) private var preferences /*!< The device's settings, for the haptics and the last currency used */
     @Environment(\.dismiss) private var dismiss /*!< Closes the sheet */
@@ -47,6 +48,7 @@ struct OperationEditorSheet: View {
     @State private var date = Date.now /*!< When it happened */
     @State private var isOnline = false /*!< Whether it was paid online */
 
+    @State private var nameSuggestions: [String] = [] /*!< The names of earlier operations matching the name typed */
     @State private var showCurrencyPicker = false /*!< Whether the currency picker is open */
     @State private var showDatePicker = false /*!< Whether the date picker is shown */
     @State private var showDeleteConfirmation = false /*!< Whether the deletion is being confirmed */
@@ -133,6 +135,12 @@ struct OperationEditorSheet: View {
         .task(id: selectedDay) {
             await rates.load(day: selectedDay)
         }
+        .task {
+            await suggestLatestPlace()
+        }
+        .task(id: focus == .name ? name.trimmingCharacters(in: .whitespaces) : "") {
+            await suggestNames(focus == .name ? name.trimmingCharacters(in: .whitespaces) : "")
+        }
         .onChange(of: amountText) { _, typed in
             let formatted = Formatting.groupedAmountInput(Formatting.sanitizeAmountInput(typed))
             if formatted != typed {
@@ -206,8 +214,7 @@ struct OperationEditorSheet: View {
      * that day's rate is loaded
      */
     private var storedRate: Double? {
-        guard case .edit(let operationId) = route,
-              let operation = store.operation(id: operationId),
+        guard let operation = existing,
               operation.currencyCode == currencyCode,
               ExchangeRates.day(from: operation.date) == selectedDay else {
             return nil
@@ -428,7 +435,37 @@ struct OperationEditorSheet: View {
         guard focus == .name else {
             return []
         }
-        return BudgetMath.nameSuggestions(store.operations, typed: name).map { Suggestion(value: $0) }
+        return nameSuggestions.map { Suggestion(value: $0) }
+    }
+
+    /**
+     * @method suggestNames
+     * @description Asks the server for the names of earlier operations matching the name typed, once typing pauses
+     *
+     * @param typed The name typed, empty while it isn't being typed
+     */
+    private func suggestNames(_ typed: String) async {
+        guard !typed.isEmpty else {
+            nameSuggestions = []
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(250))
+        guard !Task.isCancelled, let found = await session.suggestions(name: typed, city: ""), !Task.isCancelled else {
+            return
+        }
+        nameSuggestions = found.names
+    }
+
+    /**
+     * @method suggestLatestPlace
+     * @description Fills in the city of the latest operation in person for a new one, unless one is already typed
+     */
+    private func suggestLatestPlace() async {
+        guard existing == nil, let latest = await session.suggestions(name: "", city: "")?.latestPlace, place == nil, location.isEmpty else {
+            return
+        }
+        place = latest
+        location = latest.name
     }
 
     /**
@@ -476,10 +513,10 @@ struct OperationEditorSheet: View {
      * @description The operation edited, nil for a new one
      */
     private var existing: Operation? {
-        guard case .edit(let operationId) = route else {
+        guard case .edit(let operation) = route else {
             return nil
         }
-        return store.operation(id: operationId)
+        return operation
     }
 
     /**
@@ -510,15 +547,13 @@ struct OperationEditorSheet: View {
 
     /**
      * @method loadValues
-     * @description Fills the sheet with the operation edited, or the defaults of a new one: the last currency used, the
-     * first category, the latest city
+     * @description Fills the sheet with the operation edited, or the defaults of a new one: the last currency used and
+     * the first category, the latest city following once the server names it
      */
     private func loadValues() {
-        guard case .edit(let operationId) = route, let operation = store.operation(id: operationId) else {
+        guard let operation = existing else {
             currencyCode = preferences.lastUsedCurrencyCode
             categoryId = store.categories.first?.id ?? ""
-            place = store.latestPlace
-            location = store.latestPlace?.name ?? ""
             return
         }
         amountText = Formatting.amountInput(operation.amount)
@@ -564,19 +599,12 @@ struct OperationEditorSheet: View {
         }
         let trimmedLocation = isOnline ? "" : location.trimmingCharacters(in: .whitespaces)
         let trimmedDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
-        let existingId: String? = {
-            if case .edit(let operationId) = route {
-                return operationId
-            }
-            return nil
-        }()
-
         guard let appliedRate else {
             return
         }
 
         let operation = Operation(
-            id: existingId ?? UUID().uuidString,
+            id: existing?.id ?? UUID().uuidString,
             date: date,
             name: name.trimmingCharacters(in: .whitespaces),
             description: trimmedDescription.isEmpty ? nil : trimmedDescription,
@@ -590,7 +618,7 @@ struct OperationEditorSheet: View {
             recurringId: existing?.recurringId
         )
 
-        store.upsertOperation(operation)
+        store.enqueue(.save(operation, previous: existing))
         preferences.lastUsedCurrencyCode = currencyCode
         preferences.success()
         dismiss()
@@ -601,10 +629,10 @@ struct OperationEditorSheet: View {
      * @description Deletes the operation edited, then closes the sheet
      */
     private func delete() {
-        guard case .edit(let operationId) = route else {
+        guard let existing else {
             return
         }
-        store.deleteOperation(id: operationId)
+        store.enqueue(.delete(existing))
         preferences.success()
         dismiss()
     }

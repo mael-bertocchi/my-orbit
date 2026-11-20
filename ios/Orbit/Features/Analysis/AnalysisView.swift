@@ -4,29 +4,32 @@ import SwiftUI
 /**
  * @class AnalysisView
  * @description The Analysis tab, about what a single month can't show: how the spending moved over the last year and
- * the recent habits, all worked out on the device
+ * the recent habits, worked out by the server and read again whenever its budget changes
  */
 struct AnalysisView: View {
     @Environment(LocalStore.self) private var store /*!< The budget */
+    @Environment(ApplicationSession.self) private var session /*!< The session, which reads the figures from the server */
+
+    @State private var figures: AnalysisFigures? /*!< The figures, as the server worked them out */
+    @State private var failure: String? /*!< Why they couldn't be read, nil when they could */
 
     /**
      * @method body
      * @description The tab
      */
     var body: some View {
-        let now = Date.now
-        let totals = BudgetAnalysis.monthTotals(store.operations, limit: { store.monthlyBudget(for: $0).monthlyLimit }, now: now)
-        let spending = Set(totals.flatMap { $0.byCategory.filter { $0.value > 0 }.keys })
-
-        return ScrollView {
+        ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                ScreenTitle(String(appLocalized: "Over \(totals.count) months"))
-                    .padding(.bottom, 20)
-
-                TrendsSection(totals: totals, categories: store.categories.filter { spending.contains($0.id) })
-
-                HabitsSection(habits: BudgetAnalysis.spendingHabits(store.operations, now: now))
-                    .padding(.top, 26)
+                if let figures {
+                    content(figures)
+                } else if let failure {
+                    EmptyStateCard(message: failure)
+                } else {
+                    ProgressView()
+                        .tint(Theme.accent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 24)
+                }
             }
             .padding(.top, 8)
             .padding(.horizontal, Theme.screenPadding)
@@ -34,6 +37,48 @@ struct AnalysisView: View {
         }
         .scrollIndicators(.hidden)
         .scrollTopBlur()
+        .task(id: store.revision) {
+            await readFigures()
+        }
+    }
+
+    /**
+     * @method content
+     * @description The trends and the habits
+     *
+     * @param figures The figures
+     */
+    @ViewBuilder
+    private func content(_ figures: AnalysisFigures) -> some View {
+        let totals = BudgetAnalysis.monthTotals(figures, limit: { store.monthlyBudget(for: $0).monthlyLimit })
+        let spending = Set(totals.flatMap { $0.byCategory.filter { $0.value > 0 }.keys })
+
+        ScreenTitle(String(appLocalized: "Over \(totals.count) months"))
+            .padding(.bottom, 20)
+
+        TrendsSection(totals: totals, categories: store.categories.filter { spending.contains($0.id) })
+
+        HabitsSection(habits: BudgetAnalysis.spendingHabits(figures))
+            .padding(.top, 26)
+    }
+
+    /**
+     * @method readFigures
+     * @description Reads the figures from the server
+     */
+    private func readFigures() async {
+        do {
+            let read = try await session.analysisFigures()
+            guard !Task.isCancelled else {
+                return
+            }
+            figures = read
+            failure = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            failure = error.userMessage
+        }
     }
 }
 

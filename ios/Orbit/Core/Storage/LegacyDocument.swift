@@ -39,4 +39,49 @@ enum LegacyDocument {
         }
         return migrated
     }
+
+    /**
+     * @class StoredOperations
+     * @description The operations an older version of the app kept in its budget file
+     */
+    private struct StoredOperations: Decodable {
+        var operations: [Operation]? /*!< The operations, none in a file of this version */
+    }
+
+    /**
+     * @class StoredBase
+     * @description The operations an older version of the app kept in its sync base
+     */
+    private struct StoredBase: Decodable {
+        var document: StoredOperations /*!< The budget both sides held */
+    }
+
+    /**
+     * @method pendingChanges
+     * @description The changes to send for the operations an older version of the app kept on the device: those it
+     * logged or changed since the last sync, and those it deleted, measured against its sync base. Nothing once the
+     * budget file holds no operation any more
+     *
+     * @param local The stored budget, as JSON
+     * @param base The stored sync base, as JSON, if there is one
+     * @returns The changes, in the order to send them
+     */
+    static func pendingChanges(local: Data, base: Data?) -> [PendingChange] {
+        guard let operations = (try? JSONCoding.decoder.decode(StoredOperations.self, from: migrated(local)))?.operations else {
+            return []
+        }
+
+        let known = base.flatMap { try? JSONCoding.decoder.decode(StoredBase.self, from: $0) }?.document.operations ?? []
+        let knownById = Dictionary(known.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let kept = Set(operations.map(\.id))
+
+        let saves: [PendingChange] = operations.compactMap { operation in
+            guard let stored = knownById[operation.id] else {
+                return .save(operation, previous: nil)
+            }
+            return DocumentMerge.sameOperation(stored, operation) ? nil : .save(operation, previous: stored)
+        }
+
+        return saves + known.filter { !kept.contains($0.id) }.map { PendingChange.delete($0) }
+    }
 }

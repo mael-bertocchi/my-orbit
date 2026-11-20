@@ -794,6 +794,16 @@
         }
       }
     },
+    "not synced with the server" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "non synchronisée avec le serveur"
+          }
+        }
+      }
+    },
     "History" : {
       "localizations" : {
         "fr" : {
@@ -1184,6 +1194,16 @@
         }
       }
     },
+    "Show more" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voir plus"
+          }
+        }
+      }
+    },
     "Sign in" : {
       "localizations" : {
         "fr" : {
@@ -1300,6 +1320,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le serveur est indisponible pour le moment."
+          }
+        }
+      }
+    },
+    "The server refused an operation logged on this device, which was dropped." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le serveur a refusé une opération enregistrée sur cet appareil ; elle a été retirée."
           }
         }
       }

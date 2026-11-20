@@ -12,11 +12,12 @@ struct CityField: View {
     let kept: String? /*!< The place written before cities were checked, which may stay, if any */
     var isFocused: FocusState<Bool>.Binding /*!< Whether the field is being typed in */
 
-    @Environment(LocalStore.self) private var store /*!< The budget, for the cities of earlier operations */
+    @Environment(ApplicationSession.self) private var session /*!< The session, which reads the cities of earlier operations from the server */
     @Environment(Places.self) private var places /*!< The cities, found by the server */
     @Environment(Preferences.self) private var preferences /*!< The device's settings, for the haptics */
 
     @State private var foundPlaces: [Place] = [] /*!< The cities the server found for the place typed */
+    @State private var earlierPlaces: [PlaceReference] = [] /*!< The cities of earlier operations matching the place typed */
     @State private var foundQuery = "" /*!< The place they were found for */
     @State private var isLocating = false /*!< Whether the city the phone is in is being looked for */
     @State private var locateError: String? /*!< Why it couldn't be found, nil when it could */
@@ -104,9 +105,10 @@ struct CityField: View {
             return []
         }
 
-        let earlier = BudgetMath.placeSuggestions(store.operations, typed: query).map { Place(id: $0.id, nameEn: $0.nameEn, nameFr: $0.nameFr, detail: "") }
+        let isCurrent = foundQuery == query
+        let earlier = (isCurrent ? earlierPlaces : []).map { Place(id: $0.id, nameEn: $0.nameEn, nameFr: $0.nameFr, detail: "") }
         var seen = Set(earlier.map(\.id))
-        let fresh = (foundQuery != query ? [] : foundPlaces).filter { seen.insert($0.id).inserted }
+        let fresh = (isCurrent ? foundPlaces : []).filter { seen.insert($0.id).inserted }
         return earlier + fresh
     }
 
@@ -151,22 +153,28 @@ struct CityField: View {
 
     /**
      * @method search
-     * @description Asks the server for the cities matching the place typed, once typing pauses, from two letters
+     * @description Asks the server, once typing pauses, for the cities of earlier operations matching the place typed,
+     * and from two letters for the other cities matching it
      *
      * @param query The place typed
      */
     private func search(_ query: String) async {
-        guard query.count >= 2 else {
+        guard !query.isEmpty else {
             return
         }
         try? await Task.sleep(for: .milliseconds(250))
         guard !Task.isCancelled else {
             return
         }
-        let found = await places.search(query)
+        let earlier = await session.suggestions(name: "", city: query)
+        var found: [Place] = []
+        if query.count >= 2 {
+            found = await places.search(query)
+        }
         guard !Task.isCancelled else {
             return
         }
+        earlierPlaces = earlier?.places ?? []
         foundPlaces = found
         foundQuery = query
     }

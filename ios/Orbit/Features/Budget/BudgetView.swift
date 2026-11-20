@@ -3,8 +3,9 @@ import SwiftUI
 /**
  * @class BudgetView
  * @description The Budget tab: the ring with what is left to spend, the spent, days-left and per-day figures, and every
- * category against its limit, month by month. The current month also shows how each category compares with its usual
- * spending by the same day
+ * category against its limit, month by month, from the figures the server works out, read again whenever its budget
+ * changes. The operations logged on the device that haven't reached the server count too. The current month also shows
+ * how each category compares with its usual spending by the same day
  */
 struct BudgetView: View {
     var onOpenCategory: (Category, Date) -> Void = { _, _ in } /*!< Opens a category's operations of a month in History */
@@ -12,9 +13,23 @@ struct BudgetView: View {
 
     @Environment(LocalStore.self) private var store /*!< The budget */
     @Environment(Preferences.self) private var preferences /*!< The device's settings, for the haptics */
+    @Environment(ApplicationSession.self) private var session /*!< The session, which reads the figures from the server */
 
     @State private var month: Date = BudgetMath.monthStart(.now) /*!< The month shown */
     @State private var showLimits = false /*!< Whether the limits sheet is open */
+    @State private var figures: MonthFigures? /*!< The month's figures, as the server worked them out */
+    @State private var failure: String? /*!< Why they couldn't be read, nil when they could */
+
+    /**
+     * @class ReloadKey
+     * @description What the figures are read again on: the month, the server's revision, and the changes waiting on the
+     * device, each of which the server counts once it leaves the queue
+     */
+    private struct ReloadKey: Hashable {
+        var month: String /*!< The month, as `YYYY-MM` */
+        var revision: Int /*!< The server's revision */
+        var pendingCount: Int /*!< How many changes wait on the device */
+    }
 
     /**
      * @method body
@@ -61,6 +76,51 @@ struct BudgetView: View {
         .sheet(isPresented: $showLimits) {
             CategoryLimitsSheet(month: month)
         }
+        .task(id: ReloadKey(month: BudgetMath.monthKey(month), revision: store.revision, pendingCount: store.pending.count)) {
+            await readFigures()
+        }
+    }
+
+    /**
+     * @method readFigures
+     * @description Reads the month's figures from the server
+     */
+    private func readFigures() async {
+        do {
+            let read = try await session.monthFigures(month)
+            guard !Task.isCancelled else {
+                return
+            }
+            figures = read
+            failure = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            failure = error.userMessage
+        }
+    }
+
+    /**
+     * @method shownFigures
+     * @description The figures of the month shown, nil until they are read
+     */
+    private var shownFigures: MonthFigures? {
+        guard let figures, figures.month == BudgetMath.monthKey(month) else {
+            return nil
+        }
+        return figures
+    }
+
+    /**
+     * @method spending
+     * @description What the month spent, in all and per category: the server's figures, moved by the changes made on
+     * the device that haven't reached it
+     */
+    private var spending: Spending {
+        let pending = store.pendingOperations
+        let change = pending.spendingChange(in: month)
+        let sent = shownFigures.flatMap { pending.deletesEvery ? nil : Spending(spent: $0.spent, byCategory: $0.byCategory) } ?? Spending(spent: 0, byCategory: [:])
+        return Spending(spent: sent.spent + change.spent, byCategory: sent.byCategory.merging(change.byCategory, uniquingKeysWith: +))
     }
 
     /**
@@ -76,7 +136,8 @@ struct BudgetView: View {
      * @description Whether the month has any operation
      */
     private var hasOperations: Bool {
-        !BudgetMath.operations(store.operations, in: month).isEmpty
+        let sent = store.pendingOperations.deletesEvery ? 0 : shownFigures?.operationCount ?? 0
+        return sent > 0 || store.pendingOperations.saved.contains { BudgetMath.isSameMonth($0.date, month) }
     }
 
     /**
@@ -84,11 +145,7 @@ struct BudgetView: View {
      * @description The month's figures
      */
     private var summary: MonthSummary {
-        BudgetMath.summary(
-            operations: store.operations,
-            month: month,
-            budget: monthlyBudget
-        )
+        BudgetMath.summary(spent: spending.spent, month: month, budget: monthlyBudget)
     }
 
     /**
@@ -104,12 +161,7 @@ struct BudgetView: View {
      * @description The categories with a limit or some spending, each against its limit
      */
     private var spends: [CategorySpend] {
-        BudgetMath.categorySpends(
-            operations: store.operations,
-            categories: store.categories,
-            month: month,
-            budget: monthlyBudget
-        )
+        BudgetMath.categorySpends(byCategory: spending.byCategory, categories: store.categories, budget: monthlyBudget)
         .filter { $0.limit > 0 || $0.spent > 0 }
     }
 
@@ -127,10 +179,10 @@ struct BudgetView: View {
      * history and only when it is worth showing: nil for a category that usually spends nothing
      */
     private var changes: [String: Double?] {
-        guard isCurrentMonth else {
+        guard isCurrentMonth, let figures = shownFigures?.comparison else {
             return [:]
         }
-        let comparison = BudgetAnalysis.compare(store.operations, categories: store.categories)
+        let comparison = BudgetAnalysis.compare(figures, categories: store.categories)
         guard comparison.referenceCount > 0 else {
             return [:]
         }
@@ -219,7 +271,14 @@ struct BudgetView: View {
      */
     @ViewBuilder
     private var categoryList: some View {
-        if !hasOperations {
+        if shownFigures == nil, let failure {
+            EmptyStateCard(message: failure)
+        } else if shownFigures == nil && !hasOperations {
+            ProgressView()
+                .tint(Theme.accent)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 12)
+        } else if !hasOperations {
             EmptyStateCard(message: String(appLocalized: "No operations in this month."))
         } else if spends.isEmpty {
             EmptyStateCard(message: String(appLocalized: "No spending yet this month. Log an operation and your categories will fill in here."))

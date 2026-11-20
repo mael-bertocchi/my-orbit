@@ -91,8 +91,8 @@ struct DayGroup: Identifiable, Equatable {
 
 /**
  * @type BudgetMath
- * @description The budget's arithmetic, as pure functions of the operations and the budget: months, days left, totals
- * and groups
+ * @description The budget's arithmetic, as pure functions of the figures the server works out and the budget: months,
+ * days left, totals and groups
  */
 enum BudgetMath {
 
@@ -167,18 +167,6 @@ enum BudgetMath {
     }
 
     /**
-     * @method operations
-     * @description The operations of one month
-     *
-     * @param operations Every operation
-     * @param month Any day of the month
-     * @returns The month's operations
-     */
-    static func operations(_ operations: [Operation], in month: Date) -> [Operation] {
-        operations.filter { isSameMonth($0.date, month) }
-    }
-
-    /**
      * @method daysLeft
      * @description The days left in a month, today included: all of them for a future month, none for a past one
      *
@@ -202,20 +190,14 @@ enum BudgetMath {
      * @method summary
      * @description A month's main figures
      *
-     * @param operations Every operation
+     * @param spent What the month spent, in euros
      * @param month Any day of the month
      * @param budget The month's budget
      * @param now The current date
      * @returns The figures
      */
-    static func summary(
-        operations: [Operation],
-        month: Date,
-        budget: MonthlyBudget,
-        now: Date = .now
-    ) -> MonthSummary {
-        let spent = self.operations(operations, in: month).reduce(0) { $0 + $1.euroAmount }
-        return MonthSummary(
+    static func summary(spent: Double, month: Date, budget: MonthlyBudget, now: Date = .now) -> MonthSummary {
+        MonthSummary(
             limit: budget.monthlyLimit,
             spent: spent,
             daysLeft: daysLeft(in: month, now: now),
@@ -227,24 +209,14 @@ enum BudgetMath {
      * @method categorySpends
      * @description Every category against its limit in one month
      *
-     * @param operations Every operation
+     * @param byCategory What the month spent per category id, in euros
      * @param categories The categories
-     * @param month Any day of the month
      * @param budget The month's budget
      * @returns The categories' spending
      */
-    static func categorySpends(
-        operations: [Operation],
-        categories: [Category],
-        month: Date,
-        budget: MonthlyBudget
-    ) -> [CategorySpend] {
-        var totals: [String: Double] = [:]
-        for operation in self.operations(operations, in: month) {
-            totals[operation.categoryId, default: 0] += operation.euroAmount
-        }
-        return categories.map {
-            CategorySpend(category: $0, spent: totals[$0.id] ?? 0, limit: budget.limit(for: $0.id))
+    static func categorySpends(byCategory: [String: Double], categories: [Category], budget: MonthlyBudget) -> [CategorySpend] {
+        categories.map {
+            CategorySpend(category: $0, spent: byCategory[$0.id] ?? 0, limit: budget.limit(for: $0.id))
         }
     }
 
@@ -284,133 +256,5 @@ enum BudgetMath {
         return grouped
             .map { DayGroup(date: $0.key, operations: $0.value.sorted { $0.date > $1.date }) }
             .sorted { $0.date > $1.date }
-    }
-
-    /**
-     * @method fold
-     * @description Reduces a text for matching what is typed against it: trimmed, regardless of case and accents
-     *
-     * @param text The text
-     * @returns The text reduced
-     */
-    static func fold(_ text: String) -> String {
-        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil).trimmingCharacters(in: .whitespaces)
-    }
-
-    /**
-     * @method matchRank
-     * @description How well a text matches what is typed, already folded: 2 when it starts with it, 1 when one of its
-     * other words does, 0 when it doesn't match
-     *
-     * @param text The text
-     * @param typed What is typed, folded
-     * @returns The rank
-     */
-    static func matchRank(_ text: String, typed: String) -> Int {
-        let folded = fold(text)
-        if folded.hasPrefix(typed) {
-            return 2
-        }
-        let words = folded.split { $0.isWhitespace || "'’-".contains($0) }
-        return words.contains { $0.hasPrefix(typed) } ? 1 : 0
-    }
-
-    /**
-     * @class NameUse
-     * @description How an operation name has been used, to rank it among the suggestions
-     */
-    private struct NameUse {
-        var name: String /*!< The name, as last written */
-        var rank: Int /*!< How well it matches what is typed */
-        var count: Int /*!< How many operations bear it */
-        var latest: Date /*!< When it was last used */
-    }
-
-    /**
-     * @method nameSuggestions
-     * @description The names of earlier operations matching what is typed, each once as last written, the best match, the
-     * most used and the latest first. The name typed in full is left out: there is nothing left to complete
-     *
-     * @param operations The earlier operations
-     * @param typed What is typed
-     * @param limit How many to suggest at most
-     * @returns The names
-     */
-    static func nameSuggestions(_ operations: [Operation], typed: String, limit: Int = 5) -> [String] {
-        let folded = fold(typed)
-        guard !folded.isEmpty else {
-            return []
-        }
-
-        var uses: [String: NameUse] = [:]
-        for operation in operations {
-            let key = fold(operation.name)
-            let rank = matchRank(operation.name, typed: folded)
-            guard key != folded, rank > 0 else {
-                continue
-            }
-            guard var use = uses[key] else {
-                uses[key] = NameUse(name: operation.name.trimmingCharacters(in: .whitespaces), rank: rank, count: 1, latest: operation.date)
-                continue
-            }
-            use.count += 1
-            if operation.date > use.latest {
-                use.latest = operation.date
-                use.name = operation.name.trimmingCharacters(in: .whitespaces)
-            }
-            uses[key] = use
-        }
-
-        let ranked = uses.values.sorted { ($0.rank, $0.count, $0.latest) > ($1.rank, $1.count, $1.latest) }
-        return ranked.prefix(limit).map(\.name)
-    }
-
-    /**
-     * @method placeMatch
-     * @description How well a city matches what is typed, already folded, under either of its names: 0 when neither
-     * matches, and also when one is typed in full, as there is nothing left to complete
-     *
-     * @param place The city
-     * @param typed What is typed, folded
-     * @returns The rank
-     */
-    private static func placeMatch(_ place: PlaceReference, typed: String) -> Int {
-        guard fold(place.nameEn) != typed, fold(place.nameFr) != typed else {
-            return 0
-        }
-        return max(matchRank(place.nameEn, typed: typed), matchRank(place.nameFr, typed: typed))
-    }
-
-    /**
-     * @method recentPlaces
-     * @description The cities operations took place in, most recent first and each only once
-     *
-     * @param operations The operations
-     * @returns The cities
-     */
-    static func recentPlaces(_ operations: [Operation]) -> [PlaceReference] {
-        var seen: Set<String> = []
-        return operations.sorted { $0.date > $1.date }.compactMap(\.place).filter { seen.insert($0.id).inserted }
-    }
-
-    /**
-     * @method placeSuggestions
-     * @description The cities of earlier operations matching what is typed, under either of their names, the best match
-     * first, then the most recent
-     *
-     * @param operations The earlier operations
-     * @param typed What is typed
-     * @param limit How many to suggest at most
-     * @returns The cities
-     */
-    static func placeSuggestions(_ operations: [Operation], typed: String, limit: Int = 3) -> [PlaceReference] {
-        let folded = fold(typed)
-        guard !folded.isEmpty else {
-            return []
-        }
-
-        let ranked = recentPlaces(operations).enumerated().map { (place: $0.element, rank: placeMatch($0.element, typed: folded), order: $0.offset) }
-        let matching = ranked.filter { $0.rank > 0 }.sorted { ($0.rank, -$0.order) > ($1.rank, -$1.order) }
-        return matching.prefix(limit).map(\.place)
     }
 }

@@ -8,15 +8,15 @@ The native **iOS** app, built entirely in SwiftUI against the iOS 26 "Liquid Gla
 - **Per-category limits** • a tinted tile, a progress bar, and an over-budget state that turns everything red.
 - **Month stepper** • walk back through previous months; every figure recomputes.
 - **Compared with usual** • the current month shows, per category, a badge with the change from its usual spending at the same day of the last six months, once it strays by 15% and €10 or more.
-- **History ledger** • day groups with day totals, each operation at the time it happened (latest first, read in the time zone the phone is in now), a search field, and filter chips for each category.
+- **History ledger** • day groups with day totals, each operation at the time it happened (latest first, read in the time zone the phone is in now), a search field, and filter chips for each category. The server sends the latest whole days under the filters and the search, up to 40 operations; **Show more** adds the next ones the same way, so a day is never split. An operation logged or changed on the phone that hasn't reached the server yet shows among them with a small crossed-out cloud.
 - **Multi-currency** • pick the entry currency; the euro equivalent recomputes live and is stored with the operation, so past entries keep the rate they were logged at. Every rate carries the 1% a bank adds on top of the reference rate, so the euro figure matches the statement rather than the mid-market quote.
 - **Suggestions as you type** • the name of an operation, or a recurring one, offers the names of earlier operations matching it; the city offers the cities of earlier operations, then those the server finds, and **Locate** fills in the city the phone is in (location access is asked the first time, while the app is in use only, and the server gets the position rounded to about a kilometre).
 - **Checked cities** • a city is picked from the suggestions or located, so the server can check it; it then reads in the interface's language, French or English. A place written before cities were checked, which the server couldn't match to a city, stays as it was written.
 - **English & French** • the language follows the device, or the one picked in Settings, and switches on the spot. Amounts and dates follow it too: `€1,234.50` in English, `1 234,50 €` in French.
-- **Analysis** • what each of the last twelve months spent, in all or per category, against its budget and the average, with Swift Charts; the recurring operations, managed there: each one's frequency, next occurrence and cost over a year, in a card of fixed height whose list scrolls, and a sheet to add, change, pause or delete one; and the habits of the last 90 days: each weekday's average, the share paid online, the places most spent at. Worked out on the phone, from the budget it holds, but the recurring operations, which the server keeps and logs.
+- **Analysis** • what each of the last twelve months spent, in all or per category, against its budget and the average, with Swift Charts; the recurring operations, managed there: each one's frequency, next occurrence and cost over a year, in a card of fixed height whose list scrolls, and a sheet to add, change, pause or delete one; and the habits of the last 90 days: each weekday's average, the share paid online, the places most spent at. Worked out by the server, like the Budget figures, and read again whenever the budget changes.
 - **Trash** • a deleted operation leaves the budget but stays in the server's trash, listed under **Settings ▸ Trash**, until it is restored.
 - **External apps** • the apps authorized with the passkey on the portal, such as Claude through its MCP connector, listed under **Settings ▸ External apps** with when each was authorized and last used; revoking one cuts its access at once.
-- **Sign in & sync** • one account, opened with the passkey of the Orbit portal, behind Face ID; every change is pushed to the server and restored on a fresh device. Offline changes stay local and reconcile when the connection returns, and edits made in the web interface merge in rather than being overwritten.
+- **Sign in & sync** • one account, opened with the passkey of the Orbit portal, behind Face ID; every change is pushed to the server and restored on a fresh device. The operations stay on the server: the phone keeps only those logged, changed or deleted offline, until the connection returns. Edits made in the web interface merge in rather than being overwritten.
 
 ## Screens
 
@@ -33,7 +33,7 @@ Orbit/
 ├─ Application/    App entry, root shell (auth gate + native TabView)
 ├─ Core/
 │  ├─ Errors/      UserFacingError: the failures written for the person, and the generic message for any other
-│  ├─ Budget/      Derived selectors (month summary, category spend, day groups) and the analysis (comparison with usual, trends, habits)
+│  ├─ Budget/      The server's figures, derived selectors (month summary, category spend, day groups) and the analysis (comparison with usual, trends, habits)
 │  ├─ Formatting/  Euro, amount, rate and date formatting, in the interface's language
 │  ├─ Models/      Domain types (Category, Operation, BudgetSettings)
 │  ├─ Localization/ Interface language (automatic, English, French) and lookups in it
@@ -41,7 +41,7 @@ Orbit/
 │  ├─ Networking/  APIClient (bearer + refresh-on-401), Keychain token store
 │  ├─ Preferences/ Last-used currency, haptics, language
 │  ├─ Session/     ApplicationSession: auth state + pull/push sync; PortalConnection: sign-in through the portal (PKCE)
-│  ├─ Storage/     LocalStore (JSON snapshot), BudgetDocument, sync base & merge, debug seed
+│  ├─ Storage/     LocalStore (JSON snapshot), BudgetDocument, pending operations, sync base & merge, debug seed
 │  └─ Theme/       Design tokens, haptics
 ├─ Features/       One folder per screen (Identity, Budget, History, Analysis, Operations, Settings)
 └─ UIComponents/   Liquid glass surfaces, buttons, progress, tiles
@@ -55,12 +55,13 @@ State lives in `@Observable` objects injected through the environment: `LocalSto
 
 ### Sync model
 
-The local JSON store is the working copy; the server holds the durable one, and the app is not its only writer: the web interface writes to it too. The app keeps the last document both sides agreed on, and its revision, as a *base* (`sync-base.json`).
+The operations live on the server only: History reads them a page at a time, and the Budget and Analysis tabs read the figures the server works out from them, again whenever the server's revision moves on. The local JSON store holds the rest of the budget (categories, monthly budget, frozen months), and the changes to the operations not yet stored on the server (`pending-operations.json`). The app is not the server's only writer: the web interface writes to it too. The app keeps the last document both sides agreed on, and its revision, as a *base* (`sync-base.json`).
 
-- Every mutation debounces a sync; when the local document still matches the base, there is nothing to send.
-- A sync, and the **reconcile** run on launch, on sign-in and each time the app becomes active, pulls the server's document, merges it with the local one against the base (`DocumentMerge`), applies the result, then sends the server only the entries it lacks (`DocumentDiff`), one write each: an operation created, changed or moved to the trash, a category, the monthly budget, a frozen month. No write can replace the whole budget. Each side's edits are kept; only when both changed the same entry does the device win, and an edit always beats a deletion: an operation edited here but deleted elsewhere is restored from the server's trash.
+- Every mutation debounces a sync; when the local document still matches the base and no operation waits, there is nothing to send.
+- A sync, and the **reconcile** run on launch, on sign-in and each time the app becomes active, pulls the server's document, merges it with the local one against the base (`DocumentMerge`), applies the result, then sends the server only the entries it lacks (`DocumentDiff`), one write each: a category, the monthly budget, a frozen month. No write can replace the whole budget. Each side's edits are kept; only when both changed the same entry does the device win, and an edit always beats a deletion.
+- The operations logged, changed or deleted on the phone go after them, oldest first, each forgotten once the server took it. One the server turns away for good is dropped, and the Settings badge says so; any other failure keeps it for the next sync. A change to an operation deleted elsewhere restores it from the server's trash.
 - Every write can be sent again safely, so a sync cut off halfway simply picks up where it stopped.
-- Without a base (a first sign-in, or a server that was reset), the server wins, unless it is empty, in which case the device's budget seeds it.
+- Without a base (a first sign-in, or a server that was reset), the server wins.
 
 A failed push flips the Settings badge to **Offline**, and the next reconcile catches up. Access tokens refresh automatically on a `401`; when the refresh token is gone, the app returns to the sign-in screen.
 

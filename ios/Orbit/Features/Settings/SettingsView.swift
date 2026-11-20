@@ -157,7 +157,7 @@ struct SettingsView: View {
                     .padding(.top, 22)
                     .padding(.bottom, 10)
                 VStack(spacing: 0) {
-                    infoRow(symbol: "list.bullet", title: String(appLocalized: "Operations"), value: "\(store.operations.count)")
+                    infoRow(symbol: "list.bullet", title: String(appLocalized: "Operations"), value: "\(store.operationCount)")
                     RowDivider()
                     infoRow(symbol: "square.grid.2x2", title: String(appLocalized: "Categories"), value: "\(store.categories.count)")
                     RowDivider()

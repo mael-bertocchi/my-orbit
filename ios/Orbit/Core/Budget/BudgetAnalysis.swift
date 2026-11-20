@@ -73,7 +73,6 @@ struct PlaceSpend: Identifiable, Equatable {
     var name: String /*!< The place, as last written */
     var spent: Double /*!< Euros spent there */
     var count: Int /*!< How many operations */
-    var lastDate: Date /*!< When it was last spent at, which picks the spelling kept */
 
     var id: String { name.lowercased() } /*!< Its identifier, the name in lowercase */
 }
@@ -96,16 +95,11 @@ struct SpendingHabits: Equatable {
 
 /**
  * @type BudgetAnalysis
- * @description The budget's analysis, as pure functions of the budget, the same as the web's: where the month is heading
- * and how it compares with the usual spending at the same point, for the Budget tab; and, for the Analysis tab, how the
- * spending moved over the last year and the recent habits
+ * @description The budget's analysis, from the figures the server works out, the same as the web's: how the month
+ * compares with the usual spending at the same point, for the Budget tab; and, for the Analysis tab, how the spending
+ * moved over the last year and the recent habits
  */
 enum BudgetAnalysis {
-    /**
-     * @constant referenceLimit
-     * @description How many past months "usual" is measured on, at most
-     */
-    static let referenceLimit = 6
     /**
      * @constant notableChange
      * @description How far a category must stray from its usual spending, as a fraction, for the change to be worth showing
@@ -117,27 +111,6 @@ enum BudgetAnalysis {
      * coffee more never reads as a rise
      */
     static let notableAmount = 10.0
-    /**
-     * @constant trendMonths
-     * @description How many months the trends cover, the current one included
-     */
-    static let trendMonths = 12
-    /**
-     * @constant habitDays
-     * @description How many days back the habits are measured on
-     */
-    static let habitDays = 90
-    /**
-     * @constant topPlaces
-     * @description How many places the habits list
-     */
-    static let topPlaces = 5
-    /**
-     * @constant weekdayOrder
-     * @description The weekdays in the calendar's numbering, Monday first
-     */
-    static let weekdayOrder = [2, 3, 4, 5, 6, 7, 1]
-
     /**
      * @method change
      * @description How much a figure moved from its usual value, as a fraction
@@ -151,67 +124,22 @@ enum BudgetAnalysis {
     }
 
     /**
-     * @method day
-     * @description A date's day of the month
-     *
-     * @param date The date
-     * @returns The day, from 1
-     */
-    static func day(of date: Date) -> Int {
-        BudgetMath.calendar.component(.day, from: date)
-    }
-
-    /**
-     * @method referenceMonths
-     * @description The past months "usual" is measured on: the latest ones holding operations, before the month and at
-     * most six, latest first
-     *
-     * @param operations Every operation
-     * @param month The month measured
-     * @returns The first day of each reference month
-     */
-    static func referenceMonths(_ operations: [Operation], before month: Date) -> [Date] {
-        let start = BudgetMath.monthStart(month)
-        let months = Set(operations.map { BudgetMath.monthStart($0.date) }.filter { $0 < start })
-        return Array(months.sorted(by: >).prefix(referenceLimit))
-    }
-
-    /**
-     * @method spent
-     * @description What operations cost in euros
-     *
-     * @param operations The operations
-     * @returns The total
-     */
-    static func spent(_ operations: [Operation]) -> Double {
-        operations.reduce(0) { $0 + $1.euroAmount }
-    }
-
-    /**
      * @method compare
-     * @description The current month so far against the same point of the reference months: by today's day, or by
-     * their last day when they are shorter. Comparing at the same day keeps a rent paid on the 1st, or a month only half
-     * gone, from reading as a rise or a fall
+     * @description The current month so far against what the reference months usually had by the same day, in all and
+     * per category, from the figures the server worked out: comparing at the same day keeps a rent paid on the 1st, or a
+     * month only half gone, from reading as a rise or a fall
      *
-     * @param operations Every operation
+     * @param comparison The month so far and the usual, as the server sent them
      * @param categories The categories
-     * @param now The current date
      * @returns The comparison
      */
-    static func compare(_ operations: [Operation], categories: [Category], now: Date = .now) -> MonthComparison {
-        let month = BudgetMath.monthStart(now)
-        let today = day(of: now)
-        let references = referenceMonths(operations, before: month)
-        let current = BudgetMath.operations(operations, in: month).filter { day(of: $0.date) <= today }
-        let past = references.flatMap { BudgetMath.operations(operations, in: $0).filter { day(of: $0.date) <= today } }
-        let count = Double(max(1, references.count))
-
+    static func compare(_ comparison: MonthFigures.Comparison, categories: [Category]) -> MonthComparison {
         let rows = categories.map { category in
-            CategoryComparison(category: category, spent: spent(current.filter { $0.categoryId == category.id }), usual: spent(past.filter { $0.categoryId == category.id }) / count)
+            CategoryComparison(category: category, spent: comparison.current.byCategory[category.id] ?? 0, usual: comparison.usual.byCategory[category.id] ?? 0)
         }
         let shown = rows.filter { $0.spent > 0 || $0.usual > 0 }.sorted { ($0.spent - $0.usual) > ($1.spent - $1.usual) }
 
-        return MonthComparison(referenceCount: references.count, spent: spent(current), usual: spent(past) / count, categories: shown)
+        return MonthComparison(referenceCount: comparison.referenceCount, spent: comparison.current.spent, usual: comparison.usual.spent, categories: shown)
     }
 
     /**
@@ -236,76 +164,48 @@ enum BudgetAnalysis {
     /**
      * @method monthTotals
      * @description What each of the last twelve months spent, in all and per category, against its budget, the oldest
-     * first. The months before the first operation are left out
+     * first, from the figures the server worked out
      *
-     * @param operations Every operation
+     * @param figures The figures, as the server sent them
      * @param limit The budget of a month
-     * @param now The current date
      * @returns The months
      */
-    static func monthTotals(_ operations: [Operation], limit: (Date) -> Double, now: Date = .now) -> [MonthTotal] {
-        let current = BudgetMath.monthStart(now)
-        let earliest = BudgetMath.monthStart(operations.map(\.date).min() ?? now)
-        let first = max(earliest, BudgetMath.shiftMonth(current, by: 1 - trendMonths))
-        var totals: [MonthTotal] = []
-        var month = min(first, current)
-
-        while month <= current {
-            let inMonth = BudgetMath.operations(operations, in: month)
-            var byCategory: [String: Double] = [:]
-            for operation in inMonth {
-                byCategory[operation.categoryId, default: 0] += operation.euroAmount
+    static func monthTotals(_ figures: AnalysisFigures, limit: (Date) -> Double) -> [MonthTotal] {
+        figures.months.compactMap { entry in
+            guard let month = monthStart(of: entry.month) else {
+                return nil
             }
-            totals.append(MonthTotal(month: month, spent: spent(inMonth), limit: limit(month), byCategory: byCategory, isCurrent: month == current))
-            month = BudgetMath.shiftMonth(month, by: 1)
+            return MonthTotal(month: month, spent: entry.spent, limit: limit(month), byCategory: entry.byCategory, isCurrent: entry.isCurrent)
         }
-
-        return totals
     }
 
     /**
      * @method spendingHabits
-     * @description How the last ninety days were spent, recurring operations left out: what each weekday costs on
-     * average, the share paid online, and the places most spent at
+     * @description How the last ninety days were spent, recurring operations left out, from the figures the server
+     * worked out: each place reads in the interface's language, and the weekdays are numbered as the calendar does
      *
-     * @param operations Every operation
-     * @param now The current date
+     * @param figures The figures, as the server sent them
      * @returns The habits
      */
-    static func spendingHabits(_ operations: [Operation], now: Date = .now) -> SpendingHabits {
-        let calendar = BudgetMath.calendar
-        let today = calendar.startOfDay(for: now)
-        let since = calendar.date(byAdding: .day, value: 1 - habitDays, to: today) ?? today
-        let recent = operations.filter { $0.recurringId == nil && $0.date >= since && $0.date <= now }
-        var totals: [Int: Double] = [:]
-        var counts: [Int: Int] = [:]
-        var places: [String: PlaceSpend] = [:]
-        var day = since
-
-        while day <= today {
-            counts[calendar.component(.weekday, from: day), default: 0] += 1
-            day = calendar.date(byAdding: .day, value: 1, to: day) ?? today.addingTimeInterval(86_400)
+    static func spendingHabits(_ figures: AnalysisFigures) -> SpendingHabits {
+        let habits = figures.habits
+        let since = Operation.date(day: habits.since, time: "00:00") ?? .now
+        let weekdays = habits.weekdays.map { WeekdaySpend(weekday: $0.weekday + 1, average: $0.average) }
+        let places = habits.places.map { entry in
+            PlaceSpend(name: entry.place?.name ?? (entry.location ?? "").trimmingCharacters(in: .whitespaces), spent: entry.spent, count: entry.count)
         }
 
-        for operation in recent {
-            totals[calendar.component(.weekday, from: operation.date), default: 0] += operation.euroAmount
+        return SpendingHabits(since: since, weekdays: weekdays, online: habits.online, inPerson: habits.inPerson, places: places)
+    }
 
-            let location = operation.whereabouts
-            guard !operation.isOnline, !location.isEmpty else {
-                continue
-            }
-
-            let key = operation.place?.id ?? location.lowercased()
-            let previous = places[key]
-            let isLatest = previous.map { operation.date >= $0.lastDate } ?? true
-            places[key] = PlaceSpend(name: isLatest ? location : previous?.name ?? location, spent: (previous?.spent ?? 0) + operation.euroAmount, count: (previous?.count ?? 0) + 1, lastDate: isLatest ? operation.date : previous?.lastDate ?? operation.date)
-        }
-
-        let weekdays = weekdayOrder.map { WeekdaySpend(weekday: $0, average: (totals[$0] ?? 0) / Double(max(1, counts[$0] ?? 0))) }
-        let online = spent(recent.filter(\.isOnline))
-        let inPerson = spent(recent.filter { !$0.isOnline })
-        let top = Array(places.values.sorted { $0.spent > $1.spent }.prefix(topPlaces))
-
-        return SpendingHabits(since: since, weekdays: weekdays, online: online, inPerson: inPerson, places: top)
+    /**
+     * @method monthStart
+     * @description The first day of a month written `YYYY-MM`
+     *
+     * @param key The month
+     * @returns Its first day, at midnight, or nil when it doesn't read as a month
+     */
+    static func monthStart(of key: String) -> Date? {
+        Operation.date(day: key + "-01", time: "00:00")
     }
 }

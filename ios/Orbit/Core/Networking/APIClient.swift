@@ -16,24 +16,28 @@ struct IdentityTokens: Codable {
 struct RemoteState: Decodable {
     var document: BudgetDocument /*!< The budget */
     var revision: Int /*!< Its revision */
+    var operationCount: Int /*!< How many operations the server holds */
 
     /**
      * @type CodingKeys
-     * @description The key the revision sits under, next to the document's own
+     * @description The keys the revision and the count sit under, next to the document's own
      */
     private enum CodingKeys: String, CodingKey {
         case revision /*!< The revision */
+        case operationCount /*!< How many operations it holds */
     }
 
     /**
      * @constructor init
-     * @description Reads the document and its revision from the same object
+     * @description Reads the document, its revision and the count from the same object
      *
      * @param decoder The decoder
      */
     init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
         document = try BudgetDocument(from: decoder)
-        revision = try decoder.container(keyedBy: CodingKeys.self).decode(Int.self, forKey: .revision)
+        revision = try container.decode(Int.self, forKey: .revision)
+        operationCount = try container.decode(Int.self, forKey: .operationCount)
     }
 }
 
@@ -274,6 +278,18 @@ enum APIError: UserFacingError {
     }
 
     /**
+     * @method isRefusal
+     * @description Whether the server turned the request away for good, so sending it again would change nothing
+     */
+    var isRefusal: Bool {
+        switch self {
+        case .conflict, .notFound: return true
+        case .server(let status, _), .explained(let status, _): return (400..<500).contains(status)
+        default: return false
+        }
+    }
+
+    /**
      * @method isOffline
      * @description Whether the server couldn't be reached
      */
@@ -444,6 +460,55 @@ final class APIClient {
     }
 
     /**
+     * @method listOperations
+     * @description Reads a page of the operations matching the filters, the latest first
+     *
+     * @param query The filters
+     * @param offset How many operations to skip
+     * @param limit How many operations to read
+     * @returns The page, with how many operations match in all
+     */
+    func listOperations(_ query: OperationQuery, offset: Int, limit: Int) async throws -> OperationPage {
+        let bounds = [("from", query.from), ("to", query.to)].compactMap { name, day in day.map { URLQueryItem(name: name, value: $0) } }
+        let filters = [URLQueryItem(name: "categories", value: query.categories.joined(separator: ",")), URLQueryItem(name: "query", value: query.query), URLQueryItem(name: "queryCategories", value: query.queryCategories.joined(separator: ","))]
+        let page = [URLQueryItem(name: "offset", value: String(offset)), URLQueryItem(name: "limit", value: String(limit))]
+        return try await send("/v1/budget/operations", method: "GET", query: filters + bounds + page)
+    }
+
+    /**
+     * @method monthFigures
+     * @description Reads what a month spent, worked out by the server
+     *
+     * @param month The month, as `YYYY-MM`
+     * @returns The figures
+     */
+    func monthFigures(_ month: String) async throws -> MonthFigures {
+        try await send("/v1/budget/figures/month", method: "GET", query: [URLQueryItem(name: "month", value: month)])
+    }
+
+    /**
+     * @method analysisFigures
+     * @description Reads what the Analysis tab shows, worked out by the server
+     *
+     * @returns The figures
+     */
+    func analysisFigures() async throws -> AnalysisFigures {
+        try await send("/v1/budget/figures/analysis", method: "GET")
+    }
+
+    /**
+     * @method suggestions
+     * @description Reads what the editors suggest for what is typed
+     *
+     * @param name The name typed
+     * @param city The city typed
+     * @returns The suggestions
+     */
+    func suggestions(name: String, city: String) async throws -> Suggestions {
+        try await send("/v1/budget/figures/suggestions", method: "GET", query: [URLQueryItem(name: "name", value: name), URLQueryItem(name: "city", value: city)])
+    }
+
+    /**
      * @method getTrash
      * @description Reads the operations in the trash, the latest deleted first
      *
@@ -553,6 +618,8 @@ final class APIClient {
             }
         case .deleteOperation(let id):
             try await ignoringNotFound { try await sendDiscarding(entryPath("operations", id), method: "DELETE") }
+        case .deleteEveryOperation:
+            try await sendDiscarding("/v1/budget/operations", method: "DELETE")
         case .storeCategory(let category, let position):
             let fields = CategoryFields(name: category.name, symbol: category.symbol, colorHex: category.colorHex, monthlyLimit: category.monthlyLimit, position: position)
             try await sendDiscarding(entryPath("categories", category.id), method: "PUT", body: fields)

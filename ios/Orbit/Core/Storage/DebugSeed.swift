@@ -3,7 +3,9 @@ import Foundation
 
 /**
  * @type DebugSeed
- * @description The sample month the debug builds can start with, launched with `-demo` or `-demo-empty`
+ * @description The sample month the debug builds can start with, launched with `-demo` or `-demo-empty`. The
+ * demonstration never touches the network: the sample operations stay in memory, and `DemoFigures` answers for the
+ * server
  */
 @MainActor
 enum DebugSeed {
@@ -13,8 +15,9 @@ enum DebugSeed {
      * @description Replaces the budget with the sample month of the design handoff, dated around today
      *
      * @param store The store to fill
+     * @returns The sample operations, for the session to serve
      */
-    static func enterDemo(store: LocalStore) {
+    static func enterDemo(store: LocalStore) -> [Operation] {
         let calendar = BudgetMath.calendar
         let today = calendar.startOfDay(for: .now)
         let monthStart = BudgetMath.monthStart(today)
@@ -93,21 +96,103 @@ enum DebugSeed {
             Operation(date: dayOfMonth(6, hour: 20), name: "Kino Babylon", categoryId: "fun", location: "Mitte", amount: 25.02)
         ]
 
-        store.replaceAll(
-            categories: Category.defaults,
-            operations: operations,
-            budget: BudgetSettings(monthlyLimit: 3000)
-        )
+        store.replaceAll(categories: Category.defaults, budget: BudgetSettings(monthlyLimit: 3000))
+        return operations
     }
 
     /**
      * @method enterDemoEmpty
-     * @description Starts from an empty budget
+     * @description Starts from an empty budget, without queuing a reset for the server
      *
      * @param store The store to empty
      */
     static func enterDemoEmpty(store: LocalStore) {
-        store.clearAll()
+        store.replaceAll(categories: Category.defaults, budget: .default)
+    }
+}
+
+/**
+ * @type DemoFigures
+ * @description What the server would answer the demonstration, worked out from its sample operations: the pages of
+ * History, each month's figures, and the months of the Analysis tab, without the comparison with usual or the habits
+ */
+@MainActor
+enum DemoFigures {
+    /**
+     * @method page
+     * @description A page of the operations matching the filters, the latest first
+     *
+     * @param operations The sample operations
+     * @param query The filters
+     * @param offset How many operations to skip
+     * @param limit How many operations to read
+     * @returns The page
+     */
+    static func page(_ operations: [Operation], query: OperationQuery, offset: Int, limit: Int) -> OperationPage {
+        let matching = operations.filter { matches($0, query) }.sorted { $0.date > $1.date }
+        return OperationPage(operations: Array(matching.dropFirst(offset).prefix(limit)), total: matching.count)
+    }
+
+    /**
+     * @method matches
+     * @description Whether an operation passes the filters
+     *
+     * @param operation The operation
+     * @param query The filters
+     * @returns Whether it does
+     */
+    private static func matches(_ operation: Operation, _ query: OperationQuery) -> Bool {
+        let inCategory = query.categories.isEmpty || query.categories.contains(operation.categoryId)
+        let inDays = (query.from.map { operation.day >= $0 } ?? true) && (query.to.map { operation.day <= $0 } ?? true)
+        let found = query.query.isEmpty || operation.name.localizedCaseInsensitiveContains(query.query) || operation.whereabouts.localizedCaseInsensitiveContains(query.query) || query.queryCategories.contains(operation.categoryId)
+        return inCategory && inDays && found
+    }
+
+    /**
+     * @method spending
+     * @description What operations spent, in all and per category
+     *
+     * @param operations The operations
+     * @returns The euros spent
+     */
+    private static func spending(_ operations: [Operation]) -> Spending {
+        let byCategory = operations.reduce(into: [String: Double]()) { totals, operation in
+            totals[operation.categoryId, default: 0] += operation.euroAmount
+        }
+        return Spending(spent: operations.reduce(0) { $0 + $1.euroAmount }, byCategory: byCategory)
+    }
+
+    /**
+     * @method month
+     * @description What a month spent
+     *
+     * @param operations The sample operations
+     * @param month Any day of the month
+     * @returns The figures
+     */
+    static func month(_ operations: [Operation], month: Date) -> MonthFigures {
+        let inMonth = operations.filter { BudgetMath.isSameMonth($0.date, month) }
+        let spent = spending(inMonth)
+        return MonthFigures(month: BudgetMath.monthKey(month), operationCount: inMonth.count, spent: spent.spent, byCategory: spent.byCategory, comparison: nil)
+    }
+
+    /**
+     * @method analysis
+     * @description What each month spent, from the first sample operation's to the current one
+     *
+     * @param operations The sample operations
+     * @returns The figures
+     */
+    static func analysis(_ operations: [Operation]) -> AnalysisFigures {
+        let current = BudgetMath.monthStart(.now)
+        let first = BudgetMath.monthStart(operations.map(\.date).min() ?? .now)
+        let count = max(1, (BudgetMath.calendar.dateComponents([.month], from: first, to: current).month ?? 0) + 1)
+        let months = (0..<count).map { BudgetMath.shiftMonth(first, by: $0) }.map { month in
+            let spent = spending(operations.filter { BudgetMath.isSameMonth($0.date, month) })
+            return AnalysisFigures.Month(month: BudgetMath.monthKey(month), isCurrent: month == current, spent: spent.spent, byCategory: spent.byCategory)
+        }
+        let habits = AnalysisFigures.Habits(since: ExchangeRates.day(from: .now), weekdays: [], online: 0, inPerson: 0, places: [])
+        return AnalysisFigures(months: months, habits: habits)
     }
 }
 #endif

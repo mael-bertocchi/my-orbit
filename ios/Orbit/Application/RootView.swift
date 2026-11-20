@@ -44,17 +44,15 @@ struct RootView: View {
             #if DEBUG
             if CommandLine.arguments.contains("-demo-empty") {
                 DebugSeed.enterDemoEmpty(store: store)
-                session.enterDemo()
+                session.enterDemo(operations: [])
                 return
             }
             if CommandLine.arguments.contains("-demo") {
-                DebugSeed.enterDemo(store: store)
-                session.enterDemo()
+                session.enterDemo(operations: DebugSeed.enterDemo(store: store))
                 return
             }
             #endif
             await session.bootstrap()
-            store.sealCompletedMonths()
         }
     }
 }
@@ -93,7 +91,7 @@ struct MainShell: View {
                 HistoryView(
                     filter: $historyFilter,
                     dateRange: $historyDateRange,
-                    onSelect: { editorRoute = .edit($0.id) },
+                    onSelect: { editorRoute = .edit($0) },
                     onNewOperation: { editorRoute = .new }
                 )
                 .screenBackground()
@@ -118,7 +116,6 @@ struct MainShell: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 followTimeZone()
-                store.sealCompletedMonths()
                 session.applicationBecameActive()
             }
         }

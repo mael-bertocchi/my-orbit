@@ -8,6 +8,7 @@ enum BudgetWrite: Equatable {
     case createOperation(Operation) /*!< Logs an operation under its id */
     case updateOperation(Operation) /*!< Changes an operation */
     case deleteOperation(id: String) /*!< Moves an operation to the trash */
+    case deleteEveryOperation /*!< Moves every operation to the trash, as a reset does */
     case storeCategory(Category, position: Int) /*!< Creates or replaces a category, at its place in the list */
     case deleteCategory(id: String) /*!< Removes a category */
     case storeSettings(BudgetSettings) /*!< Stores the monthly budget */
@@ -24,8 +25,8 @@ enum DocumentDiff {
 
     /**
      * @method writes
-     * @description The writes that bring `remote` to `local`. Categories go first, so an operation never lands before
-     * the category it is filed under
+     * @description The writes that bring `remote` to `local`. The operations are not part of it: the device sends its
+     * own one by one, after these, so an operation never lands before the category it is filed under
      *
      * @param remote The budget as the server holds it
      * @param local The budget as the device wants it
@@ -37,7 +38,6 @@ enum DocumentDiff {
         return categoryWrites(from: remote.categories, to: local.categories)
             + settings
             + historyWrites(from: remote.budgetHistory, to: local.budgetHistory)
-            + operationWrites(from: remote.operations, to: local.operations)
     }
 
     /**
@@ -77,29 +77,5 @@ enum DocumentDiff {
         }
 
         return stores + remote.keys.sorted().filter { local[$0] == nil }.map { BudgetWrite.deleteMonth($0) }
-    }
-
-    /**
-     * @method operationWrites
-     * @description The writes that turn one list of operations into another, setting aside what the server rewrites on
-     * its own
-     *
-     * @param remote The server's operations
-     * @param local The device's operations
-     * @returns The writes
-     */
-    private static func operationWrites(from remote: [Operation], to local: [Operation]) -> [BudgetWrite] {
-        let stored = Dictionary(remote.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let kept = Set(local.map(\.id))
-
-        let changes: [BudgetWrite] = local.compactMap { operation in
-            guard let known = stored[operation.id] else {
-                return .createOperation(operation)
-            }
-
-            return DocumentMerge.sameOperation(known, operation) ? nil : .updateOperation(operation)
-        }
-
-        return changes + remote.filter { !kept.contains($0.id) }.map { BudgetWrite.deleteOperation(id: $0.id) }
     }
 }
