@@ -54,7 +54,6 @@ model BudgetOperation {
   id           String       @id
   day          String
   time         String
-  date         DateTime?
   name         String
   description  String?
   categoryId   String       @map("category_id")
@@ -70,7 +69,6 @@ model BudgetOperation {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  @@index([date])
   @@index([day])
   @@index([categoryId])
   @@index([deletedAt])

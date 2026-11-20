@@ -10,7 +10,6 @@ function row(fields: Partial<OperationRow> & Pick<OperationRow, 'day' | 'amount'
     return {
         id: `${fields.day}-${String(fields.amount)}`,
         time: '12:00',
-        date: null,
         name: 'Coffee',
         description: null,
         categoryId: 'coffee',
