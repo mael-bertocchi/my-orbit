@@ -4,9 +4,9 @@ import { StatusCodes } from 'http-status-codes';
 import type { PrismaClient } from 'prisma/generated/prisma/client';
 import { pkceChallenge } from 'src/modules/identity/identity-service';
 import type { ConnectionSummary, OAuthClient } from 'src/modules/oauth/oauth-models';
+import { ExpiringCache, ONE_TIME_CAPACITY } from 'src/shared/expiring-cache';
 import type { Maybe } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
-import { OneTimeStore } from 'src/shared/one-time-store';
 import { z } from 'zod';
 
 /**
@@ -45,7 +45,7 @@ interface PendingCode {
  * @constant codes
  * @description The codes handed out and not traded yet.
  */
-const codes = new OneTimeStore<PendingCode>(CODE_LIFETIME);
+const codes = new ExpiringCache<PendingCode>(CODE_LIFETIME, ONE_TIME_CAPACITY);
 
 /**
  * @function signatureOf
@@ -151,7 +151,7 @@ export function readClient(secret: string, clientId: string): Maybe<OAuthClient>
 export function openAuthorization(pending: PendingCode): string {
     const code = randomBytes(32).toString('base64url');
 
-    codes.put(code, pending);
+    codes.set(code, pending);
 
     return code;
 }

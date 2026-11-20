@@ -4,9 +4,9 @@ import fastifyJwt from '@fastify/jwt';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { StatusCodes } from 'http-status-codes';
+import { ExpiringCache, ONE_TIME_CAPACITY } from 'src/shared/expiring-cache';
 import type { Maybe, Perhaps } from 'src/shared/models';
 import { RequestError } from 'src/shared/models';
-import { OneTimeStore } from 'src/shared/one-time-store';
 
 /**
  * @constant OWNER_ID
@@ -79,8 +79,8 @@ export interface IdentityTokens {
 export interface IdentityService {
     relyingParty: RelyingParty; /*!< Who the passkeys belong to */
     ownerName: string; /*!< The owner's name, as their passkeys and the portal show it */
-    challenges: OneTimeStore<ChallengePurpose>; /*!< The challenges handed out and not signed yet */
-    connections: OneTimeStore<string>; /*!< The app's one-time codes, each with the PKCE challenge it was asked with */
+    challenges: ExpiringCache<ChallengePurpose>; /*!< The challenges handed out and not signed yet */
+    connections: ExpiringCache<string>; /*!< The app's one-time codes, each with the PKCE challenge it was asked with */
     isEnrollmentToken: (token: string) => boolean; /*!< Constant-time check of the optional enrollment token */
     issueTokens: (userId: string, clientName?: Perhaps<string>) => Promise<IdentityTokens>; /*!< Creates a refresh session, for a client the owner just authorized when it is named, and returns a token pair */
     rotateTokens: (refreshToken: string) => Promise<IdentityTokens>; /*!< Validates and rotates a refresh token into a new pair */
@@ -201,9 +201,9 @@ export default fp(async function (fastify: FastifyInstance): Promise<void> {
 
         ownerName: fastify.variables.IDENTITY_OWNER_NAME,
 
-        challenges: new OneTimeStore<ChallengePurpose>(CHALLENGE_LIFETIME),
+        challenges: new ExpiringCache<ChallengePurpose>(CHALLENGE_LIFETIME, ONE_TIME_CAPACITY),
 
-        connections: new OneTimeStore<string>(CONNECTION_LIFETIME),
+        connections: new ExpiringCache<string>(CONNECTION_LIFETIME, ONE_TIME_CAPACITY),
 
         /**
          * @method isEnrollmentToken

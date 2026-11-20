@@ -1,6 +1,12 @@
 import type { Perhaps } from 'src/shared/models';
 
 /**
+ * @constant ONE_TIME_CAPACITY
+ * @description How many one-time values, such as challenges or codes, are kept at most before the oldest goes.
+ */
+export const ONE_TIME_CAPACITY = 1000;
+
+/**
  * @interface ExpiringEntry
  * @description A value kept until it lapses.
  */
@@ -11,9 +17,9 @@ interface ExpiringEntry<T> {
 
 /**
  * @class ExpiringCache
- * @description Keeps answers from a slow or rate-limited service in memory for a while, so asking twice doesn't call it
- * twice. Unlike a one-time store, a value can be read any number of times until it lapses. It holds a bounded number of
- * values; past the bound the oldest goes first.
+ * @description Keeps values in memory for a while: answers from a slow or rate-limited service, read any number of times
+ * until they lapse, or one-time values such as challenges and codes, taken once. It holds a bounded number of values;
+ * past the bound the oldest goes first.
  */
 export class ExpiringCache<T> {
     private entries = new Map<string, ExpiringEntry<T>>(); /*!< The values, oldest first */
@@ -49,6 +55,23 @@ export class ExpiringCache<T> {
         }
 
         return entry.value;
+    }
+
+    /**
+     * @method take
+     * @description Reads a value and forgets it, so it can only be used once.
+     *
+     * @param {string} key The key.
+     * @param {number} now The current time, in milliseconds.
+     *
+     * @returns {Perhaps<T>} The value, or undefined when it is missing, already taken or lapsed.
+     */
+    take(key: string, now: number = Date.now()): Perhaps<T> {
+        const value = this.get(key, now);
+
+        this.entries.delete(key);
+
+        return value;
     }
 
     /**

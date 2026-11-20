@@ -32,4 +32,16 @@ describe('ExpiringCache', () => {
 
         expect(cache.get('first', 1)).toBeUndefined();
     });
+
+    it('hands a value taken back once, and not once it lapsed', () => {
+        const cache = new ExpiringCache<string>(1000);
+
+        cache.set('challenge', 'authentication', 0);
+        cache.set('code', 'S256', 0);
+
+        expect(cache.take('challenge', 10)).toBe('authentication');
+        expect(cache.take('challenge', 10)).toBeUndefined();
+        expect(cache.take('code', 1000)).toBeUndefined();
+        expect(cache.take('unknown', 10)).toBeUndefined();
+    });
 });

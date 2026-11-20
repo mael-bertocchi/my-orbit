@@ -72,7 +72,7 @@ export async function signInOptions(identity: IdentityService): Promise<PublicKe
         userVerification: 'required'
     });
 
-    identity.challenges.put(options.challenge, 'authentication');
+    identity.challenges.set(options.challenge, 'authentication');
 
     return options;
 }
@@ -152,7 +152,7 @@ export async function passkeyOptions(prisma: PrismaClient, identity: IdentitySer
         supportedAlgorithmIDs: ALGORITHMS
     });
 
-    identity.challenges.put(options.challenge, 'registration');
+    identity.challenges.set(options.challenge, 'registration');
 
     return options;
 }
@@ -294,7 +294,7 @@ export function pkceChallenge(verifier: string): string {
 export function openConnection(identity: IdentityService, challenge: string): string {
     const code = randomBytes(32).toString('base64url');
 
-    identity.connections.put(code, challenge);
+    identity.connections.set(code, challenge);
 
     return code;
 }
