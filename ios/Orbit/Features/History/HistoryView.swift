@@ -201,7 +201,7 @@ struct HistoryView: View {
 
     /**
      * @method operationList
-     * @description The operations day by day, with the total when a date filter is in place, or why there is none
+     * @description The operations day by day, or why there is none
      */
     @ViewBuilder
     private var operationList: some View {
@@ -216,10 +216,6 @@ struct HistoryView: View {
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    if dateRange != nil {
-                        StatCard(label: String(appLocalized: "Total spent"), value: Formatting.amount(groups.reduce(0) { $0 + $1.spent }))
-                            .padding(.top, 4)
-                    }
                     ForEach(groups) { group in
                         HStack {
                             DayLabel(Formatting.relativeDay(group.date))
