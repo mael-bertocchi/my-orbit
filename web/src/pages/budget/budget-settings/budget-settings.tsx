@@ -8,7 +8,7 @@ import { categoriesOf, DEFAULT_CATEGORIES } from 'modules/budget/budget-categori
 import { BANK_MARKUP, bankRate, CURRENCIES, currencyName, EURO } from 'modules/budget/budget-currencies';
 import { monthStart } from 'modules/budget/budget-dates';
 import { euro, percent, rate } from 'modules/budget/budget-formatting';
-import { useDocument, useRates } from 'modules/budget/budget-hooks';
+import { useBudget, useDocument, useRates } from 'modules/budget/budget-hooks';
 import { useBudgetContext } from 'modules/budget/budget-hooks';
 import { defaultCurrency, rememberCurrency } from 'modules/budget/budget-preferences';
 import { t } from 'modules/language/language-service';
@@ -37,6 +37,7 @@ const NEGATIVE = '#FF3B30';
  */
 function BudgetSettingsComponent(): JSX.Element {
     const document = useDocument();
+    const { operationCount } = useBudget();
     const rates = useRates();
     const { store } = useBudgetContext();
     const [showLimits, setShowLimits] = useState(false);
@@ -54,10 +55,10 @@ function BudgetSettingsComponent(): JSX.Element {
     const reset = (): void => {
         store.apply(() => ({
             categories: DEFAULT_CATEGORIES.map((category) => ({ ...category })),
-            operations: [],
             budget: { monthlyLimit: 3000 },
             budgetHistory: {}
         }));
+        store.write({ kind: 'deleteEveryOperation' });
         setIsConfirmingReset(false);
     };
 
@@ -123,7 +124,7 @@ function BudgetSettingsComponent(): JSX.Element {
 
             <ListGroupComponent title={t('settings.data')}>
                 <ListRowComponent icon={<IconTileComponent icon={List} color={ACCENT} size={30} />} title={t('settings.operations')}>
-                    <span className='text-[15px] text-ink-secondary tabular-nums'>{document.operations.length}</span>
+                    <span className='text-[15px] text-ink-secondary tabular-nums'>{operationCount}</span>
                 </ListRowComponent>
                 <ListRowComponent icon={<IconTileComponent icon={LayoutGrid} color={ACCENT} size={30} />} title={t('settings.categories')}>
                     <span className='text-[15px] text-ink-secondary tabular-nums'>{categoriesOf(document.categories).length}</span>

@@ -1,15 +1,9 @@
 import type { Maybe } from 'models';
 import { categoriesOf } from 'modules/budget/budget-categories';
-import { monthKey, monthStart, shiftMonth, startOfDay } from 'modules/budget/budget-dates';
+import { parseDayKey, parseMonthKey } from 'modules/budget/budget-dates';
 import { whereabouts } from 'modules/budget/budget-formatting';
-import { euroAmount, monthlyBudgetFor, operationsIn } from 'modules/budget/budget-math';
-import type { BudgetDocument, Category, Operation } from 'modules/budget/budget-models';
-
-/**
- * @constant REFERENCE_MONTHS
- * @description How many past months "usual" is measured on, at most.
- */
-const REFERENCE_MONTHS = 6;
+import { monthlyBudgetFor } from 'modules/budget/budget-math';
+import type { AnalysisFigures, BudgetDocument, Category, MonthFigures } from 'modules/budget/budget-models';
 
 /**
  * @constant NOTABLE_CHANGE
@@ -48,23 +42,6 @@ export interface MonthComparison {
 }
 
 /**
- * @function referenceMonths
- * @description The past months "usual" is measured on: the latest ones holding operations, before the month and at
- * most six, latest first.
- *
- * @param {readonly Operation[]} operations Every operation.
- * @param {Date} month The month measured.
- *
- * @returns {Date[]} The first day of each reference month.
- */
-export function referenceMonths(operations: readonly Operation[], month: Date): Date[] {
-    const current = monthStart(month).getTime();
-    const keys = new Set(operations.filter((operation) => monthStart(operation.date).getTime() < current).map((operation) => monthKey(operation.date)));
-
-    return [...keys].sort().reverse().slice(0, REFERENCE_MONTHS).map((key) => new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, 1));
-}
-
-/**
  * @function changeOf
  * @description How much a figure moved from its usual value, as a fraction.
  *
@@ -79,42 +56,25 @@ function changeOf(spent: number, usual: number): Maybe<number> {
 
 /**
  * @function compareMonth
- * @description The current month so far against the same point of the reference months: by today's day, or by their
- * last day when they are shorter. Comparing at the same day keeps a rent paid on the 1st, or a month only half gone,
- * from reading as a rise or a fall.
+ * @description The current month so far against what the reference months usually had by the same day, in all and per
+ * category, from the figures the server worked out: comparing at the same day keeps a rent paid on the 1st, or a month
+ * only half gone, from reading as a rise or a fall.
  *
  * @param {BudgetDocument} document The budget.
- * @param {Date} now The current date.
+ * @param {NonNullable<MonthFigures['comparison']>} comparison The month so far and the usual, as the server sent them.
  *
  * @returns {MonthComparison} The comparison.
  */
-export function compareMonth(document: BudgetDocument, now: Date = new Date()): MonthComparison {
-    const month = monthStart(now);
-    const today = now.getDate();
-    const references = referenceMonths(document.operations, month);
-    const current = operationsIn(document.operations, month).filter((operation) => operation.date.getDate() <= today);
-    const past = references.map((reference) => operationsIn(document.operations, reference).filter((operation) => operation.date.getDate() <= today));
-    const count = Math.max(1, references.length);
-
-    /**
-     * @function usualFor
-     * @description What the reference months usually spent by today, on the operations a filter keeps.
-     */
-    const usualFor = (keep: (operation: Operation) => boolean): number => past.reduce((total, operations) => total + operations.filter(keep).reduce((sum, operation) => sum + euroAmount(operation), 0), 0) / count;
-
+export function compareMonth(document: BudgetDocument, comparison: NonNullable<MonthFigures['comparison']>): MonthComparison {
     const categories = categoriesOf(document.categories).map((category) => {
-        const isOf = (operation: Operation): boolean => operation.categoryId === category.id;
-        const spent = current.filter(isOf).reduce((total, operation) => total + euroAmount(operation), 0);
-        const usual = references.length > 0 ? usualFor(isOf) : 0;
+        const spent = comparison.current.byCategory[category.id] ?? 0;
+        const usual = comparison.usual.byCategory[category.id] ?? 0;
 
         return { category, spent, usual, change: changeOf(spent, usual) };
     });
+    const shown = categories.filter((entry) => entry.spent > 0 || entry.usual > 0).toSorted((left, right) => (right.spent - right.usual) - (left.spent - left.usual));
 
-    const spent = current.reduce((total, operation) => total + euroAmount(operation), 0);
-    const usual = references.length > 0 ? usualFor(() => true) : 0;
-    const shown = categories.filter((comparison) => comparison.spent > 0 || comparison.usual > 0).toSorted((left, right) => (right.spent - right.usual) - (left.spent - left.usual));
-
-    return { referenceCount: references.length, spent, usual, change: changeOf(spent, usual), categories: shown };
+    return { referenceCount: comparison.referenceCount, spent: comparison.current.spent, usual: comparison.usual.spent, change: changeOf(comparison.current.spent, comparison.usual.spent), categories: shown };
 }
 
 /**
@@ -138,24 +98,6 @@ export function isNotable(comparison: CategoryComparison): boolean {
 
     return comparison.spent >= NOTABLE_AMOUNT;
 }
-
-/**
- * @constant TREND_MONTHS
- * @description How many months the trends cover, the current one included.
- */
-const TREND_MONTHS = 12;
-
-/**
- * @constant HABIT_DAYS
- * @description How many days back the habits are measured on.
- */
-const HABIT_DAYS = 90;
-
-/**
- * @constant TOP_PLACES
- * @description How many places the habits list.
- */
-const TOP_PLACES = 5;
 
 /**
  * @interface MonthTotal
@@ -204,72 +146,33 @@ export interface SpendingHabits {
 /**
  * @function monthTotals
  * @description What each of the last twelve months spent, in all and per category, against its budget, the oldest
- * first. The months before the first operation are left out.
+ * first, from the figures the server worked out.
  *
  * @param {BudgetDocument} document The budget.
- * @param {Date} now The current date.
+ * @param {AnalysisFigures} figures The figures, as the server sent them.
  *
  * @returns {MonthTotal[]} The months.
  */
-export function monthTotals(document: BudgetDocument, now: Date = new Date()): MonthTotal[] {
-    const current = monthStart(now);
-    const earliest = document.operations.reduce((first, operation) => (operation.date < first ? operation.date : first), current);
-    const first = monthStart(earliest).getTime() > shiftMonth(current, 1 - TREND_MONTHS).getTime() ? monthStart(earliest) : shiftMonth(current, 1 - TREND_MONTHS);
-    const totals: MonthTotal[] = [];
+export function monthTotals(document: BudgetDocument, figures: AnalysisFigures): MonthTotal[] {
+    return figures.months.flatMap((total) => {
+        const month = parseMonthKey(total.month);
 
-    for (let month = first; month.getTime() <= current.getTime(); month = shiftMonth(month, 1)) {
-        const operations = operationsIn(document.operations, month);
-        const byCategory: Record<string, number> = {};
-
-        for (const operation of operations) {
-            byCategory[operation.categoryId] = (byCategory[operation.categoryId] ?? 0) + euroAmount(operation);
-        }
-
-        totals.push({ month, spent: operations.reduce((total, operation) => total + euroAmount(operation), 0), limit: monthlyBudgetFor(document, month).monthlyLimit, byCategory, isCurrent: month.getTime() === current.getTime() });
-    }
-
-    return totals;
+        return month !== null ? [{ month, spent: total.spent, limit: monthlyBudgetFor(document, month).monthlyLimit, byCategory: total.byCategory, isCurrent: total.isCurrent }] : [];
+    });
 }
 
 /**
  * @function spendingHabits
- * @description How the last ninety days were spent, recurring operations left out: what each weekday costs on average,
- * the share paid online, and the places most spent at.
+ * @description How the last ninety days were spent, recurring operations left out, from the figures the server worked
+ * out: each place reads in the page's language.
  *
- * @param {BudgetDocument} document The budget.
- * @param {Date} now The current date.
+ * @param {AnalysisFigures} figures The figures, as the server sent them.
  *
  * @returns {SpendingHabits} The habits.
  */
-export function spendingHabits(document: BudgetDocument, now: Date = new Date()): SpendingHabits {
-    const today = startOfDay(now);
-    const since = new Date(today.getFullYear(), today.getMonth(), today.getDate() - HABIT_DAYS + 1);
-    const operations = document.operations.filter((operation) => (operation.recurringId ?? '') === '' && operation.date >= since && operation.date <= now);
-    const totals = Array.from({ length: 7 }, () => 0);
-    const counts = Array.from({ length: 7 }, () => 0);
-    const places = new Map<string, PlaceSpend>();
+export function spendingHabits(figures: AnalysisFigures): SpendingHabits {
+    const habits = figures.habits;
+    const places = habits.places.map((entry) => ({ name: whereabouts(entry), spent: entry.spent, count: entry.count }));
 
-    for (let day = new Date(since); day <= today; day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1)) {
-        counts[day.getDay()] = (counts[day.getDay()] ?? 0) + 1;
-    }
-
-    for (const operation of operations.toSorted((left, right) => left.date.getTime() - right.date.getTime())) {
-        const weekday = operation.date.getDay();
-        const location = whereabouts(operation);
-
-        totals[weekday] = (totals[weekday] ?? 0) + euroAmount(operation);
-
-        if (!operation.isOnline && location !== '') {
-            const key = operation.place?.id ?? location.toLowerCase();
-            const known = places.get(key);
-
-            places.set(key, { name: location, spent: (known?.spent ?? 0) + euroAmount(operation), count: (known?.count ?? 0) + 1 });
-        }
-    }
-
-    const weekdays = [1, 2, 3, 4, 5, 6, 0].map((weekday) => ({ weekday, average: (totals[weekday] ?? 0) / Math.max(1, counts[weekday] ?? 0) }));
-    const online = operations.filter((operation) => operation.isOnline).reduce((total, operation) => total + euroAmount(operation), 0);
-    const inPerson = operations.filter((operation) => !operation.isOnline).reduce((total, operation) => total + euroAmount(operation), 0);
-
-    return { since, weekdays, online, inPerson, places: [...places.values()].toSorted((left, right) => right.spent - left.spent).slice(0, TOP_PLACES) };
+    return { since: parseDayKey(habits.since) ?? new Date(), weekdays: habits.weekdays, online: habits.online, inPerson: habits.inPerson, places };
 }

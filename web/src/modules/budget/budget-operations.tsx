@@ -2,7 +2,7 @@ import type { Maybe } from 'models';
 import { EURO } from 'modules/budget/budget-currencies';
 import { wholeSeconds } from 'modules/budget/budget-dates';
 import { numberStyle } from 'modules/budget/budget-formatting';
-import type { BudgetDocument, Operation, PlaceReference } from 'modules/budget/budget-models';
+import type { Operation, PlaceReference } from 'modules/budget/budget-models';
 
 /**
  * @constant MAX_DIGITS
@@ -159,27 +159,4 @@ export function toOperation(draft: OperationDraft, rateToEuro: number, id?: stri
         isOnline: draft.isOnline,
         updatedAt: new Date()
     };
-}
-
-/**
- * @function upsertOperation
- * @description Adds an operation, or replaces the one with its id.
- */
-export function upsertOperation(document: BudgetDocument, operation: Operation): BudgetDocument {
-    const exists = document.operations.some((candidate) => candidate.id === operation.id);
-
-    return {
-        ...document,
-        operations: exists
-            ? document.operations.map((candidate) => (candidate.id !== operation.id ? candidate : operation))
-            : [...document.operations, operation]
-    };
-}
-
-/**
- * @function deleteOperation
- * @description Removes an operation.
- */
-export function deleteOperation(document: BudgetDocument, id: string): BudgetDocument {
-    return { ...document, operations: document.operations.filter((operation) => operation.id !== id) };
 }

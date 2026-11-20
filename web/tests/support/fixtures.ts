@@ -29,10 +29,9 @@ export function operation(overrides: Partial<Operation> & Pick<Operation, 'id' |
  * @function document
  * @description Builds a budget document with the default categories.
  */
-export function document(operations: Operation[] = [], overrides: Partial<BudgetDocument> = {}): BudgetDocument {
+export function document(overrides: Partial<BudgetDocument> = {}): BudgetDocument {
     return {
         categories: DEFAULT_CATEGORIES.map((category) => ({ ...category })),
-        operations,
         budget: { monthlyLimit: 3000 },
         budgetHistory: {},
         ...overrides

@@ -3,7 +3,6 @@ import SuggestionFieldComponent, { type Suggestion } from 'components/suggestion
 import { LocateFixed, MapPin } from 'lucide-react';
 import type { Maybe } from 'models';
 import { placeName } from 'modules/budget/budget-formatting';
-import { useDocument } from 'modules/budget/budget-hooks';
 import type { PlaceReference } from 'modules/budget/budget-models';
 import { Limits } from 'modules/budget/budget-operations';
 import type { CityValue } from 'modules/budget/budget-places';
@@ -41,11 +40,10 @@ interface BudgetCityFieldComponentProps {
  * @param {BudgetCityFieldComponentProps} props The properties of the component
  */
 function BudgetCityFieldComponent(props: BudgetCityFieldComponentProps): JSX.Element {
-    const document = useDocument();
     const [isTyping, setIsTyping] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
     const [locateError, setLocateError] = useState<Maybe<string>>(null);
-    const options = useCitySuggestions(document.operations, props.value.location, isTyping);
+    const options = useCitySuggestions(props.value.location, isTyping);
     const suggestions = options.map((place): Suggestion => ({ id: place.id, value: placeName(place), detail: place.detail }));
     const isChosen = isCityChosen(props.value, props.kept);
 

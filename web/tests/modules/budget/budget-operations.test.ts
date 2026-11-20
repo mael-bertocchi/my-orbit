@@ -1,8 +1,6 @@
-import { amountInputOf, deleteOperation, groupAmountInput, parseAmountInput, sanitizeAmountInput, toOperation, upsertOperation } from 'modules/budget/budget-operations';
+import { amountInputOf, groupAmountInput, parseAmountInput, sanitizeAmountInput, toOperation } from 'modules/budget/budget-operations';
 import { chooseLanguage } from 'modules/language/language-service';
 import { describe, expect, it } from 'vitest';
-
-import { document, NOW, operation } from '../../support/fixtures';
 
 describe('amount field', () => {
     it('keeps digits, one separator and two decimals', () => {
@@ -76,12 +74,4 @@ describe('operations', () => {
         expect(built.date.getMilliseconds()).toBe(0);
     });
 
-    it('adds, replaces and removes operations', () => {
-        const existing = operation({ id: 'A', date: NOW, amount: 5 });
-        const budget = document([existing]);
-
-        expect(upsertOperation(budget, { ...existing, amount: 7 }).operations).toEqual([{ ...existing, amount: 7 }]);
-        expect(upsertOperation(budget, operation({ id: 'B', date: NOW })).operations).toHaveLength(2);
-        expect(deleteOperation(budget, 'A').operations).toHaveLength(0);
-    });
 });

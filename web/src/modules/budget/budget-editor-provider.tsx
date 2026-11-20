@@ -1,6 +1,6 @@
 import type { Maybe } from 'models';
 import { BudgetEditorContext } from 'modules/budget/budget-editor-context';
-import type { BudgetEditorContextProps, BudgetEditorProviderProps, BudgetEditorRoute } from 'modules/budget/budget-models';
+import type { BudgetEditorContextProps, BudgetEditorProviderProps, BudgetEditorRoute, Operation } from 'modules/budget/budget-models';
 import { useCallback, useMemo, useState, type JSX } from 'react';
 
 /**
@@ -21,7 +21,7 @@ export function BudgetEditorProvider(props: BudgetEditorProviderProps): JSX.Elem
      * @function openEdit
      * @description Opens the sheet on an existing operation
      */
-    const openEdit = useCallback((id: string) => setRoute({ kind: 'edit', id }), []);
+    const openEdit = useCallback((operation: Operation) => setRoute({ kind: 'edit', operation }), []);
     /**
      * @function close
      * @description Closes the sheet

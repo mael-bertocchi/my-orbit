@@ -9,11 +9,14 @@ import { compareMonth, isNotable } from 'modules/budget/budget-analysis';
 import { categoryName, hexColor } from 'modules/budget/budget-categories';
 import { dayKey, daysInMonth, monthKey, monthStart, parseMonthKey, shiftMonth } from 'modules/budget/budget-dates';
 import { euro, monthTitle } from 'modules/budget/budget-formatting';
-import { useDocument } from 'modules/budget/budget-hooks';
+import { useDocument, useServerData } from 'modules/budget/budget-hooks';
 import type { CategorySpend } from 'modules/budget/budget-math';
-import { categorySpends, monthlyBudgetFor, operationsIn, summary, toDispatch } from 'modules/budget/budget-math';
+import { categorySpends, monthlyBudgetFor, summary, toDispatch } from 'modules/budget/budget-math';
+import type { MonthFigures } from 'modules/budget/budget-models';
+import budgetService from 'modules/budget/budget-service';
 import { t } from 'modules/language/language-service';
 import BudgetLimitsComponent from 'pages/budget/budget-limits/budget-limits';
+import BudgetLoadingComponent from 'pages/budget/budget-loading/budget-loading';
 import TrendBadgeComponent from 'pages/budget/budget-trend/budget-trend';
 import { useState, type JSX } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -124,32 +127,106 @@ function CategoryRowComponent(props: CategoryRowComponentProps): JSX.Element {
 }
 
 /**
+ * @interface MonthContentComponentProps
+ * @description Properties of a month in the Budget tab once its figures arrived
+ */
+interface MonthContentComponentProps {
+    month: Date; /*!< The first day of the month */
+    figures: MonthFigures; /*!< What it spent, as the server worked it out */
+    onEditLimits: () => void; /*!< Opens the limits sheet */
+}
+
+/**
+ * @function MonthContentComponent
+ * @description A month in the Budget tab: what is left to spend, the spent, days-left and per-day figures, and every
+ * category against its limit, with, in the current month, each category's change from what it usually spent by the
+ * same day.
+ *
+ * @param {MonthContentComponentProps} props The properties of the component
+ */
+function MonthContentComponent(props: MonthContentComponentProps): JSX.Element {
+    const document = useDocument();
+    const navigate = useNavigate();
+    const now = new Date();
+    const month = props.month;
+    const budget = monthlyBudgetFor(document, month);
+    const hasOperations = props.figures.operationCount > 0;
+    const figures = summary(props.figures.spent, month, budget, now);
+    const isOverBudget = hasOperations && figures.left < 0;
+    const dispatch = toDispatch(document.categories, budget);
+    const spends = categorySpends(props.figures.byCategory, document.categories, budget).filter((spend) => spend.limit > 0 || spend.spent > 0);
+    const isCurrent = month.getTime() === monthStart(now).getTime();
+    const comparison = props.figures.comparison !== null ? compareMonth(document, props.figures.comparison) : null;
+    const changes = new Map((comparison !== null && comparison.referenceCount > 0 ? comparison.categories.filter(isNotable) : []).map((entry) => [entry.category.id, entry.change]));
+
+    return (
+        <div className='mt-6 grid grid-cols-1 gap-5 xl:grid-cols-5'>
+            <section className='card flex flex-col items-center p-6 sm:p-8 xl:col-span-2'>
+                <div className='flex flex-1 items-center'>
+                    <RingComponent progress={hasOperations ? figures.progress : 0} color={isOverBudget ? NEGATIVE : ACCENT}>
+                        <p className={`text-[14px] font-medium ${isOverBudget ? 'text-negative-text' : 'text-ink-secondary'}`}>
+                            {isOverBudget ? t('budget.overspent') : t('budget.leftToSpend')}
+                        </p>
+                        <p className='mt-0.5 text-[40px] font-semibold leading-none tracking-tight tabular-nums'>
+                            {hasOperations ? euro(Math.abs(figures.left)) : '•'}
+                        </p>
+                        <p className='mt-2 text-[14px] text-ink-tertiary'>
+                            {hasOperations ? t('budget.of', { amount: euro(figures.limit) }) : t('budget.noOperations')}
+                        </p>
+                    </RingComponent>
+                </div>
+                <div className={`mt-8 grid w-full gap-2.5 ${isCurrent ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                    <StatTileComponent label={t('budget.spent')} value={hasOperations ? euro(figures.spent) : '•'} />
+                    {isCurrent && <StatTileComponent label={t('budget.daysLeft')} value={hasOperations ? String(figures.daysLeft) : '•'} />}
+                    {isCurrent && <StatTileComponent label={t('budget.perDay')} value={hasOperations ? euro(figures.perDay) : '•'} />}
+                    {!isCurrent && <StatTileComponent label={t('budget.dailyAverage')} value={hasOperations ? euro(figures.dailyAverage) : '•'} />}
+                </div>
+            </section>
+
+            <section className='card p-6 sm:p-8 xl:col-span-3'>
+                <div className='flex items-baseline justify-between gap-4'>
+                    <h2 className='text-[20px] font-semibold tracking-tight'>{t('budget.byCategory')}</h2>
+                    <button type='button' onClick={props.onEditLimits} className='text-[15px] font-medium text-accent hover:text-accent-strong'>
+                        {t('budget.editLimits')}
+                    </button>
+                </div>
+                {hasOperations && dispatch > 0 && (
+                    <p className='mt-1 text-[13px] text-accent'>
+                        {t('budget.notDispatched', { amount: euro(dispatch) })}
+                    </p>
+                )}
+
+                <div className='mt-4'>
+                    {!hasOperations && <EmptyStateComponent message={t('budget.emptyMonth')} />}
+                    {hasOperations && spends.length === 0 && (
+                        <EmptyStateComponent message={t('budget.noSpending')} />
+                    )}
+                    {hasOperations && spends.map((spend) => (
+                        <CategoryRowComponent key={spend.category.id} spend={spend} change={changes.has(spend.category.id) ? changes.get(spend.category.id) ?? null : undefined} onOpen={() => navigate(historyPath(spend.category.id, month))} />
+                    ))}
+                </div>
+            </section>
+        </div>
+    );
+}
+
+/**
  * @function BudgetOverviewComponent
  * @description The Budget tab: what is left to spend in a month, the spent, days-left and per-day figures, and every
  * category against its limit. In the current month, each category's change from what it usually spent by the same
- * day. Each month is measured against its own budget, which can be edited at any time. The
- * month shown lives in the address, so coming back from a category's operations lands on the same month. On a desktop,
- * the recurring operations coming next and the month's latest operations join them, in cards of the same height as
- * their row's.
+ * day. What a month spent is worked out by the server; each month is measured against its own budget, which can be
+ * edited at any time. The month shown lives in the address, so coming back from a category's operations lands on the
+ * same month.
  */
 function BudgetOverviewComponent(): JSX.Element {
-    const document = useDocument();
-    const navigate = useNavigate();
     const [params, setParams] = useSearchParams();
     const [showLimits, setShowLimits] = useState(false);
 
     const now = new Date();
     const month = shownMonth(params.get('month'), now);
-    const budget = monthlyBudgetFor(document, month);
-    const hasOperations = operationsIn(document.operations, month).length > 0;
-    const figures = summary(document.operations, month, budget, now);
-    const isOverBudget = hasOperations && figures.left < 0;
+    const key = monthKey(month);
+    const { data, error } = useServerData(async () => await budgetService.monthFigures(key), key);
     const canGoForward = month.getTime() < monthStart(now).getTime();
-    const dispatch = toDispatch(document.categories, budget);
-    const spends = categorySpends(document.operations, document.categories, month, budget).filter((spend) => spend.limit > 0 || spend.spent > 0);
-    const isCurrent = month.getTime() === monthStart(now).getTime();
-    const comparison = isCurrent ? compareMonth(document, now) : null;
-    const changes = new Map((comparison !== null && comparison.referenceCount > 0 ? comparison.categories.filter(isNotable) : []).map((entry) => [entry.category.id, entry.change]));
 
     /**
      * @function showMonth
@@ -179,53 +256,7 @@ function BudgetOverviewComponent(): JSX.Element {
                 </h1>
             </PageHeaderComponent>
 
-            <div className='mt-6 grid grid-cols-1 gap-5 xl:grid-cols-5'>
-                <section className='card flex flex-col items-center p-6 sm:p-8 xl:col-span-2'>
-                    <div className='flex flex-1 items-center'>
-                        <RingComponent progress={hasOperations ? figures.progress : 0} color={isOverBudget ? NEGATIVE : ACCENT}>
-                            <p className={`text-[14px] font-medium ${isOverBudget ? 'text-negative-text' : 'text-ink-secondary'}`}>
-                                {isOverBudget ? t('budget.overspent') : t('budget.leftToSpend')}
-                            </p>
-                            <p className='mt-0.5 text-[40px] font-semibold leading-none tracking-tight tabular-nums'>
-                                {hasOperations ? euro(Math.abs(figures.left)) : '•'}
-                            </p>
-                            <p className='mt-2 text-[14px] text-ink-tertiary'>
-                                {hasOperations ? t('budget.of', { amount: euro(figures.limit) }) : t('budget.noOperations')}
-                            </p>
-                        </RingComponent>
-                    </div>
-                    <div className={`mt-8 grid w-full gap-2.5 ${isCurrent ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                        <StatTileComponent label={t('budget.spent')} value={hasOperations ? euro(figures.spent) : '•'} />
-                        {isCurrent && <StatTileComponent label={t('budget.daysLeft')} value={hasOperations ? String(figures.daysLeft) : '•'} />}
-                        {isCurrent && <StatTileComponent label={t('budget.perDay')} value={hasOperations ? euro(figures.perDay) : '•'} />}
-                        {!isCurrent && <StatTileComponent label={t('budget.dailyAverage')} value={hasOperations ? euro(figures.dailyAverage) : '•'} />}
-                    </div>
-                </section>
-
-                <section className='card p-6 sm:p-8 xl:col-span-3'>
-                    <div className='flex items-baseline justify-between gap-4'>
-                        <h2 className='text-[20px] font-semibold tracking-tight'>{t('budget.byCategory')}</h2>
-                        <button type='button' onClick={() => setShowLimits(true)} className='text-[15px] font-medium text-accent hover:text-accent-strong'>
-                            {t('budget.editLimits')}
-                        </button>
-                    </div>
-                    {hasOperations && dispatch > 0 && (
-                        <p className='mt-1 text-[13px] text-accent'>
-                            {t('budget.notDispatched', { amount: euro(dispatch) })}
-                        </p>
-                    )}
-
-                    <div className='mt-4'>
-                        {!hasOperations && <EmptyStateComponent message={t('budget.emptyMonth')} />}
-                        {hasOperations && spends.length === 0 && (
-                            <EmptyStateComponent message={t('budget.noSpending')} />
-                        )}
-                        {hasOperations && spends.map((spend) => (
-                            <CategoryRowComponent key={spend.category.id} spend={spend} change={changes.has(spend.category.id) ? changes.get(spend.category.id) ?? null : undefined} onOpen={() => navigate(historyPath(spend.category.id, month))} />
-                        ))}
-                    </div>
-                </section>
-            </div>
+            {data !== null ? <MonthContentComponent month={month} figures={data} onEditLimits={() => setShowLimits(true)} /> : <BudgetLoadingComponent error={error} />}
 
             <BudgetLimitsComponent month={month} open={showLimits} onClose={() => setShowLimits(false)} />
         </div>

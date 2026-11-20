@@ -1,11 +1,12 @@
 import RingComponent from 'components/ring/ring';
 import SpinnerComponent from 'components/spinner/spinner';
 import TrackBarComponent from 'components/track-bar/track-bar';
-import { monthStart } from 'modules/budget/budget-dates';
+import { monthKey, monthStart } from 'modules/budget/budget-dates';
 import { euro } from 'modules/budget/budget-formatting';
-import { useBudget, useBudgetContext } from 'modules/budget/budget-hooks';
-import { monthlyBudgetFor, operationsIn, summary } from 'modules/budget/budget-math';
+import { useBudget, useBudgetContext, useServerData } from 'modules/budget/budget-hooks';
+import { monthlyBudgetFor, summary } from 'modules/budget/budget-math';
 import { BudgetProvider } from 'modules/budget/budget-provider';
+import budgetService from 'modules/budget/budget-service';
 import { t } from 'modules/language/language-service';
 import { useEffect, type JSX } from 'react';
 
@@ -24,7 +25,7 @@ const NEGATIVE = '#FF3B30';
 /**
  * @function BudgetGlanceComponent
  * @description What is left to spend this month, how much of the budget is gone, and what that leaves per remaining
- * day. It reads the same budget the app shows, loading it if the app hasn't. On a desktop, where the tile has room, the
+ * day, as the server works it out. It reads the same budget the app shows, loading it if the app hasn't. On a desktop, where the tile has room, the
  * bar becomes the app's ring, with the figures beside it.
  *
  * @returns {JSX.Element} The glance at the budget
@@ -32,6 +33,10 @@ const NEGATIVE = '#FF3B30';
 function BudgetGlanceComponent(): JSX.Element {
     const { store } = useBudgetContext();
     const { document, status } = useBudget();
+    const now = new Date();
+    const month = monthStart(now);
+    const key = monthKey(month);
+    const { data: monthFigures, error } = useServerData(async () => await budgetService.monthFigures(key), key);
 
     useEffect(() => {
         if (store.getSnapshot().document === null) {
@@ -39,18 +44,18 @@ function BudgetGlanceComponent(): JSX.Element {
         }
     }, [store]);
 
-    if (document === null) {
+    if (document === null || monthFigures === null) {
+        const hasFailed = (document === null && status !== 'syncing') || error !== null;
+
         return (
             <div className='flex h-[118px] items-center justify-center'>
-                {status !== 'syncing' ? <p className='text-[14px] text-ink-secondary'>{t('layout.loadFailed')}</p> : <SpinnerComponent />}
+                {hasFailed ? <p className='text-[14px] text-ink-secondary'>{t('layout.loadFailed')}</p> : <SpinnerComponent />}
             </div>
         );
     }
 
-    const now = new Date();
-    const month = monthStart(now);
-    const figures = summary(document.operations, month, monthlyBudgetFor(document, month), now);
-    const hasOperations = operationsIn(document.operations, month).length > 0;
+    const figures = summary(monthFigures.spent, month, monthlyBudgetFor(document, month), now);
+    const hasOperations = monthFigures.operationCount > 0;
     const isOverBudget = hasOperations && figures.left < 0;
     const left = hasOperations ? euro(Math.abs(figures.left)) : '•';
     const ofLimit = hasOperations ? t('budget.of', { amount: euro(figures.limit) }) : t('budget.noOperations');

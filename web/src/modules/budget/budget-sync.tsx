@@ -1,38 +1,21 @@
-import { dayKey, timeKey } from 'modules/budget/budget-dates';
 import type { BudgetDocument, BudgetServer, Category, MonthlyBudget, Operation } from 'modules/budget/budget-models';
 import { RequestError } from 'utils/request';
 
 /**
  * @type BudgetWrite
- * @description One write to the server, entry by entry: what it takes to bring the server's budget to the page's.
+ * @description One write to the server, entry by entry: an operation the page logs, changes or deletes, or what it takes
+ * to bring the server's budget document to the page's.
  */
 export type BudgetWrite =
     | { kind: 'createOperation'; operation: Operation }
     | { kind: 'updateOperation'; operation: Operation }
     | { kind: 'deleteOperation'; id: string }
+    | { kind: 'deleteEveryOperation' }
     | { kind: 'storeCategory'; category: Category; position: number }
     | { kind: 'deleteCategory'; id: string }
     | { kind: 'storeSettings'; monthlyLimit: number }
     | { kind: 'storeMonth'; month: string; budget: MonthlyBudget }
     | { kind: 'deleteMonth'; month: string };
-
-/**
- * @function sameOperation
- * @description Whether two operations hold the same thing, setting aside what the server rewrites on its own (its
- * update stamp, an absent text written as null, a date kept to the minute).
- */
-function sameOperation(lhs: Operation, rhs: Operation): boolean {
-    return dayKey(lhs.date) === dayKey(rhs.date) && timeKey(lhs.date) === timeKey(rhs.date)
-        && lhs.name === rhs.name
-        && (lhs.description ?? null) === (rhs.description ?? null)
-        && lhs.categoryId === rhs.categoryId
-        && (lhs.location ?? null) === (rhs.location ?? null)
-        && (lhs.placeId ?? null) === (rhs.placeId ?? null)
-        && lhs.amount === rhs.amount
-        && lhs.currencyCode === rhs.currencyCode
-        && lhs.rateToEuro === rhs.rateToEuro
-        && lhs.isOnline === rhs.isOnline;
-}
 
 /**
  * @function sameCategory
@@ -50,34 +33,6 @@ function sameMonth(lhs: MonthlyBudget, rhs: MonthlyBudget): boolean {
     const keys = new Set([...Object.keys(lhs.categoryLimits), ...Object.keys(rhs.categoryLimits)]);
 
     return lhs.monthlyLimit === rhs.monthlyLimit && [...keys].every((key) => lhs.categoryLimits[key] === rhs.categoryLimits[key]);
-}
-
-/**
- * @function operationWrites
- * @description The writes that turn one list of operations into another.
- */
-function operationWrites(before: readonly Operation[], after: readonly Operation[]): BudgetWrite[] {
-    const previous = new Map(before.map((operation) => [operation.id, operation]));
-    const next = new Set(after.map((operation) => operation.id));
-    const writes: BudgetWrite[] = [];
-
-    for (const operation of after) {
-        const known = previous.get(operation.id);
-
-        if (known === undefined) {
-            writes.push({ kind: 'createOperation', operation });
-        } else if (!sameOperation(known, operation)) {
-            writes.push({ kind: 'updateOperation', operation });
-        }
-    }
-
-    for (const operation of before) {
-        if (!next.has(operation.id)) {
-            writes.push({ kind: 'deleteOperation', id: operation.id });
-        }
-    }
-
-    return writes;
 }
 
 /**
@@ -145,8 +100,7 @@ export function diffDocuments(before: BudgetDocument, after: BudgetDocument): Bu
     return [
         ...categoryWrites(before.categories, after.categories),
         ...settings,
-        ...historyWrites(before.budgetHistory, after.budgetHistory),
-        ...operationWrites(before.operations, after.operations)
+        ...historyWrites(before.budgetHistory, after.budgetHistory)
     ];
 }
 
@@ -205,6 +159,9 @@ export async function sendWrite(api: BudgetServer, write: BudgetWrite): Promise<
                 break;
             case 'deleteOperation':
                 await api.deleteOperation(write.id);
+                break;
+            case 'deleteEveryOperation':
+                await api.deleteEveryOperation();
                 break;
             case 'storeCategory':
                 await api.storeCategory(write.category, write.position);

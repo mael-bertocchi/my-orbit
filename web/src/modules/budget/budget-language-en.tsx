@@ -84,6 +84,7 @@ export const budgetEn = {
     'history.to': 'To',
     'history.apply': 'Apply',
     'history.allDates': 'All dates',
+    'history.showMore': 'Show more',
     'history.noMatch': 'No operations match this search.',
     'history.empty': 'No operations yet. Use New operation to log your first expense.',
     'history.recurring': 'Recurring',
@@ -120,7 +121,6 @@ export const budgetEn = {
     'operation.delete': 'Delete operation',
     'operation.confirmDelete': 'Delete this operation?',
     'operation.deleteAction': 'Delete',
-    'operation.missing': 'This operation no longer exists.',
     'operation.deletedElsewhere': 'This operation was deleted on another device.',
 
     'recurring.new': 'New recurring operation',

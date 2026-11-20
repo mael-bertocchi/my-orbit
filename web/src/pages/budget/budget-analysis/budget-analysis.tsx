@@ -8,9 +8,11 @@ import type { MonthTotal, PlaceSpend, SpendingHabits } from 'modules/budget/budg
 import { monthTotals, spendingHabits } from 'modules/budget/budget-analysis';
 import { categoriesOf, categoryName } from 'modules/budget/budget-categories';
 import { euro, monthShort, monthWithYear, percent, weekdayShort } from 'modules/budget/budget-formatting';
-import { useDocument } from 'modules/budget/budget-hooks';
-import type { Category } from 'modules/budget/budget-models';
+import { useDocument, useServerData } from 'modules/budget/budget-hooks';
+import type { AnalysisFigures, Category } from 'modules/budget/budget-models';
+import budgetService from 'modules/budget/budget-service';
 import { t } from 'modules/language/language-service';
+import BudgetLoadingComponent from 'pages/budget/budget-loading/budget-loading';
 import { useState, type JSX } from 'react';
 
 /**
@@ -269,18 +271,25 @@ function PlacesCardComponent(props: PlacesCardComponentProps): JSX.Element {
 }
 
 /**
- * @function BudgetAnalysisComponent
- * @description The Analysis tab, about what a single month can't show: how the spending moved over the last year and
- * the recent habits, all worked out in the page, from the budget it already holds. On a desktop, the habits and the
- * places share one row.
+ * @interface AnalysisContentComponentProps
+ * @description Properties of the Analysis tab once its figures arrived
  */
-function BudgetAnalysisComponent(): JSX.Element {
+interface AnalysisContentComponentProps {
+    figures: AnalysisFigures; /*!< The figures, as the server worked them out */
+}
+
+/**
+ * @function AnalysisContentComponent
+ * @description The Analysis tab once its figures arrived: the trends of the last months, the habits and the places.
+ *
+ * @param {AnalysisContentComponentProps} props The properties of the component
+ */
+function AnalysisContentComponent(props: AnalysisContentComponentProps): JSX.Element {
     const document = useDocument();
-    const now = new Date();
-    const totals = monthTotals(document, now);
+    const totals = monthTotals(document, props.figures);
     const spending = new Set(totals.flatMap((total) => Object.keys(total.byCategory).filter((id) => (total.byCategory[id] ?? 0) > 0)));
     const categories = categoriesOf(document.categories).filter((category) => spending.has(category.id));
-    const habits = spendingHabits(document, now);
+    const habits = spendingHabits(props.figures);
 
     return (
         <div className='animate-rise'>
@@ -298,6 +307,17 @@ function BudgetAnalysisComponent(): JSX.Element {
             </div>
         </div>
     );
+}
+
+/**
+ * @function BudgetAnalysisComponent
+ * @description The Analysis tab, about what a single month can't show: how the spending moved over the last year and
+ * the recent habits, worked out by the server. On a desktop, the habits and the places share one row.
+ */
+function BudgetAnalysisComponent(): JSX.Element {
+    const { data, error } = useServerData(budgetService.analysisFigures, 'analysis');
+
+    return data !== null ? <AnalysisContentComponent figures={data} /> : <BudgetLoadingComponent error={error} />;
 }
 
 export default BudgetAnalysisComponent;

@@ -1,5 +1,5 @@
-import type { Category, MonthlyBudget, Operation, Place, RateSnapshot, RecurringFields, RecurringOperation, StoredState, TrashedOperation } from 'modules/budget/budget-models';
-import { PlaceSchema, RateSnapshotSchema, RecurringOperationSchema, StoredStateSchema, TrashedOperationSchema } from 'modules/budget/budget-models';
+import type { AnalysisFigures, Category, MonthFigures, MonthlyBudget, Operation, OperationPage, OperationQuery, Place, RateSnapshot, RecurringFields, RecurringOperation, StoredState, Suggestions, TrashedOperation } from 'modules/budget/budget-models';
+import { AnalysisFiguresSchema, MonthFiguresSchema, OperationPageSchema, PlaceSchema, RateSnapshotSchema, RecurringOperationSchema, StoredStateSchema, SuggestionsSchema, TrashedOperationSchema } from 'modules/budget/budget-models';
 import { dayKey, timeKey } from 'modules/budget/budget-dates';
 import { currentLanguage } from 'modules/language/language-service';
 import { fetchWithAuthentication } from 'utils/request';
@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 /**
  * @function getState
- * @description Reads the whole budget and its revision
+ * @description Reads the budget document and its revision
  *
  * @returns {Promise<StoredState>} The budget, as the server holds it
  */
@@ -88,6 +88,74 @@ async function updateOperation(operation: Operation): Promise<void> {
  */
 async function deleteOperation(id: string): Promise<void> {
     await fetchWithAuthentication(path('operations', id), { method: 'DELETE' }, z.unknown());
+}
+
+/**
+ * @function deleteEveryOperation
+ * @description Moves every operation to the trash, as a reset does
+ *
+ * @returns {Promise<void>} Resolves once they are in the trash
+ */
+async function deleteEveryOperation(): Promise<void> {
+    await fetchWithAuthentication('/v1/budget/operations', { method: 'DELETE' }, z.unknown());
+}
+
+/**
+ * @function listOperations
+ * @description Reads a page of the operations matching the filters, the latest first
+ *
+ * @param {OperationQuery} query The filters
+ * @param {number} offset How many operations to skip
+ * @param {number} limit How many operations to read
+ * @returns {Promise<OperationPage>} The page, with how many operations match in all
+ */
+async function listOperations(query: OperationQuery, offset: number, limit: number): Promise<OperationPage> {
+    const params = new URLSearchParams({ categories: query.categories.join(','), query: query.query, queryCategories: query.queryCategories.join(','), offset: String(offset), limit: String(limit) });
+
+    if (query.from !== null) {
+        params.set('from', query.from);
+    }
+
+    if (query.to !== null) {
+        params.set('to', query.to);
+    }
+
+    return await fetchWithAuthentication(`/v1/budget/operations?${params.toString()}`, { method: 'GET' }, OperationPageSchema);
+}
+
+/**
+ * @function monthFigures
+ * @description Reads what a month spent, worked out by the server
+ *
+ * @param {string} month The month, as `YYYY-MM`
+ * @returns {Promise<MonthFigures>} The figures
+ */
+async function monthFigures(month: string): Promise<MonthFigures> {
+    return await fetchWithAuthentication(`/v1/budget/figures/month?month=${month}`, { method: 'GET' }, MonthFiguresSchema);
+}
+
+/**
+ * @function analysisFigures
+ * @description Reads what the Analysis tab shows, worked out by the server
+ *
+ * @returns {Promise<AnalysisFigures>} The figures
+ */
+async function analysisFigures(): Promise<AnalysisFigures> {
+    return await fetchWithAuthentication('/v1/budget/figures/analysis', { method: 'GET' }, AnalysisFiguresSchema);
+}
+
+/**
+ * @function suggestions
+ * @description Reads what the operation editor suggests for what is typed
+ *
+ * @param {string} name The name typed
+ * @param {string} city The city typed
+ * @returns {Promise<Suggestions>} The suggestions
+ */
+async function suggestions(name: string, city: string): Promise<Suggestions> {
+    const params = new URLSearchParams({ name, city });
+
+    return await fetchWithAuthentication(`/v1/budget/figures/suggestions?${params.toString()}`, { method: 'GET' }, SuggestionsSchema);
 }
 
 /**
@@ -263,6 +331,11 @@ export default {
     createOperation,
     updateOperation,
     deleteOperation,
+    deleteEveryOperation,
+    listOperations,
+    monthFigures,
+    analysisFigures,
+    suggestions,
     listTrash,
     restoreOperation,
     listRecurring,

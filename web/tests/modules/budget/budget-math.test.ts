@@ -3,14 +3,7 @@ import {
     dayGroups,
     daysLeft,
     isPastMonth,
-    lastUsedCurrency,
-    latestPlace,
-    nameSuggestions,
     liveBudget,
-    monthlyBudgetFor,
-    placeSuggestions,
-    recentPlaces,
-    sealCompletedMonths,
     summary,
     toDispatch,
     withMonthlyBudget
@@ -20,44 +13,14 @@ import { describe, expect, it } from 'vitest';
 import { document, NOW, operation } from '../../support/fixtures';
 
 /**
- * @constant LYON
- * @description A city named alike in both languages
- */
-const LYON = { id: 'R120965', nameEn: 'Lyon', nameFr: 'Lyon' };
-
-/**
- * @constant SEOUL
- * @description A city named differently in each language
- */
-const SEOUL = { id: 'R2297418', nameEn: 'Seoul', nameFr: 'Séoul' };
-
-/**
- * @constant SAINT_ETIENNE
- * @description A city whose name starts with another word
- */
-const SAINT_ETIENNE = { id: 'R117905', nameEn: 'Saint-Étienne', nameFr: 'Saint-Étienne' };
-
-/**
- * @constant ETRETAT
- * @description A city whose name starts with an accent
- */
-const ETRETAT = { id: 'R144640', nameEn: 'Étretat', nameFr: 'Étretat' };
-
-/**
  * @constant september
  * @description The month most tests measure
  */
 const september = new Date(2026, 8, 1);
 
 describe('summary', () => {
-    const operations = [
-        operation({ id: 'a', date: new Date(2026, 8, 3), amount: 1000 }),
-        operation({ id: 'b', date: new Date(2026, 8, 20), amount: 100, currencyCode: 'USD', rateToEuro: 0.9 }),
-        operation({ id: 'c', date: new Date(2026, 7, 31), amount: 500 })
-    ];
-
-    it('counts the month in euros and spreads what is left over the days left', () => {
-        const figures = summary(operations, september, liveBudget(document(operations)), NOW);
+    it('spreads what is left of the month over the days left', () => {
+        const figures = summary(1090, september, liveBudget(document()), NOW);
 
         expect(figures.spent).toBeCloseTo(1090);
         expect(figures.left).toBeCloseTo(1910);
@@ -66,7 +29,7 @@ describe('summary', () => {
     });
 
     it('allows nothing per day once overspent', () => {
-        const figures = summary(operations, september, { monthlyLimit: 1000, categoryLimits: {} }, NOW);
+        const figures = summary(1090, september, { monthlyLimit: 1000, categoryLimits: {} }, NOW);
 
         expect(figures.left).toBeLessThan(0);
         expect(figures.perDay).toBe(0);
@@ -81,8 +44,7 @@ describe('summary', () => {
 
 describe('categories', () => {
     it('flags a category past its limit', () => {
-        const operations = [operation({ id: 'a', date: NOW, categoryId: 'coffee', amount: 60 })];
-        const coffee = categorySpends(operations, document().categories, september, liveBudget(document(operations))).find((spend) => spend.category.id === 'coffee');
+        const coffee = categorySpends({ coffee: 60 }, document().categories, liveBudget(document())).find((spend) => spend.category.id === 'coffee');
 
         expect(coffee?.isOverBudget).toBe(true);
         expect(coffee?.progress).toBe(1);
@@ -106,18 +68,6 @@ describe('dayGroups', () => {
     });
 });
 
-describe('sealCompletedMonths', () => {
-    it('freezes the live budget onto every finished month without touching sealed ones', () => {
-        const sealed = { monthlyLimit: 2000, categoryLimits: {} };
-        const budget = document([operation({ id: 'a', date: new Date(2026, 5, 10) })], { budgetHistory: { '2026-07': sealed } });
-        const result = sealCompletedMonths(budget, NOW);
-
-        expect(Object.keys(result.budgetHistory).sort()).toEqual(['2026-06', '2026-07', '2026-08']);
-        expect(result.budgetHistory['2026-07']).toBe(sealed);
-        expect(monthlyBudgetFor(result, new Date(2026, 5, 1)).monthlyLimit).toBe(3000);
-    });
-});
-
 describe('withMonthlyBudget', () => {
     const edit = { monthlyLimit: 1500, categoryLimits: { restaurant: 200, groceries: null } };
 
@@ -128,7 +78,7 @@ describe('withMonthlyBudget', () => {
 
     it('changes only the past month edited, keeping the limits left empty', () => {
         const sealed = { monthlyLimit: 2000, categoryLimits: { restaurant: 100, groceries: 300 } };
-        const budget = document([], { budgetHistory: { '2026-07': sealed, '2026-08': sealed } });
+        const budget = document({ budgetHistory: { '2026-07': sealed, '2026-08': sealed } });
         const result = withMonthlyBudget(budget, new Date(2026, 6, 1), edit, NOW);
 
         expect(result.budgetHistory['2026-07']).toEqual({ monthlyLimit: 1500, categoryLimits: { restaurant: 200, groceries: 300 } });
@@ -153,64 +103,5 @@ describe('withMonthlyBudget', () => {
         expect(result.budget.monthlyLimit).toBe(1500);
         expect(liveBudget(result).categoryLimits['restaurant']).toBe(200);
         expect(result.budgetHistory).toEqual({});
-    });
-});
-
-describe('suggestions', () => {
-    const operations = [
-        operation({ id: 'a', date: new Date(2026, 8, 20), location: 'Lyon', place: LYON, currencyCode: 'CHF' }),
-        operation({ id: 'b', date: new Date(2026, 8, 25), location: 'Séoul', place: SEOUL, isOnline: true, currencyCode: 'USD' }),
-        operation({ id: 'c', date: new Date(2026, 8, 24), location: 'Lyon', place: LYON }),
-        operation({ id: 'd', date: new Date(2026, 8, 23), location: 'Chez Paul' })
-    ];
-
-    it('suggests the city of the latest in-person operation that has one', () => {
-        expect(latestPlace(operations)).toEqual(LYON);
-    });
-
-    it('lists each city once, most recent first', () => {
-        expect(recentPlaces(operations)).toEqual([SEOUL, LYON]);
-    });
-
-    it('defaults to the currency of the latest operation', () => {
-        expect(lastUsedCurrency(operations)).toBe('USD');
-        expect(lastUsedCurrency([])).toBe('EUR');
-    });
-});
-
-describe('nameSuggestions', () => {
-    const operations = [
-        operation({ id: 'a', name: 'Monoprix', date: new Date(2026, 8, 1) }),
-        operation({ id: 'b', name: 'monoprix', date: new Date(2026, 8, 3) }),
-        operation({ id: 'c', name: 'Café Mono', date: new Date(2026, 8, 5) }),
-        operation({ id: 'd', name: 'Moniteur', date: new Date(2026, 8, 6) }),
-        operation({ id: 'e', name: 'Lidl', date: new Date(2026, 8, 7) })
-    ];
-
-    it('suggests the names starting with what is typed first, the most used leading, each once as last written', () => {
-        expect(nameSuggestions(operations, 'mon')).toEqual(['monoprix', 'Moniteur', 'Café Mono']);
-    });
-
-    it('ignores case and accents', () => {
-        expect(nameSuggestions(operations, 'CAFE')).toEqual(['Café Mono']);
-    });
-
-    it('suggests nothing for nothing typed, nor the name typed in full', () => {
-        expect(nameSuggestions(operations, '  ')).toEqual([]);
-        expect(nameSuggestions(operations, 'Lidl')).toEqual([]);
-    });
-});
-
-describe('placeSuggestions', () => {
-    const operations = [
-        operation({ id: 'a', place: SAINT_ETIENNE, date: new Date(2026, 8, 1) }),
-        operation({ id: 'b', place: SEOUL, date: new Date(2026, 8, 3) }),
-        operation({ id: 'c', place: ETRETAT, date: new Date(2026, 8, 5) })
-    ];
-
-    it('suggests the cities of earlier operations matching what is typed under either name, those starting with it first', () => {
-        expect(placeSuggestions(operations, 'et')).toEqual([ETRETAT, SAINT_ETIENNE]);
-        expect(placeSuggestions(operations, 'seo')).toEqual([SEOUL]);
-        expect(placeSuggestions(operations, 'seoul')).toEqual([]);
     });
 });

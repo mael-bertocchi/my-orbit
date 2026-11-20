@@ -86,6 +86,7 @@ export const budgetFr: BudgetMessages = {
     'history.to': 'Au',
     'history.apply': 'Appliquer',
     'history.allDates': 'Toutes les dates',
+    'history.showMore': 'Voir plus',
     'history.noMatch': 'Aucune opération ne correspond à cette recherche.',
     'history.empty': 'Aucune opération pour l’instant. Utilisez Nouvelle opération pour ajouter votre première dépense.',
     'history.recurring': 'Récurrente',
@@ -122,7 +123,6 @@ export const budgetFr: BudgetMessages = {
     'operation.delete': 'Supprimer l’opération',
     'operation.confirmDelete': 'Supprimer cette opération ?',
     'operation.deleteAction': 'Supprimer',
-    'operation.missing': 'Cette opération n’existe plus.',
     'operation.deletedElsewhere': 'Cette opération a été supprimée sur un autre appareil.',
 
     'recurring.new': 'Nouvelle opération récurrente',

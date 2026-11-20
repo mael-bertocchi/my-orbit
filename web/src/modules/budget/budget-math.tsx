@@ -1,8 +1,7 @@
 import type { Maybe } from 'models';
 import { categoriesOf } from 'modules/budget/budget-categories';
-import { EURO } from 'modules/budget/budget-currencies';
-import { daysInMonth, isSameMonth, monthKey, monthStart, shiftMonth, startOfDay } from 'modules/budget/budget-dates';
-import type { BudgetDocument, Category, MonthlyBudget, Operation, PlaceReference } from 'modules/budget/budget-models';
+import { daysInMonth, isSameMonth, monthKey, monthStart, startOfDay } from 'modules/budget/budget-dates';
+import type { BudgetDocument, Category, MonthlyBudget, Operation } from 'modules/budget/budget-models';
 
 /**
  * @interface MonthSummary
@@ -46,14 +45,6 @@ export interface DayGroup {
  */
 export function euroAmount(operation: Operation): number {
     return operation.amount * operation.rateToEuro;
-}
-
-/**
- * @function operationsIn
- * @description The operations dated in a month.
- */
-export function operationsIn(operations: readonly Operation[], month: Date): Operation[] {
-    return operations.filter((operation) => isSameMonth(operation.date, month));
 }
 
 /**
@@ -144,10 +135,9 @@ export function withMonthlyBudget(document: BudgetDocument, month: Date, edit: B
 
 /**
  * @function summary
- * @description The figures around a month's budget ring.
+ * @description The figures around a month's budget ring, from what it spent as the server worked it out.
  */
-export function summary(operations: readonly Operation[], month: Date, budget: MonthlyBudget, now: Date = new Date()): MonthSummary {
-    const spent = operationsIn(operations, month).reduce((total, operation) => total + euroAmount(operation), 0);
+export function summary(spent: number, month: Date, budget: MonthlyBudget, now: Date = new Date()): MonthSummary {
     const left = budget.monthlyLimit - spent;
     const remaining = daysLeft(month, now);
     let progress = spent > 0 ? 1 : 0;
@@ -169,17 +159,12 @@ export function summary(operations: readonly Operation[], month: Date, budget: M
 
 /**
  * @function categorySpends
- * @description What each category spent against its limit in a month, in category order.
+ * @description What each category spent against its limit in a month, in category order, from what each spent as the
+ * server worked it out.
  */
-export function categorySpends(operations: readonly Operation[], categories: readonly Category[], month: Date, budget: MonthlyBudget): CategorySpend[] {
-    const totals = new Map<string, number>();
-
-    for (const operation of operationsIn(operations, month)) {
-        totals.set(operation.categoryId, (totals.get(operation.categoryId) ?? 0) + euroAmount(operation));
-    }
-
+export function categorySpends(byCategory: Readonly<Record<string, number>>, categories: readonly Category[], budget: MonthlyBudget): CategorySpend[] {
     return categoriesOf(categories).map((category) => {
-        const spent = totals.get(category.id) ?? 0;
+        const spent = byCategory[category.id] ?? 0;
         const limit = budget.categoryLimits[category.id] ?? 0;
         let progress = spent > 0 ? 1 : 0;
 
@@ -228,67 +213,6 @@ export function dayGroups(operations: readonly Operation[]): DayGroup[] {
 }
 
 /**
- * @function sealCompletedMonths
- * @description Gives every finished month that has none yet a budget of its own, copied from the live one, so changing
- * the live limits later never rewrites how a past month went. That budget stays editable on its own. The app does the
- * same on launch; whichever side gets there first seals the month.
- *
- * @param {BudgetDocument} document The document.
- * @param {Date} now The current date.
- *
- * @returns {BudgetDocument} The document with every finished month sealed.
- */
-export function sealCompletedMonths(document: BudgetDocument, now: Date = new Date()): BudgetDocument {
-    const earliest = document.operations.reduce<Maybe<Date>>((first, operation) => (first === null || operation.date < first ? operation.date : first), null);
-
-    if (earliest === null) {
-        return document;
-    }
-
-    const snapshot = liveBudget(document);
-    const history = { ...document.budgetHistory };
-    const current = monthStart(now);
-
-    for (let month = monthStart(earliest); month < current; month = shiftMonth(month, 1)) {
-        history[monthKey(month)] ??= snapshot;
-    }
-
-    return { ...document, budgetHistory: history };
-}
-
-/**
- * @function latestPlace
- * @description The city of the most recent in-person operation that has one, to suggest it for the next one.
- */
-export function latestPlace(operations: readonly Operation[]): Maybe<PlaceReference> {
-    const latest = operations.toSorted((left, right) => right.date.getTime() - left.date.getTime()).find((operation) => !operation.isOnline && (operation.place ?? null) !== null);
-
-    return latest?.place ?? null;
-}
-
-/**
- * @function recentPlaces
- * @description The cities operations took place in, most recent first and each only once.
- */
-export function recentPlaces(operations: readonly Operation[]): PlaceReference[] {
-    const places = new Map<string, PlaceReference>();
-
-    for (const operation of operations.toSorted((left, right) => right.date.getTime() - left.date.getTime())) {
-        if (operation.place !== undefined && operation.place !== null && !places.has(operation.place.id)) {
-            places.set(operation.place.id, operation.place);
-        }
-    }
-
-    return [...places.values()];
-}
-
-/**
- * @constant WORD_SEPARATORS
- * @description What separates the words of a name or a place, so a suggestion matches from any of its words.
- */
-const WORD_SEPARATORS = /[\s'’-]+/u;
-
-/**
  * @function foldText
  * @description Reduces a text for matching what is typed against it: trimmed, in lower case and without accents.
  */
@@ -296,126 +220,3 @@ export function foldText(text: string): string {
     return text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 }
 
-/**
- * @function rankMatch
- * @description How well a text matches what is typed, already folded: 2 when it starts with it, 1 when one of its other
- * words does, 0 when it doesn't match.
- */
-export function rankMatch(text: string, typed: string): number {
-    const folded = foldText(text);
-
-    if (folded.startsWith(typed)) {
-        return 2;
-    }
-
-    return folded.split(WORD_SEPARATORS).some((word) => word.startsWith(typed)) ? 1 : 0;
-}
-
-/**
- * @interface NameUse
- * @description How an operation name has been used, to rank it among the suggestions.
- */
-interface NameUse {
-    name: string; /*!< The name, as last written */
-    rank: number; /*!< How well it matches what is typed */
-    count: number; /*!< How many operations bear it */
-    latest: number; /*!< When it was last used, in milliseconds */
-}
-
-/**
- * @function compareNameUses
- * @description Orders the names suggested: the best match first, then the most used, then the latest.
- */
-function compareNameUses(left: NameUse, right: NameUse): number {
-    return right.rank - left.rank || right.count - left.count || right.latest - left.latest;
-}
-
-/**
- * @function nameSuggestions
- * @description The names of earlier operations matching what is typed, each once as last written, the best match, the
- * most used and the latest first. The name typed in full is left out: there is nothing left to complete.
- */
-export function nameSuggestions(operations: readonly Operation[], typed: string, limit: number = 5): string[] {
-    const folded = foldText(typed);
-    const uses = new Map<string, NameUse>();
-
-    if (folded === '') {
-        return [];
-    }
-
-    for (const operation of operations) {
-        const key = foldText(operation.name);
-        const rank = rankMatch(operation.name, folded);
-        const time = operation.date.getTime();
-        const known = uses.get(key);
-
-        if (key === folded || rank === 0) {
-            continue;
-        }
-
-        if (known === undefined) {
-            uses.set(key, { name: operation.name.trim(), rank, count: 1, latest: time });
-            continue;
-        }
-
-        known.count += 1;
-
-        if (time > known.latest) {
-            known.latest = time;
-            known.name = operation.name.trim();
-        }
-    }
-
-    return [...uses.values()].toSorted(compareNameUses).slice(0, limit).map((use) => use.name);
-}
-
-/**
- * @function placeMatch
- * @description How well a city matches what is typed, already folded, under either of its names: 0 when neither matches,
- * and also when one is typed in full, as there is nothing left to complete.
- */
-function placeMatch(place: PlaceReference, typed: string): number {
-    if (foldText(place.nameEn) !== typed && foldText(place.nameFr) !== typed) {
-        return Math.max(rankMatch(place.nameEn, typed), rankMatch(place.nameFr, typed));
-    }
-
-    return 0;
-}
-
-/**
- * @function placeSuggestions
- * @description The cities of earlier operations matching what is typed, under either of their names, the best match
- * first, then the most recent.
- */
-export function placeSuggestions(operations: readonly Operation[], typed: string, limit: number = 3): PlaceReference[] {
-    const folded = foldText(typed);
-
-    if (folded === '') {
-        return [];
-    }
-
-    const matching = recentPlaces(operations).filter((place) => placeMatch(place, folded) > 0);
-
-    return matching.toSorted((left, right) => placeMatch(right, folded) - placeMatch(left, folded)).slice(0, limit);
-}
-
-/**
- * @function lastUsedCurrency
- * @description The currency of the latest operation, which the next one most likely shares. The app remembers the
- * last currency picked on the phone; the bot reads the same intent off the data.
- */
-export function lastUsedCurrency(operations: readonly Operation[]): string {
-    const latest = operations.reduce<Maybe<Operation>>((last, operation) => (last === null || operation.date > last.date ? operation : last), null);
-
-    return latest?.currencyCode ?? EURO.code;
-}
-
-/**
- * @function monthsWithOperations
- * @description Every month holding an operation, plus the current one, latest first.
- */
-export function monthsWithOperations(operations: readonly Operation[], now: Date = new Date()): Date[] {
-    const keys = new Set([monthKey(now), ...operations.map((operation) => monthKey(operation.date))]);
-
-    return [...keys].sort().reverse().map((key) => new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, 1));
-}

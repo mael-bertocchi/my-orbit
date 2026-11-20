@@ -2,9 +2,9 @@ import type { Maybe } from 'models';
 import { BudgetContext } from 'modules/budget/budget-context';
 import type { BudgetDocument, BudgetServices } from 'modules/budget/budget-models';
 import type { ExchangeRates } from 'modules/budget/budget-rates';
-import { repriceRecent } from 'modules/budget/budget-reprice';
 import type { BudgetSnapshot } from 'modules/budget/budget-store';
-import { useContext, useEffect, useSyncExternalStore } from 'react';
+import { messageOf } from 'utils/errors';
+import { useContext, useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react';
 
 /**
  * @constant CATCH_UP_EVERY
@@ -52,6 +52,62 @@ export function useDocument(): BudgetDocument {
 }
 
 /**
+ * @interface ServerData
+ * @description What a page reads from the server, as it stands.
+ */
+export interface ServerData<T> {
+    data: Maybe<T>; /*!< The latest answer, kept while the next one is on its way, none before the first */
+    error: Maybe<string>; /*!< Why the latest read failed, if it did */
+}
+
+/**
+ * @interface LoadedData
+ * @description An answer from the server and what it was asked for.
+ */
+interface LoadedData<T> {
+    key: string; /*!< What it was asked for */
+    data: T; /*!< The answer */
+}
+
+/**
+ * @function useServerData
+ * @description Reads something the server works out from the operations, and reads it again whenever the budget's
+ * revision moves on, so a write from the page or from the app shows. The previous answer stays on screen while the next
+ * one is on its way, unless it was asked for something else.
+ *
+ * @param {() => Promise<T>} load Reads it.
+ * @param {string} key What it is asked for: a new key reads it again and drops the answer to the previous one.
+ * @returns {ServerData<T>} The latest answer, or why it failed.
+ */
+export function useServerData<T>(load: () => Promise<T>, key: string): ServerData<T> {
+    const { revision } = useBudget();
+    const [loaded, setLoaded] = useState<Maybe<LoadedData<T>>>(null);
+    const [error, setError] = useState<Maybe<string>>(null);
+    const read = useEffectEvent(load);
+
+    useEffect(() => {
+        let isCurrent = true;
+
+        read().then((data) => {
+            if (isCurrent) {
+                setLoaded({ key, data });
+                setError(null);
+            }
+        }).catch((failure: unknown) => {
+            if (isCurrent) {
+                setError(messageOf(failure));
+            }
+        });
+
+        return () => {
+            isCurrent = false;
+        };
+    }, [key, revision]);
+
+    return { data: loaded !== null && loaded.key === key ? loaded.data : null, error };
+}
+
+/**
  * @function useRates
  * @description The exchange rates, re-rendering whenever new ones arrive.
  */
@@ -67,33 +123,20 @@ export function useRates(): ExchangeRates {
  * @function useCatchUp
  * @description Keeps an open budget in step with the server: it reads the budget when it opens, when the page comes
  * back into view, when the connection returns and every minute while visible: the web version of the app reconciling
- * when it becomes active. The first read also re-prices recent foreign operations, as the app does.
+ * when it becomes active.
  *
  * @param {BudgetServices} services The budget and the rates
  */
 export function useCatchUp(services: BudgetServices): void {
     useEffect(() => {
         const { store, rates } = services;
-        let hasRepriced = false;
 
         /**
          * @function catchUp
-         * @description Reads the budget again, and re-prices recent foreign operations on the first read
+         * @description Reads the budget again
          */
         const catchUp = async (): Promise<void> => {
             await store.refresh();
-
-            const current = store.getSnapshot().document;
-
-            if (!hasRepriced && current !== null) {
-                hasRepriced = true;
-
-                const correction = await repriceRecent(current, rates);
-
-                if (correction !== null) {
-                    store.apply(correction);
-                }
-            }
         };
 
         /**

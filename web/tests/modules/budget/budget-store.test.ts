@@ -1,5 +1,4 @@
 import type { BudgetDocument, BudgetServer, MonthlyBudget, Operation, StoredState } from 'modules/budget/budget-models';
-import { upsertOperation } from 'modules/budget/budget-operations';
 import { BudgetStore } from 'modules/budget/budget-store';
 import { UserError } from 'utils/errors';
 import { RequestError } from 'utils/request';
@@ -14,8 +13,9 @@ import { document, NOW, operation } from '../../support/fixtures';
  * @description What the fake server holds, and how it is set to behave.
  */
 interface FakeServerState {
-    stored: StoredState; /*!< The budget it holds, and its revision */
-    rivals: ((current: BudgetDocument) => BudgetDocument)[]; /*!< Writes from another device, landing before the next write */
+    stored: StoredState; /*!< The budget document it holds, and its revision */
+    operations: Operation[]; /*!< The operations it holds */
+    rivals: (() => void)[]; /*!< Writes from another device, landing before the next write */
     offline: boolean; /*!< Whether it can be reached */
     writes: string[]; /*!< The writes it took, as `route id` */
 }
@@ -34,10 +34,10 @@ interface FakeServer {
  * @description A fake server holding one budget, written entry by entry, which can be made to take a rival write
  * before the next one lands, or to be unreachable.
  */
-function server(initial: BudgetDocument): FakeServer {
-    const state: FakeServerState = { stored: { ...initial, revision: 1 }, rivals: [], offline: false, writes: [] };
+function server(initial: BudgetDocument, operations: Operation[] = []): FakeServer {
+    const state: FakeServerState = { stored: { ...initial, operationCount: operations.length, revision: 1 }, operations, rivals: [], offline: false, writes: [] };
     const unreachable = (): Promise<never> => Promise.reject(new RequestError(0, "Can't reach the server."));
-    const write = (label: string, edit: (current: BudgetDocument) => BudgetDocument): Promise<void> => {
+    const write = (label: string, edit: (current: StoredState) => StoredState): Promise<void> => {
         if (state.offline) {
             return unreachable();
         }
@@ -45,7 +45,8 @@ function server(initial: BudgetDocument): FakeServer {
         const rival = state.rivals.shift();
 
         if (rival !== undefined) {
-            state.stored = { ...rival(state.stored), revision: state.stored.revision + 1 };
+            rival();
+            state.stored = { ...state.stored, revision: state.stored.revision + 1 };
         }
 
         state.writes.push(label);
@@ -57,20 +58,32 @@ function server(initial: BudgetDocument): FakeServer {
         ...unusedServer(),
         getState: vi.fn(() => (state.offline ? unreachable() : Promise.resolve(structuredClone(state.stored)))),
         createOperation: vi.fn((created: Operation) => {
-            if (state.stored.operations.some((entry) => entry.id === created.id)) {
+            if (state.operations.some((entry) => entry.id === created.id)) {
                 return Promise.reject(new RequestError(409, 'An operation with this id already exists'));
             }
 
-            return write(`createOperation ${created.id}`, (current) => ({ ...current, operations: [...current.operations, created] }));
+            return write(`createOperation ${created.id}`, (current) => {
+                state.operations = [...state.operations, created];
+
+                return current;
+            });
         }),
         updateOperation: vi.fn((changed: Operation) => {
-            if (!state.stored.operations.some((entry) => entry.id === changed.id)) {
+            if (!state.operations.some((entry) => entry.id === changed.id)) {
                 return Promise.reject(new RequestError(404, 'Unknown operation'));
             }
 
-            return write(`updateOperation ${changed.id}`, (current) => ({ ...current, operations: current.operations.map((entry) => (entry.id !== changed.id ? entry : changed)) }));
+            return write(`updateOperation ${changed.id}`, (current) => {
+                state.operations = state.operations.map((entry) => (entry.id !== changed.id ? entry : changed));
+
+                return current;
+            });
         }),
-        deleteOperation: vi.fn((id: string) => write(`deleteOperation ${id}`, (current) => ({ ...current, operations: current.operations.filter((entry) => entry.id !== id) }))),
+        deleteOperation: vi.fn((id: string) => write(`deleteOperation ${id}`, (current) => {
+            state.operations = state.operations.filter((entry) => entry.id !== id);
+
+            return current;
+        })),
         storeSettings: vi.fn((monthlyLimit: number) => write('storeSettings', (current) => ({ ...current, budget: { monthlyLimit } }))),
         storeMonth: vi.fn((month: string, budget: MonthlyBudget) => write(`storeMonth ${month}`, (current) => ({ ...current, budgetHistory: { ...current.budgetHistory, [month]: budget } })))
     };
@@ -94,12 +107,25 @@ describe('BudgetStore', () => {
         const store = new BudgetStore(api);
 
         await store.refresh();
-        store.apply((current) => upsertOperation(current, operation({ id: 'A', date: NOW })));
+        store.apply((current) => ({ ...current, budget: { monthlyLimit: 2500 } }));
 
-        expect(store.getSnapshot().document?.operations).toHaveLength(1);
+        expect(store.getSnapshot().document?.budget.monthlyLimit).toBe(2500);
+        await settle();
+        expect(state.writes).toEqual(['storeSettings']);
+        expect(store.getSnapshot()).toMatchObject({ status: 'synced', hasPendingChanges: false });
+    });
+
+    it('sends an operation and moves on to the server\'s new revision, so the pages read again', async () => {
+        const { state, api } = server(document());
+        const store = new BudgetStore(api);
+
+        await store.refresh();
+        store.write({ kind: 'createOperation', operation: operation({ id: 'A', date: NOW }) });
+
+        expect(store.getSnapshot().hasPendingChanges).toBe(true);
         await settle();
         expect(state.writes).toEqual(['createOperation A']);
-        expect(store.getSnapshot()).toMatchObject({ status: 'synced', hasPendingChanges: false });
+        expect(store.getSnapshot()).toMatchObject({ status: 'synced', hasPendingChanges: false, revision: 2 });
     });
 
     it('leaves alone what the app wrote in between, erasing nothing', async () => {
@@ -107,12 +133,13 @@ describe('BudgetStore', () => {
         const store = new BudgetStore(api);
 
         await store.refresh();
-        state.rivals.push((current) => upsertOperation(current, operation({ id: 'FROM-THE-APP', date: NOW })));
-        store.apply((current) => upsertOperation(current, operation({ id: 'FROM-THE-WEB', date: NOW })));
+        state.rivals.push(() => {
+            state.operations = [...state.operations, operation({ id: 'FROM-THE-APP', date: NOW })];
+        });
+        store.write({ kind: 'createOperation', operation: operation({ id: 'FROM-THE-WEB', date: NOW }) });
         await settle();
 
-        expect(state.stored.operations.map((entry) => entry.id).sort()).toEqual(['FROM-THE-APP', 'FROM-THE-WEB']);
-        expect(store.getSnapshot().document?.operations).toHaveLength(2);
+        expect(state.operations.map((entry) => entry.id).sort()).toEqual(['FROM-THE-APP', 'FROM-THE-WEB']);
     });
 
     it('drops an edit that no longer applies and says so', async () => {
@@ -166,56 +193,51 @@ describe('BudgetStore', () => {
     });
 
     it('takes a creation the server already holds as a change, so a retried send never fails', async () => {
-        const { state, api } = server(document());
+        const { state, api } = server(document(), [operation({ id: 'A', date: NOW, amount: 5 })]);
         const store = new BudgetStore(api);
 
         await store.refresh();
-        state.stored = { ...upsertOperation(state.stored, operation({ id: 'A', date: NOW, amount: 5 })), revision: 2 };
-        store.apply((current) => upsertOperation(current, operation({ id: 'A', date: NOW, amount: 12 })));
+        store.write({ kind: 'createOperation', operation: operation({ id: 'A', date: NOW, amount: 12 }) });
         await settle();
 
-        expect(state.stored.operations).toEqual([expect.objectContaining({ id: 'A', amount: 12 })]);
+        expect(state.operations).toEqual([expect.objectContaining({ id: 'A', amount: 12 })]);
         expect(store.getSnapshot().status).toBe('synced');
     });
 
     it('brings back an operation deleted elsewhere in the meantime, with the change', async () => {
-        const { state, api } = server(document([operation({ id: 'A', date: NOW })]));
+        const { state, api } = server(document());
         const store = new BudgetStore(api);
         const rejected = vi.fn();
         const trashed = operation({ id: 'A', date: NOW });
 
         store.onRejected(rejected);
         await store.refresh();
-        state.stored = { ...state.stored, operations: [] };
-        vi.mocked(api.getState).mockResolvedValueOnce(structuredClone({ ...state.stored, operations: [trashed] }));
         vi.mocked(api.restoreOperation).mockImplementation(() => {
-            state.stored = { ...state.stored, operations: [trashed] };
+            state.operations = [trashed];
 
             return Promise.resolve();
         });
-        store.apply((current) => upsertOperation(current, operation({ id: 'A', date: NOW, amount: 99 })));
+        store.write({ kind: 'updateOperation', operation: operation({ id: 'A', date: NOW, amount: 99 }) });
         await settle();
 
         expect(rejected).not.toHaveBeenCalled();
-        expect(state.stored.operations.map((entry) => entry.amount)).toEqual([99]);
+        expect(state.operations.map((entry) => entry.amount)).toEqual([99]);
         expect(store.getSnapshot()).toMatchObject({ status: 'synced', hasPendingChanges: false });
     });
 
     it('drops a change to an operation gone for good, even from the trash, and says so', async () => {
-        const { state, api } = server(document([operation({ id: 'A', date: NOW })]));
+        const { state, api } = server(document());
         const store = new BudgetStore(api);
         const rejected = vi.fn();
 
         store.onRejected(rejected);
         await store.refresh();
-        state.stored = { ...state.stored, operations: [] };
-        vi.mocked(api.getState).mockResolvedValueOnce(structuredClone({ ...state.stored, operations: [operation({ id: 'A', date: NOW })] }));
         vi.mocked(api.restoreOperation).mockRejectedValue(new RequestError(404, 'Unknown operation'));
-        store.apply((current) => upsertOperation(current, operation({ id: 'A', date: NOW, amount: 99 })));
+        store.write({ kind: 'updateOperation', operation: operation({ id: 'A', date: NOW, amount: 99 }) });
         await settle();
 
         expect(rejected).toHaveBeenCalledWith('This operation was deleted on another device.');
-        expect(state.stored.operations).toEqual([]);
+        expect(state.operations).toEqual([]);
         expect(store.getSnapshot()).toMatchObject({ status: 'synced', hasPendingChanges: false });
     });
 });

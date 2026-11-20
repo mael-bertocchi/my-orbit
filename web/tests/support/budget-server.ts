@@ -14,6 +14,7 @@ export function unusedServer(): BudgetServer {
         updateOperation: vi.fn(unused),
         deleteOperation: vi.fn(unused),
         restoreOperation: vi.fn(unused),
+        deleteEveryOperation: vi.fn(unused),
         storeCategory: vi.fn(unused),
         deleteCategory: vi.fn(unused),
         storeSettings: vi.fn(unused),

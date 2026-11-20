@@ -10,18 +10,17 @@ import { euroPrecise, rate, whereabouts } from 'modules/budget/budget-formatting
 import { useBudgetContext, useDocument, useRates } from 'modules/budget/budget-hooks';
 import type { RecurringOperation } from 'modules/budget/budget-models';
 import { amountInputOf, groupAmountInput, Limits, parseAmountInput, sanitizeAmountInput } from 'modules/budget/budget-operations';
-import { nameSuggestions } from 'modules/budget/budget-math';
 import { defaultCurrency } from 'modules/budget/budget-preferences';
 import { intervalLabel, INTERVALS, toRecurringFields } from 'modules/budget/budget-recurring';
 import budgetService from 'modules/budget/budget-service';
 import type { CityValue } from 'modules/budget/budget-places';
-import { isCityChosen } from 'modules/budget/budget-places';
+import { isCityChosen, useNameSuggestions } from 'modules/budget/budget-places';
 import { t } from 'modules/language/language-service';
 import { useToastContext } from 'modules/toast/toast-hooks';
 import type { ToastContextProps } from 'modules/toast/toast-models';
 import BudgetCityFieldComponent from 'pages/budget/budget-city-field/budget-city-field';
 import { CategoryPickerComponent, FieldComponent, ToggleRowComponent } from 'pages/budget/budget-operation/budget-operation';
-import { useEffect, useMemo, useState, type FormEvent, type JSX } from 'react';
+import { useEffect, useState, type FormEvent, type JSX } from 'react';
 import { messageOf } from 'utils/errors';
 
 /**
@@ -78,7 +77,7 @@ function RecurringFormComponent(props: RecurringFormComponentProps): JSX.Element
     const [endDate, setEndDate] = useState<Maybe<string>>(existing?.endDate ?? null);
     const [isPaused, setIsPaused] = useState(existing?.isPaused ?? false);
 
-    const names = useMemo(() => nameSuggestions(document.operations, name), [document.operations, name]);
+    const names = useNameSuggestions(name);
     const nameOptions = names.map((value): Suggestion => ({ value }));
     const amount = parseAmountInput(amountText);
     const isForeign = currencyCode !== EURO.code;

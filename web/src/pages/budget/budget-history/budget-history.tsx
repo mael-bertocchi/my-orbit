@@ -4,74 +4,80 @@ import PageHeaderComponent from 'components/page-header/page-header';
 import SearchFieldComponent from 'components/search-field/search-field';
 import { CalendarDays } from 'lucide-react';
 import type { Maybe } from 'models';
-import { categoriesOf, categoryName, categoryOrFallback } from 'modules/budget/budget-categories';
+import { categoriesOf, categoryName } from 'modules/budget/budget-categories';
 import type { DayRange } from 'modules/budget/budget-dates';
-import { dayKey, dayRange, isInRange, monthStart, parseDayKey } from 'modules/budget/budget-dates';
+import { dayKey, dayRange, parseDayKey } from 'modules/budget/budget-dates';
 import { useBudgetEditorContext } from 'modules/budget/budget-editor-hooks';
 import { money, rangeTitle, relativeDay } from 'modules/budget/budget-formatting';
-import { useDocument } from 'modules/budget/budget-hooks';
+import { useBudget, useDocument } from 'modules/budget/budget-hooks';
 import { dayGroups } from 'modules/budget/budget-math';
-import type { BudgetDocument, Operation } from 'modules/budget/budget-models';
+import type { Operation, OperationPage, OperationQuery } from 'modules/budget/budget-models';
+import budgetService from 'modules/budget/budget-service';
 import { t } from 'modules/language/language-service';
 import BudgetDatesComponent from 'pages/budget/budget-dates/budget-dates';
+import BudgetLoadingComponent from 'pages/budget/budget-loading/budget-loading';
 import OperationRowComponent from 'pages/budget/budget-operation-row/budget-operation-row';
-import { useMemo, useState, type JSX } from 'react';
+import { useEffect, useEffectEvent, useMemo, useState, type JSX } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { messageOf } from 'utils/errors';
 import { readList, writeList } from 'utils/filters';
 
 /**
- * @function matches
- * @description Whether an operation matches a search, by name, note, place or category, as the app searches.
+ * @constant PAGE_SIZE
+ * @description How many operations the list shows at most at first, and each tap on Show more adds: the server sends
+ * whole days only, so a day is never split between two pages
  */
-function matches(document: BudgetDocument, operation: Operation, query: string): boolean {
-    const needle = query.trim().toLowerCase();
+const PAGE_SIZE = 40;
 
-    if (needle === '') {
+/**
+ * @constant RELOAD_MAX
+ * @description How many operations already shown are read again at most when the budget changes, as the server sends
+ * no more at once.
+ */
+const RELOAD_MAX = 100;
+
+/**
+ * @constant SEARCH_DELAY
+ * @description How long typing must pause before the search is sent to the server, in milliseconds.
+ */
+const SEARCH_DELAY = 250;
+
+/**
+ * @interface LoadedOperations
+ * @description The operations read so far for some filters.
+ */
+interface LoadedOperations {
+    key: string; /*!< The filters they were read for */
+    operations: Operation[]; /*!< The operations read, the latest first */
+    total: number; /*!< How many operations match the filters */
+}
+
+/**
+ * @function withoutRepeats
+ * @description Operations read in several pages, each once: one logged meanwhile shifts the next page by one.
+ */
+function withoutRepeats(operations: readonly Operation[]): Operation[] {
+    const seen = new Set<string>();
+
+    return operations.filter((operation) => {
+        if (seen.has(operation.id)) {
+            return false;
+        }
+
+        seen.add(operation.id);
+
         return true;
-    }
-
-    const haystack = [operation.name, operation.description, operation.location, operation.place?.nameEn, operation.place?.nameFr, categoryName(categoryOrFallback(document.categories, operation.categoryId))];
-
-    return haystack.some((text) => (text ?? '').toLowerCase().includes(needle));
-}
-
-/**
- * @function isListed
- * @description Whether an operation shows under the filters: in one of the categories picked (any category when none
- * is), within the dates picked, and matching the search.
- */
-function isListed(document: BudgetDocument, operation: Operation, categoryIds: readonly string[], range: Maybe<DayRange>, query: string): boolean {
-    const isInCategories = categoryIds.length === 0 || categoryIds.includes(operation.categoryId);
-    const isInDates = range === null || isInRange(operation.date, range);
-
-    return isInCategories && isInDates && matches(document, operation, query);
-}
-
-/**
- * @constant EVERY_DATE
- * @description The value of the address's dates parameter once the date filter is cleared, so every date shows
- * instead of the current month
- */
-const EVERY_DATE = 'all';
-
-/**
- * @function monthToDate
- * @description The days of the current month up to today, the date filter the tab opens with
- */
-function monthToDate(): DayRange {
-    const today = new Date();
-
-    return dayRange(monthStart(today), today);
+    });
 }
 
 /**
  * @function rangeOf
  * @description The date filter in the address: the days from one to the other, or the only one that reads as a day.
- * With neither, the current month up to today, unless the filter was cleared.
+ * With neither, every date shows.
  */
-function rangeOf(from: Maybe<string>, to: Maybe<string>, dates: Maybe<string>): Maybe<DayRange> {
+function rangeOf(from: Maybe<string>, to: Maybe<string>): Maybe<DayRange> {
     if (from === null && to === null) {
-        return dates !== EVERY_DATE ? monthToDate() : null;
+        return null;
     }
 
     const start = from !== null ? parseDayKey(from) : null;
@@ -89,23 +95,73 @@ function rangeOf(from: Maybe<string>, to: Maybe<string>, dates: Maybe<string>): 
 /**
  * @function BudgetHistoryComponent
  * @description The History tab: every operation grouped by day with each day's total, a search, and one row of filters:
- * a date filter on one day or a period, set to the current month up to today until it is changed or cleared, then one chip per category, several of which can be picked at once (All shows
- * every category). The filters live in the address, so a
- * category opened from Budget survives a reload.
+ * a date filter on one day or a period, every date showing until one is picked, then one chip per category, several of
+ * which can be picked at once (All shows every category). The server sends the latest operations under the filters and
+ * the search, PAGE_SIZE at a time: Show more, at the end of the list, adds the next ones, and changing the filters or
+ * the search starts over from the first page. When the budget changes, from the page or elsewhere, what is shown is read
+ * again. The filters live in the address, so a category opened from Budget survives a reload.
  */
 function BudgetHistoryComponent(): JSX.Element {
     const document = useDocument();
+    const { revision } = useBudget();
     const { openEdit } = useBudgetEditorContext();
     const [params, setParams] = useSearchParams();
     const query = params.get('q') ?? '';
     const categoryIds = useMemo(() => readList(params, 'category'), [params]);
     const from = params.get('from');
     const to = params.get('to');
-    const dates = params.get('dates');
-    const range = useMemo(() => rangeOf(from, to, dates), [from, to, dates]);
+    const range = useMemo(() => rangeOf(from, to), [from, to]);
     const [isPickingDates, setIsPickingDates] = useState(false);
+    const [search, setSearch] = useState(query);
+    const [loaded, setLoaded] = useState<Maybe<LoadedOperations>>(null);
+    const [failure, setFailure] = useState<Maybe<string>>(null);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-    const groups = useMemo(() => dayGroups(document.operations.filter((operation) => isListed(document, operation, categoryIds, range, query))), [document, categoryIds, range, query]);
+    const filters = useMemo((): OperationQuery => {
+        const needle = search.trim().toLowerCase();
+        const queryCategories = needle !== '' ? categoriesOf(document.categories).filter((category) => categoryName(category).toLowerCase().includes(needle)).map((category) => category.id) : [];
+
+        return { categories: categoryIds, from: range !== null ? dayKey(range.start) : null, to: range !== null ? dayKey(range.end) : null, query: search.trim(), queryCategories };
+    }, [document.categories, categoryIds, range, search]);
+    const key = JSON.stringify(filters);
+    const current = loaded !== null && loaded.key === key ? loaded : null;
+    const groups = useMemo(() => dayGroups(current?.operations ?? []), [current]);
+    const hasMore = current !== null && current.operations.length < current.total;
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => setSearch(query), SEARCH_DELAY);
+
+        return () => window.clearTimeout(timer);
+    }, [query]);
+
+    /**
+     * @function readShown
+     * @description Reads the operations under the filters again: as many as are shown, or a first page
+     */
+    const readShown = useEffectEvent(async (): Promise<OperationPage> => {
+        const count = current !== null ? Math.min(RELOAD_MAX, Math.max(PAGE_SIZE, current.operations.length)) : PAGE_SIZE;
+
+        return await budgetService.listOperations(filters, 0, count);
+    });
+
+    useEffect(() => {
+        let isCurrent = true;
+
+        readShown().then((page) => {
+            if (isCurrent) {
+                setLoaded({ key, operations: page.operations, total: page.total });
+                setFailure(null);
+            }
+        }).catch((error: unknown) => {
+            if (isCurrent) {
+                setFailure(messageOf(error));
+            }
+        });
+
+        return () => {
+            isCurrent = false;
+        };
+    }, [key, revision]);
 
     /**
      * @function update
@@ -130,7 +186,7 @@ function BudgetHistoryComponent(): JSX.Element {
      * @description Puts a date filter in the address, or takes it out so that every date shows.
      */
     const filterDates = (picked: Maybe<DayRange>): void => {
-        update({ from: picked !== null ? dayKey(picked.start) : null, to: picked !== null ? dayKey(picked.end) : null, dates: picked !== null ? null : EVERY_DATE });
+        update({ from: picked !== null ? dayKey(picked.start) : null, to: picked !== null ? dayKey(picked.end) : null });
         setIsPickingDates(false);
     };
 
@@ -140,6 +196,28 @@ function BudgetHistoryComponent(): JSX.Element {
      */
     const filterCategories = (picked: string[]): void => {
         setParams(writeList(params, 'category', picked), { replace: true });
+    };
+
+    /**
+     * @function showMore
+     * @description Reads the next PAGE_SIZE operations under the same filters and search, and adds them to the list.
+     */
+    const showMore = async (): Promise<void> => {
+        if (current === null) {
+            return;
+        }
+
+        setIsLoadingMore(true);
+
+        try {
+            const page = await budgetService.listOperations(filters, current.operations.length, PAGE_SIZE);
+
+            setLoaded((previous) => (previous !== null && previous.key === key ? { key, operations: withoutRepeats([...previous.operations, ...page.operations]), total: page.total } : previous));
+        } catch (error: unknown) {
+            setFailure(messageOf(error));
+        } finally {
+            setIsLoadingMore(false);
+        }
     };
 
     const isFiltered = query !== '' || categoryIds.length > 0 || range !== null;
@@ -166,7 +244,8 @@ function BudgetHistoryComponent(): JSX.Element {
             <FilterChipsComponent label={t('history.filters')} allLabel={t('history.all')} options={options} selected={categoryIds} onChange={filterCategories} leading={dateChip} className='mt-2' />
 
             <div className='mt-2'>
-                {groups.length === 0 && (
+                {current === null && <BudgetLoadingComponent error={failure} />}
+                {current !== null && groups.length === 0 && (
                     <div className='mt-6'>
                         <EmptyStateComponent message={isFiltered ? t('history.noMatch') : t('history.empty')} />
                     </div>
@@ -179,11 +258,16 @@ function BudgetHistoryComponent(): JSX.Element {
                         </div>
                         <div className='card divide-y divide-hairline overflow-hidden'>
                             {group.operations.map((operation) => (
-                                <OperationRowComponent key={operation.id} document={document} operation={operation} onOpen={() => openEdit(operation.id)} />
+                                <OperationRowComponent key={operation.id} document={document} operation={operation} onOpen={() => openEdit(operation)} />
                             ))}
                         </div>
                     </section>
                 ))}
+                {hasMore && (
+                    <button type='button' disabled={isLoadingMore} onClick={() => void showMore()} className='mx-auto mt-6 flex h-10 items-center rounded-full bg-white px-5 text-[15px] font-medium text-ink shadow-control transition hover:bg-fill disabled:opacity-50'>
+                        {t('history.showMore')}
+                    </button>
+                )}
             </div>
 
             <BudgetDatesComponent open={isPickingDates} range={range} onApply={filterDates} onClear={() => filterDates(null)} onClose={() => setIsPickingDates(false)} />

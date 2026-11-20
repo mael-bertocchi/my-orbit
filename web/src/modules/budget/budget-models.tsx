@@ -110,21 +110,85 @@ export const MonthlyBudgetSchema = z.object({
 
 /**
  * @constant BudgetDocumentSchema
- * @description Zod schema for the whole budget document, as the app and the backend exchange it.
+ * @description Zod schema for the budget document: the categories, the budget and the budgets of finished months. The
+ * operations stay on the server, which sends them a page at a time and works out the figures they make.
  */
 export const BudgetDocumentSchema = z.object({
     categories: z.array(CategorySchema),
-    operations: z.array(OperationSchema),
     budget: z.object({ monthlyLimit: z.number() }),
     budgetHistory: z.record(z.string(), MonthlyBudgetSchema)
 });
 
 /**
  * @constant StoredStateSchema
- * @description Zod schema for the document as the backend stores it, with its revision: a counter every write moves on.
+ * @description Zod schema for the document as the backend stores it, with how many operations the budget holds and its
+ * revision: a counter every write moves on.
  */
 export const StoredStateSchema = BudgetDocumentSchema.extend({
+    operationCount: z.number().int(),
     revision: z.number().int()
+});
+
+/**
+ * @constant OperationPageSchema
+ * @description Zod schema for a page of operations, the latest first, with how many match in all.
+ */
+export const OperationPageSchema = z.object({
+    operations: z.array(OperationSchema),
+    total: z.number().int()
+});
+
+/**
+ * @constant SpendingSchema
+ * @description Zod schema for euros spent, in all and per category id.
+ */
+export const SpendingSchema = z.object({
+    spent: z.number(),
+    byCategory: z.record(z.string(), z.number())
+});
+
+/**
+ * @constant MonthFiguresSchema
+ * @description Zod schema for what a month spent, and in the current month how it compares with what the past months
+ * usually had by the same day.
+ */
+export const MonthFiguresSchema = SpendingSchema.extend({
+    month: z.string(),
+    today: z.string(),
+    operationCount: z.number().int(),
+    comparison: z.object({
+        referenceCount: z.number().int(),
+        current: SpendingSchema,
+        usual: SpendingSchema
+    }).nullable()
+});
+
+/**
+ * @constant AnalysisFiguresSchema
+ * @description Zod schema for what the Analysis tab shows: the last twelve months and the habits of the last ninety
+ * days, recurring operations left out.
+ */
+export const AnalysisFiguresSchema = z.object({
+    today: z.string(),
+    months: z.array(SpendingSchema.extend({ month: z.string(), isCurrent: z.boolean() })),
+    habits: z.object({
+        since: z.string(),
+        weekdays: z.array(z.object({ weekday: z.number().int(), average: z.number() })),
+        online: z.number(),
+        inPerson: z.number(),
+        places: z.array(z.object({ place: PlaceReferenceSchema.nullable(), location: z.string().nullable(), spent: z.number(), count: z.number().int() }))
+    })
+});
+
+/**
+ * @constant SuggestionsSchema
+ * @description Zod schema for what the operation editor suggests: earlier names and cities matching what is typed, and
+ * the city of the latest operation in person.
+ */
+export const SuggestionsSchema = z.object({
+    names: z.array(z.string()),
+    places: z.array(PlaceReferenceSchema),
+    latestPlace: PlaceReferenceSchema.nullable()
 });
 
 /**
@@ -202,6 +266,43 @@ export type MonthlyBudget = z.infer<typeof MonthlyBudgetSchema>;
 export type BudgetDocument = z.infer<typeof BudgetDocumentSchema>;
 
 /**
+ * @type OperationPage
+ * @description A page of operations, with how many match in all.
+ */
+export type OperationPage = z.infer<typeof OperationPageSchema>;
+
+/**
+ * @type MonthFigures
+ * @description What a month spent, worked out by the server.
+ */
+export type MonthFigures = z.infer<typeof MonthFiguresSchema>;
+
+/**
+ * @type AnalysisFigures
+ * @description What the Analysis tab shows, worked out by the server.
+ */
+export type AnalysisFigures = z.infer<typeof AnalysisFiguresSchema>;
+
+/**
+ * @type Suggestions
+ * @description What the operation editor suggests.
+ */
+export type Suggestions = z.infer<typeof SuggestionsSchema>;
+
+/**
+ * @interface OperationQuery
+ * @description Which operations a page lists: the categories picked (any when none is), the first and last days, the
+ * search, and the categories whose name matches it in the page's language.
+ */
+export interface OperationQuery {
+    categories: readonly string[]; /*!< The categories picked, none for every category */
+    from: Maybe<string>; /*!< The first day included, as `YYYY-MM-DD`, none for no bound */
+    to: Maybe<string>; /*!< The last day included, as `YYYY-MM-DD`, none for no bound */
+    query: string; /*!< The search */
+    queryCategories: readonly string[]; /*!< The categories whose name matches the search */
+}
+
+/**
  * @type StoredState
  * @description The whole budget as the server holds it, with its revision
  */
@@ -218,11 +319,12 @@ export type RateSnapshot = z.infer<typeof RateSnapshotSchema>;
  * @description The budget's routes on the portal's server, as the store and the rates use them
  */
 export interface BudgetServer {
-    getState: () => Promise<StoredState>; /*!< Reads the whole budget and its revision */
+    getState: () => Promise<StoredState>; /*!< Reads the budget document and its revision */
     createOperation: (operation: Operation) => Promise<void>; /*!< Logs an operation under its id */
     updateOperation: (operation: Operation) => Promise<void>; /*!< Changes an operation */
     deleteOperation: (id: string) => Promise<void>; /*!< Moves an operation to the trash */
     restoreOperation: (id: string) => Promise<void>; /*!< Brings an operation back from the trash */
+    deleteEveryOperation: () => Promise<void>; /*!< Moves every operation to the trash */
     storeCategory: (category: Category, position: number) => Promise<void>; /*!< Creates or replaces a category */
     deleteCategory: (id: string) => Promise<void>; /*!< Removes a category */
     storeSettings: (monthlyLimit: number) => Promise<void>; /*!< Stores the monthly budget */
@@ -253,7 +355,7 @@ export interface BudgetProviderProps {
  * @type BudgetEditorRoute
  * @description What the operation sheet is open on
  */
-export type BudgetEditorRoute = { kind: 'new' } | { kind: 'edit'; id: string };
+export type BudgetEditorRoute = { kind: 'new' } | { kind: 'edit'; operation: Operation };
 
 /**
  * @interface BudgetEditorContextProps
@@ -262,7 +364,7 @@ export type BudgetEditorRoute = { kind: 'new' } | { kind: 'edit'; id: string };
 export interface BudgetEditorContextProps {
     route: Maybe<BudgetEditorRoute>; /*!< What the sheet is open on, none while closed */
     openNew: () => void; /*!< Opens it on a new operation */
-    openEdit: (id: string) => void; /*!< Opens it on an existing one */
+    openEdit: (operation: Operation) => void; /*!< Opens it on an existing one */
     close: () => void; /*!< Closes it */
 }
 

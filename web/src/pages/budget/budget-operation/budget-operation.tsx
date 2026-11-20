@@ -10,15 +10,15 @@ import { CURRENCIES, EURO } from 'modules/budget/budget-currencies';
 import { atTime, dayKey, isFutureDay, parseDay, timeKey, withTimeOf } from 'modules/budget/budget-dates';
 import { euroPrecise, fieldDate, placeName, rate, whereabouts } from 'modules/budget/budget-formatting';
 import { useBudgetContext, useDocument, useRates } from 'modules/budget/budget-hooks';
-import { latestPlace, nameSuggestions } from 'modules/budget/budget-math';
-import type { BudgetEditorRoute, Category, Operation } from 'modules/budget/budget-models';
-import { amountInputOf, deleteOperation, groupAmountInput, Limits, parseAmountInput, sanitizeAmountInput, toOperation, upsertOperation } from 'modules/budget/budget-operations';
+import type { BudgetEditorRoute, Category, Operation, PlaceReference } from 'modules/budget/budget-models';
+import { amountInputOf, groupAmountInput, Limits, parseAmountInput, sanitizeAmountInput, toOperation } from 'modules/budget/budget-operations';
 import { defaultCurrency, rememberCurrency } from 'modules/budget/budget-preferences';
 import type { CityValue } from 'modules/budget/budget-places';
-import { isCityChosen } from 'modules/budget/budget-places';
+import { isCityChosen, useNameSuggestions } from 'modules/budget/budget-places';
+import budgetService from 'modules/budget/budget-service';
 import { t } from 'modules/language/language-service';
 import BudgetCityFieldComponent from 'pages/budget/budget-city-field/budget-city-field';
-import { useEffect, useMemo, useState, type FormEvent, type JSX, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type JSX, type ReactNode } from 'react';
 
 /**
  * @constant FORM_ID
@@ -131,20 +131,13 @@ export function CategoryPickerComponent(props: CategoryPickerComponentProps): JS
 /**
  * @function initialCity
  * @description The city the editor opens on: the operation's own, in the page's language, or the place it was written
- * with before cities were checked; for a new one, the city of the latest operation.
+ * with before cities were checked; for a new one, none until the server names the city of the latest operation.
  *
  * @param {Maybe<Operation>} existing The operation edited, none for a new one
- * @param {readonly Operation[]} operations Every operation
  * @returns {CityValue} The city
  */
-function initialCity(existing: Maybe<Operation>, operations: readonly Operation[]): CityValue {
-    if (existing !== null) {
-        return { location: whereabouts(existing), place: existing.place ?? null };
-    }
-
-    const place = latestPlace(operations);
-
-    return { location: place !== null ? placeName(place) : '', place };
+function initialCity(existing: Maybe<Operation>): CityValue {
+    return existing !== null ? { location: whereabouts(existing), place: existing.place ?? null } : { location: '', place: null };
 }
 
 /**
@@ -180,11 +173,11 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
     const [categoryId, setCategoryId] = useState(existing?.categoryId ?? categories[0]?.id ?? '');
     const [name, setName] = useState(existing?.name ?? '');
     const [description, setDescription] = useState(existing?.description ?? '');
-    const [city, setCity] = useState<CityValue>(() => initialCity(existing, document.operations));
+    const [city, setCity] = useState<CityValue>(() => initialCity(existing));
     const [date, setDate] = useState(existing?.date ?? now);
     const [isOnline, setIsOnline] = useState(existing?.isOnline ?? false);
 
-    const names = useMemo(() => nameSuggestions(document.operations, name), [document.operations, name]);
+    const names = useNameSuggestions(name);
     const nameOptions = names.map((value): Suggestion => ({ value }));
     const keptLocation = existing === null || (existing.place ?? null) !== null ? null : existing.location ?? null;
 
@@ -204,6 +197,22 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
     useEffect(() => {
         onValidityChange(isValid);
     }, [isValid, onValidityChange]);
+
+    useEffect(() => {
+        if (existing !== null) {
+            return;
+        }
+
+        /**
+         * @function fillLatestPlace
+         * @description Fills in the city of the latest operation, unless a city was typed or picked meanwhile
+         */
+        const fillLatestPlace = (place: Maybe<PlaceReference>): void => {
+            setCity((current) => (place === null || current.location !== '' || current.place !== null ? current : { location: placeName(place), place }));
+        };
+
+        budgetService.suggestions('', '').then((suggestions) => fillLatestPlace(suggestions.latestPlace)).catch(() => undefined);
+    }, [existing]);
 
     /**
      * @function pickName
@@ -258,7 +267,7 @@ function OperationFormComponent(props: OperationFormComponentProps): JSX.Element
         const draft = { name, description, amount, currencyCode, categoryId, date, location: city.location, place: city.place, isOnline };
         const operation = { ...toOperation(draft, appliedRate, existing?.id), recurringId: existing?.recurringId ?? null };
 
-        store.apply((current) => upsertOperation(current, operation));
+        store.write(existing !== null ? { kind: 'updateOperation', operation } : { kind: 'createOperation', operation });
         rememberCurrency(currencyCode);
         props.onDone();
     };
@@ -362,12 +371,10 @@ interface BudgetOperationComponentProps {
 function BudgetOperationComponent(props: BudgetOperationComponentProps): JSX.Element {
     const route = props.route;
 
-    const document = useDocument();
     const { store } = useBudgetContext();
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const [canSave, setCanSave] = useState(false);
-    const existing = route?.kind !== 'edit' ? null : document.operations.find((operation) => operation.id === route.id) ?? null;
-    const isMissing = route?.kind === 'edit' && existing === null;
+    const existing = route?.kind !== 'edit' ? null : route.operation;
 
     /**
      * @function confirmDelete
@@ -375,7 +382,7 @@ function BudgetOperationComponent(props: BudgetOperationComponentProps): JSX.Ele
      */
     const confirmDelete = (): void => {
         if (existing !== null) {
-            store.apply((current) => deleteOperation(current, existing.id));
+            store.write({ kind: 'deleteOperation', id: existing.id });
         }
 
         setIsConfirmingDelete(false);
@@ -384,9 +391,9 @@ function BudgetOperationComponent(props: BudgetOperationComponentProps): JSX.Ele
 
     /**
      * @constant footer
-     * @description The button saving the operation, pinned under the form, unless the operation is gone
+     * @description The button saving the operation, pinned under the form
      */
-    const footer = isMissing ? undefined : (
+    const footer = (
         <button type='submit' form={FORM_ID} disabled={!canSave} className='button-primary'>
             {route?.kind !== 'edit' ? t('operation.save') : t('operation.saveChanges')}
         </button>
@@ -395,11 +402,7 @@ function BudgetOperationComponent(props: BudgetOperationComponentProps): JSX.Ele
     return (
         <>
             <SheetComponent open={route !== null} title={route?.kind !== 'edit' ? t('operation.new') : t('operation.edit')} onClose={props.onClose} isFull footer={footer}>
-                {isMissing
-                    ? <p className='py-10 text-center text-[15px] text-ink-secondary'>{t('operation.missing')}</p>
-                    : (
-                        <OperationFormComponent key={route?.kind !== 'edit' ? 'new' : route.id} existing={existing} onDone={props.onClose} onDelete={() => setIsConfirmingDelete(true)} onValidityChange={setCanSave} />
-                    )}
+                <OperationFormComponent key={existing !== null ? existing.id : 'new'} existing={existing} onDone={props.onClose} onDelete={() => setIsConfirmingDelete(true)} onValidityChange={setCanSave} />
             </SheetComponent>
             <AlertComponent open={isConfirmingDelete} title={t('operation.confirmDelete')} message={t('common.irreversible')} action={t('operation.deleteAction')} onConfirm={confirmDelete} onCancel={() => setIsConfirmingDelete(false)} />
         </>

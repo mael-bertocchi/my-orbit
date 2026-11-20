@@ -1,5 +1,4 @@
 import type { Maybe } from 'models';
-import { sealCompletedMonths } from 'modules/budget/budget-math';
 import type { BudgetDocument, BudgetServer, StoredState } from 'modules/budget/budget-models';
 import type { BudgetWrite } from 'modules/budget/budget-sync';
 import { diffDocuments, sendWrite } from 'modules/budget/budget-sync';
@@ -26,6 +25,8 @@ export type Change = (document: BudgetDocument) => BudgetDocument;
  */
 export interface BudgetSnapshot {
     document: Maybe<BudgetDocument>; /*!< The budget with every pending edit applied, null until first read */
+    operationCount: number; /*!< How many operations the budget holds, as the server last said */
+    revision: number; /*!< The server's latest known revision, which moves on with every write, wherever it comes from */
     status: SyncStatus; /*!< Where the page stands with the server */
     error: Maybe<string>; /*!< Why the last sync failed, if it did */
     hasPendingChanges: boolean; /*!< Whether some edits haven't reached the server yet */
@@ -42,7 +43,7 @@ const RETRY_AFTER = 15 * 1000;
  * @description The document part of a stored state.
  */
 function withoutRevision(state: StoredState): BudgetDocument {
-    return { categories: state.categories, operations: state.operations, budget: state.budget, budgetHistory: state.budgetHistory };
+    return { categories: state.categories, budget: state.budget, budgetHistory: state.budgetHistory };
 }
 
 /**
@@ -61,20 +62,23 @@ function applyQuietly(document: BudgetDocument, changes: readonly Change[]): Bud
 
 /**
  * @class BudgetStore
- * @description The page's copy of the budget. Edits show at once and are sent in order behind the scenes, entry by
- * entry: the store applies them to the server's latest budget and sends only the operations, categories, settings and
- * months that differ, so what the app wrote to other entries in between is never touched. While the page is in view it
- * also picks up what the app writes.
+ * @description The page's copy of the budget document, without the operations, which stay on the server. Edits to the
+ * document show at once and are sent in order behind the scenes, entry by entry: the store applies them to the server's
+ * latest document and sends only the categories, settings and months that differ, so what the app wrote to other entries
+ * in between is never touched. Operations the page logs, changes or deletes are sent after them, in order. While the
+ * page is in view it also picks up what the app writes; the revision tells the pages when to read their operations
+ * again.
  */
 export class BudgetStore {
     private readonly api: BudgetServer; /*!< The server */
     private confirmed: Maybe<StoredState> = null; /*!< The server's latest known budget */
     private stale = false; /*!< Whether a send failed partway, so the server's budget has to be read again before the next */
     private pending: Change[] = []; /*!< Edits not yet stored, oldest first */
+    private operationWrites: BudgetWrite[] = []; /*!< Operations logged, changed or deleted, not yet stored, oldest first */
     private sending: Maybe<Promise<void>> = null; /*!< The send in progress */
     private retry: Maybe<ReturnType<typeof setTimeout>> = null; /*!< The scheduled retry of a failed send */
     private listeners = new Set<() => void>(); /*!< Who to tell about a new snapshot */
-    private snapshot: BudgetSnapshot = { document: null, status: 'syncing', error: null, hasPendingChanges: false }; /*!< What the page renders */
+    private snapshot: BudgetSnapshot = { document: null, operationCount: 0, revision: 0, status: 'syncing', error: null, hasPendingChanges: false }; /*!< What the page renders */
     private rejectionListeners = new Set<(message: string) => void>(); /*!< Who to tell when an edit is dropped */
 
     /**
@@ -127,7 +131,7 @@ export class BudgetStore {
      * @returns {Promise<void>} Resolves once done; failures are reported in the snapshot.
      */
     async refresh(): Promise<void> {
-        if (this.pending.length > 0 || this.sending !== null) {
+        if (this.hasPending() || this.sending !== null) {
             await this.send();
             return;
         }
@@ -158,6 +162,18 @@ export class BudgetStore {
     }
 
     /**
+     * @method write
+     * @description Sends an operation logged, changed or deleted, after every edit before it.
+     *
+     * @param {BudgetWrite} write The write.
+     */
+    write(write: BudgetWrite): void {
+        this.operationWrites.push(write);
+        this.publish('syncing', null);
+        void this.send();
+    }
+
+    /**
      * @method reset
      * @description Forgets everything, on sign-out.
      */
@@ -165,6 +181,7 @@ export class BudgetStore {
         this.confirmed = null;
         this.stale = false;
         this.pending = [];
+        this.operationWrites = [];
 
         if (this.retry !== null) {
             clearTimeout(this.retry);
@@ -188,8 +205,8 @@ export class BudgetStore {
 
     /**
      * @method drain
-     * @description Writes every pending edit. Finished months are sealed first, as the app does before any edit. An edit
-     * that no longer applies (its operation was deleted on the phone, say) is dropped and reported.
+     * @description Writes every pending edit, then every operation written. An edit that no longer applies is dropped and
+     * reported, and so is a change to an operation deleted for good elsewhere.
      */
     private async drain(): Promise<void> {
         if (this.retry !== null) {
@@ -198,14 +215,15 @@ export class BudgetStore {
         }
 
         try {
-            while (this.pending.length > 0) {
+            while (this.hasPending()) {
                 if (this.confirmed === null || this.stale) {
                     this.confirmed = await this.api.getState();
                     this.stale = false;
                 }
 
                 const batch = [...this.pending];
-                let next = sealCompletedMonths(withoutRevision(this.confirmed));
+                const writes = [...this.operationWrites];
+                let next = withoutRevision(this.confirmed);
 
                 for (const change of batch) {
                     try {
@@ -217,12 +235,19 @@ export class BudgetStore {
                 }
 
                 for (const write of diffDocuments(withoutRevision(this.confirmed), next)) {
-                    if (!await this.sendOrForget(write)) {
-                        this.reject(t('operation.deletedElsewhere'));
-                    }
+                    await this.sendOrForget(write);
                 }
 
                 this.pending = this.pending.filter((change) => !batch.includes(change));
+
+                for (const write of writes) {
+                    if (!await this.sendOrForget(write)) {
+                        this.reject(t('operation.deletedElsewhere'));
+                    }
+
+                    this.operationWrites = this.operationWrites.filter((candidate) => candidate !== write);
+                }
+
                 this.confirmed = await this.api.getState();
             }
 
@@ -231,6 +256,14 @@ export class BudgetStore {
             this.fail(error);
             this.retry = setTimeout(() => void this.send(), RETRY_AFTER);
         }
+    }
+
+    /**
+     * @method hasPending
+     * @description Whether some edits or operations haven't reached the server yet.
+     */
+    private hasPending(): boolean {
+        return this.pending.length > 0 || this.operationWrites.length > 0;
     }
 
     /**
@@ -279,9 +312,11 @@ export class BudgetStore {
     private publish(status: SyncStatus, error: Maybe<string>): void {
         this.snapshot = {
             document: this.confirmed !== null ? applyQuietly(withoutRevision(this.confirmed), this.pending) : null,
+            operationCount: this.confirmed?.operationCount ?? 0,
+            revision: this.confirmed?.revision ?? 0,
             status,
             error,
-            hasPendingChanges: this.pending.length > 0
+            hasPendingChanges: this.hasPending()
         };
 
         for (const listener of this.listeners) {
