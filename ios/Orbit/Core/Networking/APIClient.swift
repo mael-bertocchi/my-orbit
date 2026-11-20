@@ -831,8 +831,8 @@ final class APIClient {
 
     /**
      * @method refreshTokens
-     * @description Rotates the refresh token into a new pair. Concurrent calls share one rotation, and a refused one
-     * ends the session
+     * @description Rotates the refresh token into a new pair. Concurrent calls share one rotation, and only a refused one
+     * (401) ends the session: a server down for a deployment leaves it as it is, for the next sync to renew
      */
     private func refreshTokens() async throws {
         if let refreshTask {
@@ -852,7 +852,7 @@ final class APIClient {
                     authorized: false
                 )
                 tokens.store(access: pair.accessToken, refresh: pair.refreshToken)
-            } catch APIError.server, APIError.unauthorized {
+            } catch APIError.server(status: 401, message: _), APIError.unauthorized {
                 tokens.clear()
                 throw APIError.unauthorized
             }
