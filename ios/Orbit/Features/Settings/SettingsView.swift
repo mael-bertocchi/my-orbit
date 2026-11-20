@@ -2,8 +2,8 @@ import SwiftUI
 
 /**
  * @class SettingsView
- * @description The Settings tab: the sync state, the connected apps and signing out, the budget and its limits, the default currency, the
- * language, the haptics, the exchange rates and what the budget holds
+ * @description The Settings tab: the sync state, the connected apps and signing out, the budget and its limits, the
+ * recurring operations, the default currency, the language, the haptics, the exchange rates and what the budget holds
  */
 struct SettingsView: View {
     @Environment(LocalStore.self) private var store /*!< The budget */
@@ -12,6 +12,7 @@ struct SettingsView: View {
     @Environment(ApplicationSession.self) private var session /*!< The session with the server */
 
     @State private var showLimits = false /*!< Whether the limits sheet is open */
+    @State private var showRecurring = false /*!< Whether the recurring operations are open */
     @State private var showCurrencyPicker = false /*!< Whether the currency picker is open */
     @State private var showTrash = false /*!< Whether the trash is open */
     @State private var showConnections = false /*!< Whether the connected apps are open */
@@ -77,6 +78,10 @@ struct SettingsView: View {
                         value: Formatting.euro(store.budget.monthlyLimit)
                     ) {
                         showLimits = true
+                    }
+                    RowDivider()
+                    valueRow(symbol: "repeat", color: Theme.accent, title: String(appLocalized: "Recurring operations"), value: "") {
+                        showRecurring = true
                     }
                 }
                 .glassCard()
@@ -191,6 +196,9 @@ struct SettingsView: View {
         .scrollTopBlur()
         .sheet(isPresented: $showLimits) {
             CategoryLimitsSheet()
+        }
+        .sheet(isPresented: $showRecurring) {
+            RecurringSheet()
         }
         .sheet(isPresented: $showTrash) {
             TrashSheet()
