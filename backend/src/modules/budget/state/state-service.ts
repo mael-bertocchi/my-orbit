@@ -21,11 +21,12 @@ export const DEFAULT_MONTHLY_LIMIT = 3000;
  * @returns {Promise<StoredStateBody>} The full budget document and its revision.
  */
 export async function pullState(prisma: PrismaClient): Promise<StoredStateBody> {
-    const [categories, operations, history, state] = await Promise.all([
+    const [categories, operations, history, state, operationCount] = await Promise.all([
         prisma.budgetCategory.findMany({ orderBy: { position: 'asc' } }),
         prisma.budgetOperation.findMany({ where: { deletedAt: null }, orderBy: [{ day: 'desc' }, { time: 'desc' }], include: WITH_PLACE }),
         prisma.budgetHistory.findMany({ orderBy: { month: 'asc' } }),
-        prisma.budgetState.findUnique({ where: { id: OWNER_ID } })
+        prisma.budgetState.findUnique({ where: { id: OWNER_ID } }),
+        prisma.budgetOperation.count({ where: { deletedAt: null } })
     ]);
 
     return {
@@ -63,6 +64,7 @@ export async function pullState(prisma: PrismaClient): Promise<StoredStateBody> 
                 }
             ])
         ),
+        operationCount,
         revision: state?.revision ?? 0
     };
 }

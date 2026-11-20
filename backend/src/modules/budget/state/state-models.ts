@@ -89,7 +89,7 @@ export type StateBody = z.infer<typeof StateSchema>;
 
 /**
  * @type StoredStateBody
- * @description The budget document as stored, with its revision: a counter every write moves on, so a client can tell
- * whether anything changed since it last read.
+ * @description The budget document as stored, with how many operations it holds and its revision: a counter every write
+ * moves on, so a client can tell whether anything changed since it last read.
  */
-export type StoredStateBody = StateBody & { revision: number };
+export type StoredStateBody = StateBody & { operationCount: number; revision: number };

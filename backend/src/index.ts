@@ -4,6 +4,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { hasZodFastifySchemaValidationErrors, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { StatusCodes } from 'http-status-codes';
 import categoriesRoutes from 'src/modules/budget/categories/categories-routes';
+import figuresRoutes from 'src/modules/budget/figures/figures-routes';
 import historyRoutes from 'src/modules/budget/history/history-routes';
 import operationsRoutes from 'src/modules/budget/operations/operations-routes';
 import placesRoutes from 'src/modules/budget/places/places-routes';
@@ -134,6 +135,7 @@ async function startServer(): Promise<void> {
     await fastify.register(settingsRoutes, { prefix: '/v1/budget/settings' });
     await fastify.register(historyRoutes, { prefix: '/v1/budget/history' });
     await fastify.register(placesRoutes, { prefix: '/v1/budget/places' });
+    await fastify.register(figuresRoutes, { prefix: '/v1/budget/figures' });
     await fastify.register(catalogRoutes, { prefix: '/v1/watchlist/catalog' });
     await fastify.register(entriesRoutes, { prefix: '/v1/watchlist/entries' });
     await fastify.register(oauthRoutes);

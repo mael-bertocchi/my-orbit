@@ -1,4 +1,5 @@
 import type { RequestGenericInterface } from 'fastify';
+import { DaySchema } from 'src/modules/budget/recurring/recurring-models';
 import { OperationSchema } from 'src/modules/budget/state/state-models';
 import { IdSchema } from 'src/shared/schemas';
 import { z } from 'zod';
@@ -24,6 +25,39 @@ export const OperationUpdateSchema = OperationCreateSchema.omit({ id: true }).ex
 export const OperationParamsSchema = z.object({
     operationId: IdSchema
 });
+
+/**
+ * @constant IdListSchema
+ * @description Zod schema for ids sent in the address, separated by commas, as a list without the empty ones.
+ */
+const IdListSchema = z.string().max(2000).default('').transform((text) => text.split(',').filter((id) => id !== ''));
+
+/**
+ * @constant OperationListQuerySchema
+ * @description Zod schema for a page of operations: the categories picked (any category when none is), the first and
+ * last days included, the search, and the page itself, which holds whole days only. The search matches the name, the
+ * note, the place and the categories named in `queryCategories`: the app names the categories whose name, in its own
+ * language, matches it.
+ */
+export const OperationListQuerySchema = z.object({
+    categories: IdListSchema,
+    from: DaySchema.optional(),
+    to: DaySchema.optional(),
+    query: z.string().trim().max(120).default(''),
+    queryCategories: IdListSchema,
+    offset: z.coerce.number().int().min(0).default(0),
+    limit: z.coerce.number().int().min(1).max(100).default(40)
+});
+
+/**
+ * @interface OperationListRequest
+ * @description Fastify request generic for a page of operations.
+ *
+ * @extends RequestGenericInterface
+ */
+export interface OperationListRequest extends RequestGenericInterface {
+    Querystring: OperationListQuery; /*!< The filters and the page */
+}
 
 /**
  * @interface OperationCreateRequest
@@ -67,6 +101,21 @@ export type Operation = z.infer<typeof OperationSchema> & { updatedAt: Date };
  * @description An operation in the trash, with when it was deleted.
  */
 export type TrashedOperation = Operation & { deletedAt: Date };
+
+/**
+ * @type OperationListQuery
+ * @description What a page of operations asks for.
+ */
+export type OperationListQuery = z.infer<typeof OperationListQuerySchema>;
+
+/**
+ * @interface OperationPage
+ * @description A page of operations, the latest first, with how many match in all.
+ */
+export interface OperationPage {
+    operations: Operation[]; /*!< The operations of the page */
+    total: number; /*!< How many operations match the filters */
+}
 
 /**
  * @type OperationCreate

@@ -9,7 +9,7 @@ describe('pullState', () => {
         const findMany = vi.fn(() => Promise.resolve([]));
         const prisma = standIn<PrismaClient>({
             budgetCategory: { findMany },
-            budgetOperation: { findMany },
+            budgetOperation: { findMany, count: vi.fn(() => Promise.resolve(0)) },
             budgetHistory: { findMany },
             budgetState: { findUnique: vi.fn(() => Promise.resolve({ id: 'owner', monthlyLimit: 2500, revision: 7 })) }
         });
