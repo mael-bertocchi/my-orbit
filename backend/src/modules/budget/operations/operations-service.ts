@@ -93,6 +93,25 @@ const REPRICE_DAYS = 7;
 const RATE_EPSILON = 1e-9;
 
 /**
+ * @function textFilter
+ * @description The ways an operation can match words searched, regardless of case: in its name, its note, its place or
+ * its city in either language. The History and Claude's search both look through these.
+ *
+ * @param {string} text The words searched.
+ *
+ * @returns {Prisma.BudgetOperationWhereInput[]} The conditions, any of which is a match.
+ */
+export function textFilter(text: string): Prisma.BudgetOperationWhereInput[] {
+    return [
+        { name: { contains: text, mode: 'insensitive' } },
+        { description: { contains: text, mode: 'insensitive' } },
+        { location: { contains: text, mode: 'insensitive' } },
+        { place: { nameEn: { contains: text, mode: 'insensitive' } } },
+        { place: { nameFr: { contains: text, mode: 'insensitive' } } }
+    ];
+}
+
+/**
  * @function listFilter
  * @description The operations in the budget a page asks for: in one of the categories picked, within the days picked,
  * and matching the search, regardless of case.
@@ -102,14 +121,7 @@ const RATE_EPSILON = 1e-9;
  * @returns {Prisma.BudgetOperationWhereInput} The filter, for the database.
  */
 function listFilter(query: OperationListQuery): Prisma.BudgetOperationWhereInput {
-    const search: Prisma.BudgetOperationWhereInput[] = [
-        { name: { contains: query.query, mode: 'insensitive' } },
-        { description: { contains: query.query, mode: 'insensitive' } },
-        { location: { contains: query.query, mode: 'insensitive' } },
-        { place: { nameEn: { contains: query.query, mode: 'insensitive' } } },
-        { place: { nameFr: { contains: query.query, mode: 'insensitive' } } },
-        { categoryId: { in: query.queryCategories } }
-    ];
+    const search: Prisma.BudgetOperationWhereInput[] = [...textFilter(query.query), { categoryId: { in: query.queryCategories } }];
 
     return {
         deletedAt: null,

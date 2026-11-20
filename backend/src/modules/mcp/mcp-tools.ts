@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import type { FastifyBaseLogger } from 'fastify';
 import type { BudgetOperation, Prisma, PrismaClient, WatchlistEntry } from 'prisma/generated/prisma/client';
-import { createOperation, deleteOperation, updateOperation } from 'src/modules/budget/operations/operations-service';
+import { euroAmount, spendingOf } from 'src/modules/budget/figures/figures-math';
+import { createOperation, deleteOperation, textFilter, updateOperation } from 'src/modules/budget/operations/operations-service';
 import { placeNameOf, withPlace, WITH_PLACE } from 'src/modules/budget/places/places-service';
 import { CurrencyCodeSchema } from 'src/modules/budget/rates/rates-models';
 import { rateToEuroOn } from 'src/modules/budget/rates/rates-service';
@@ -130,7 +131,7 @@ export function summaryOf(row: BudgetOperation): OperationLine {
         categoryId: row.categoryId,
         amount: row.amount,
         currencyCode: row.currencyCode,
-        euroAmount: euros(row.amount * row.rateToEuro)
+        euroAmount: euros(euroAmount(row))
     };
 }
 
@@ -233,13 +234,7 @@ export const searchOperations: ServerTool = {
                 deletedAt: null,
                 categoryId,
                 day: { gte: from, lte: to },
-                OR: query !== undefined ? [
-                    { name: { contains: query, mode: 'insensitive' } },
-                    { description: { contains: query, mode: 'insensitive' } },
-                    { location: { contains: query, mode: 'insensitive' } },
-                    { place: { nameEn: { contains: query, mode: 'insensitive' } } },
-                    { place: { nameFr: { contains: query, mode: 'insensitive' } } }
-                ] : undefined
+                OR: query !== undefined ? textFilter(query) : undefined
             },
             orderBy: [{ day: 'desc' }, { time: 'desc' }],
             take: SEARCH_SCAN_MAX,
@@ -249,7 +244,7 @@ export const searchOperations: ServerTool = {
         return {
             result: {
                 count: rows.length,
-                totalEuros: euros(rows.reduce((total, row) => total + row.amount * row.rateToEuro, 0)),
+                totalEuros: euros(spendingOf(rows).spent),
                 operations: rows.slice(0, limit).map((row) => ({ ...summaryOf(row), description: row.description, location: placeNameOf(row.place, context.language) ?? row.location, isOnline: row.isOnline, recurringId: row.recurringId }))
             }
         };
@@ -298,14 +293,8 @@ export const monthSummary: ServerTool = {
         ]);
         const limits = frozen !== null ? StoredCategoryLimitsSchema.parse(frozen.categoryLimits) : Object.fromEntries(categories.map((category) => [category.id, category.monthlyLimit]));
         const monthlyLimit = frozen?.monthlyLimit ?? state?.monthlyLimit ?? DEFAULT_MONTHLY_LIMIT;
-        const spent = new Map<string, number>();
-
-        for (const row of rows) {
-            spent.set(row.categoryId, (spent.get(row.categoryId) ?? 0) + row.amount * row.rateToEuro);
-        }
-
-        const total = [...spent.values()].reduce((sum, value) => sum + value, 0);
-        const ids = new Set([...categories.map((category) => category.id), ...spent.keys()]);
+        const { spent: total, byCategory } = spendingOf(rows);
+        const ids = new Set([...categories.map((category) => category.id), ...Object.keys(byCategory)]);
 
         return {
             result: {
@@ -317,7 +306,7 @@ export const monthSummary: ServerTool = {
                 categories: [...ids].map((id) => ({
                     id,
                     name: categories.find((category) => category.id === id)?.name ?? id,
-                    spentEuros: euros(spent.get(id) ?? 0),
+                    spentEuros: euros(byCategory[id] ?? 0),
                     limitEuros: limits[id] ?? 0
                 }))
             }
@@ -686,7 +675,7 @@ export const createOperationTool: ServerTool = {
             const placed = await withPlace(context, { location: location ?? null });
             const operation = await createOperation(context.prisma, { ...draft, ...placed, id: randomUUID().toUpperCase(), day: date, time: LOGGED_TIME, description: description ?? null, rateToEuro });
 
-            return { result: { status: 'Logged', operation: { ...operation, euroAmount: euros(operation.amount * operation.rateToEuro) } } };
+            return { result: { status: 'Logged', operation: { ...operation, euroAmount: euros(euroAmount(operation)) } } };
         } catch (error: unknown) {
             return failed(error);
         }
@@ -779,7 +768,7 @@ export const updateOperationTool: ServerTool = {
             const placed = await withPlace(context, changes);
             const operation = await updateOperation(context.prisma, existing.id, { ...placed, day: date, rateToEuro });
 
-            return { result: { status: 'Changed', operation: { ...operation, euroAmount: euros(operation.amount * operation.rateToEuro) } } };
+            return { result: { status: 'Changed', operation: { ...operation, euroAmount: euros(euroAmount(operation)) } } };
         } catch (error: unknown) {
             return failed(error);
         }
