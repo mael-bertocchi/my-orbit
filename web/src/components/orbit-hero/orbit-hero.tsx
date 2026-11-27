@@ -1,10 +1,9 @@
-import LogoComponent from 'components/logo/logo';
 import { ChartPie, Clapperboard, Globe, MapPin, Repeat, Star, Wallet, type LucideIcon } from 'lucide-react';
 import type { CSSProperties, JSX } from 'react';
 
 /**
  * @interface Satellite
- * @description A glyph that travels on one of the orbits around the logo.
+ * @description A glyph that travels on one of the orbits around the sphere.
  */
 interface Satellite {
     icon: LucideIcon; /*!< The glyph */
@@ -15,7 +14,7 @@ interface Satellite {
 
 /**
  * @interface Orbit
- * @description One circle around the logo and the glyphs that travel on it.
+ * @description One circle around the sphere and the glyphs that travel on it.
  */
 interface Orbit {
     radius: number; /*!< Its radius, in pixels */
@@ -44,6 +43,19 @@ const HERO_SIZE = 380;
  * @description The slate gradient of the apps' icons, from the top left to the bottom right
  */
 const APP_GRADIENT = 'linear-gradient(135deg, #6B7787, #434C59)';
+
+/**
+ * @constant SPHERE_SIZE
+ * @description The diameter of the sphere at the centre, in pixels
+ */
+const SPHERE_SIZE = 100;
+
+/**
+ * @constant SPHERE_SHADING
+ * @description The sphere's shading: the slate of the apps' icons, lit from the top left and darkening toward its bottom
+ * right edge
+ */
+const SPHERE_SHADING = 'radial-gradient(circle at 34% 30%, #97A1AE, #616B7A 38%, #434C59 72%, #2A3039)';
 
 /**
  * @constant ORBITS
@@ -114,9 +126,9 @@ function SatelliteComponent(props: SatelliteComponentProps): JSX.Element {
 
 /**
  * @function OrbitHeroComponent
- * @description The sign-in page's picture: the logo, with the apps and what they keep track of turning around it on two
- * faint orbits, the inner one clockwise and the outer one the other way. Each disc turns back as fast as its orbit so
- * its glyph stays upright. Everything stands still for those who ask for less motion.
+ * @description The sign-in page's picture: a slate sphere, with the apps and what they keep track of turning around it
+ * on two faint orbits, the inner one clockwise and the outer one the other way. Each disc turns back as fast as its
+ * orbit so its glyph stays upright. Everything stands still for those who ask for less motion.
  *
  * @returns {JSX.Element} The picture
  */
@@ -130,9 +142,7 @@ function OrbitHeroComponent(): JSX.Element {
                     {orbit.satellites.map((satellite: Satellite) => <SatelliteComponent key={satellite.angle} orbit={orbit} satellite={satellite} />)}
                 </div>
             ))}
-            <div className='absolute left-1/2 top-1/2 -ml-[52px] -mt-[52px] rounded-[25px] shadow-[0_14px_40px_rgb(67_76_89/0.35)]'>
-                <LogoComponent size={104} />
-            </div>
+            <div className='absolute left-1/2 top-1/2 rounded-full shadow-[0_14px_40px_rgb(67_76_89/0.3)]' style={{ width: SPHERE_SIZE, height: SPHERE_SIZE, marginLeft: -SPHERE_SIZE / 2, marginTop: -SPHERE_SIZE / 2, backgroundImage: SPHERE_SHADING }} />
         </div>
     );
 }

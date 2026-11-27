@@ -2,7 +2,7 @@ import SwiftUI
 
 /**
  * @class OrbitSatellite
- * @description A glyph that travels on one of the orbits around the mark
+ * @description A glyph that travels on one of the orbits around the sphere
  */
 private struct OrbitSatellite {
     let systemImage: String /*!< Its SF Symbol */
@@ -13,7 +13,7 @@ private struct OrbitSatellite {
 
 /**
  * @class OrbitPath
- * @description One circle around the mark and the glyphs that travel on it
+ * @description One circle around the sphere and the glyphs that travel on it
  */
 private struct OrbitPath {
     let radius: CGFloat /*!< Its radius, in points */
@@ -40,8 +40,8 @@ private struct OrbitPath {
 
 /**
  * @class OrbitHero
- * @description The sign-in screen's picture: Orbit's mark, with what the budget keeps track of turning around it on two
- * faint orbits, the inner one clockwise and the outer one the other way. The glyphs move along their orbits without
+ * @description The sign-in screen's picture: a slate sphere, with what the budget keeps track of turning around it on
+ * two faint orbits, the inner one clockwise and the outer one the other way. The glyphs move along their orbits without
  * turning, so they stay upright, and everything stands still when the device asks for less motion
  */
 struct OrbitHero: View {
@@ -54,10 +54,22 @@ struct OrbitHero: View {
     private static let side: CGFloat = 300
 
     /**
-     * @constant markSize
-     * @description The side of the mark at the centre
+     * @constant sphereSize
+     * @description The diameter of the sphere at the centre
      */
-    private static let markSize: CGFloat = 84
+    private static let sphereSize: CGFloat = 80
+
+    /**
+     * @constant sphereShading
+     * @description The sphere's shading: the slate of the mark, lit from the top left and darkening toward its bottom
+     * right edge
+     */
+    private static let sphereShading = RadialGradient(stops: [
+        .init(color: Color(hex: 0x97A1AE), location: 0),
+        .init(color: Color(hex: 0x616B7A), location: 0.38),
+        .init(color: Color(hex: 0x434C59), location: 0.72),
+        .init(color: Color(hex: 0x2A3039), location: 1)
+    ], center: UnitPoint(x: 0.34, y: 0.3), startRadius: 0, endRadius: sphereSize * 0.9)
 
     /**
      * @constant orbits
@@ -94,9 +106,9 @@ struct OrbitHero: View {
                     orbit(Self.orbits[index], at: time)
                 }
 
-                Image("Mark")
-                    .resizable()
-                    .frame(width: Self.markSize, height: Self.markSize)
+                Circle()
+                    .fill(Self.sphereShading)
+                    .frame(width: Self.sphereSize, height: Self.sphereSize)
                     .shadow(color: .black.opacity(0.45), radius: 18, y: 10)
             }
             .frame(width: Self.side, height: Self.side)
