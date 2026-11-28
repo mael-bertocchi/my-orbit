@@ -1,7 +1,5 @@
-import AppIconComponent from 'components/app-icon/app-icon';
 import { FrameActionContext } from 'components/frame/frame-context';
 import LauncherComponent from 'components/launcher/launcher';
-import LogoComponent from 'components/logo/logo';
 import SidebarComponent from 'components/sidebar/sidebar';
 import { Grip, Settings } from 'lucide-react';
 import type { PortalApp } from 'modules/apps/apps-models';
@@ -110,8 +108,7 @@ function FrameComponent(props: FrameComponentProps): JSX.Element {
         <>
             <header className={`sticky top-0 z-30 border-b lg:hidden bg-canvas/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150 transition-colors duration-200 ${isScrolled ? 'border-hairline' : 'border-transparent'}`}>
                 <div className='mx-auto grid h-14 max-w-5xl grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 sm:px-8'>
-                    <Link to={props.app !== undefined ? appPath(props.app) : '/'} className='flex items-center gap-2.5 justify-self-start rounded-lg'>
-                        {props.app !== undefined ? <AppIconComponent app={props.app} size={28} /> : <LogoComponent size={28} />}
+                    <Link to={props.app !== undefined ? appPath(props.app) : '/'} className='justify-self-start rounded-lg'>
                         <span className='text-[17px] font-semibold tracking-tight'>
                             {props.app !== undefined ? t(props.app.name) : 'Orbit'}
                         </span>

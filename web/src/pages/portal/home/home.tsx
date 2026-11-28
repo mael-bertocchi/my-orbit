@@ -66,7 +66,7 @@ function AppTileComponent(props: AppTileComponentProps): JSX.Element {
         return (
             <div aria-disabled='true' className='card flex cursor-not-allowed flex-col p-5 sm:p-6 lg:p-7'>
                 <div className='flex items-center gap-3.5 opacity-50 grayscale'>
-                    <AppIconComponent app={props.app} size={46} />
+                    <AppIconComponent icon={props.app.icon} size={46} />
                     <div className='min-w-0 flex-1'>
                         <p className='text-[17px] font-semibold tracking-tight'>{t(props.app.name)}</p>
                         <p className='text-[13px] text-ink-secondary'>{t(props.app.summary)}</p>
@@ -80,7 +80,7 @@ function AppTileComponent(props: AppTileComponentProps): JSX.Element {
     return (
         <Link to={appPath(props.app)} aria-label={t('home.open', { app: t(props.app.name) })} className='card pressable group flex flex-col p-5 sm:p-6 lg:p-7'>
             <div className='flex items-center gap-3.5'>
-                <AppIconComponent app={props.app} size={46} />
+                <AppIconComponent icon={props.app.icon} size={46} />
                 <div className='min-w-0 flex-1'>
                     <p className='text-[17px] font-semibold tracking-tight'>{t(props.app.name)}</p>
                     <p className='text-[13px] text-ink-secondary'>{t(props.app.summary)}</p>

@@ -1,5 +1,4 @@
 import AppIconComponent from 'components/app-icon/app-icon';
-import LogoComponent from 'components/logo/logo';
 import { ChevronRight, House, Settings } from 'lucide-react';
 import { useAppAvailability } from 'modules/apps/apps-hooks';
 import type { PortalApp } from 'modules/apps/apps-models';
@@ -65,7 +64,7 @@ function SidebarAppComponent(props: SidebarAppComponentProps): JSX.Element {
     if (!availability.isAvailable) {
         return (
             <span aria-disabled='true' title={availability.reason !== null ? t(availability.reason) : undefined} className='flex cursor-not-allowed items-center gap-3 rounded-xl px-2.5 py-2 text-[15px] font-medium text-ink-secondary opacity-50 grayscale'>
-                <AppIconComponent app={props.app} size={26} />
+                <AppIconComponent icon={props.app.icon} size={26} />
                 {t(props.app.name)}
             </span>
         );
@@ -74,7 +73,7 @@ function SidebarAppComponent(props: SidebarAppComponentProps): JSX.Element {
     return (
         <div>
             <button type='button' aria-expanded={isOpen} aria-controls={tabsId} onClick={() => setIsOpen(!isOpen)} className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-[15px] font-medium transition ${props.isShown ? 'text-ink' : 'text-ink-secondary hover:text-ink'}`}>
-                <AppIconComponent app={props.app} size={26} />
+                <AppIconComponent icon={props.app.icon} size={26} />
                 <span className='flex-1'>{t(props.app.name)}</span>
                 <ChevronRight size={15} className={`text-ink-quaternary transition-transform duration-200 motion-reduce:transition-none ${isOpen ? 'rotate-90' : ''}`} />
             </button>
@@ -94,7 +93,7 @@ function SidebarAppComponent(props: SidebarAppComponentProps): JSX.Element {
 
 /**
  * @function SidebarComponent
- * @description The portal's navigation on a desktop, along the left edge in place of the bar along the top: the logo
+ * @description The portal's navigation on a desktop, along the left edge in place of the bar along the top: the portal's name
  * with the settings button, the home page, then every app, each folding its tabs under it, the one shown unfolded.
  *
  * @param {SidebarComponentProps} props The properties of the component
@@ -103,8 +102,7 @@ function SidebarComponent(props: SidebarComponentProps): JSX.Element {
     return (
         <aside className='fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col overflow-y-auto border-r border-hairline bg-fill px-3 py-5 lg:flex'>
             <div className='flex items-center gap-2.5 pb-6 pl-2.5'>
-                <Link to='/' className='flex flex-1 items-center gap-2.5 rounded-lg'>
-                    <LogoComponent size={28} />
+                <Link to='/' className='flex-1 rounded-lg'>
                     <span className='text-[17px] font-semibold tracking-tight'>Orbit</span>
                 </Link>
                 <NavLink to='/account' aria-label={t('frame.settings')} className={settingsClassName}>

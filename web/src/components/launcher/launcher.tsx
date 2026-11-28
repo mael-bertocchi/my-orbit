@@ -1,9 +1,9 @@
 import AppIconComponent from 'components/app-icon/app-icon';
-import LogoComponent from 'components/logo/logo';
 import { useAppAvailability } from 'modules/apps/apps-hooks';
 import type { PortalApp } from 'modules/apps/apps-models';
 import { APPS, appPath } from 'modules/apps/apps-registry';
 import { t } from 'modules/language/language-service';
+import { House } from 'lucide-react';
 import { useEffect, useRef, type JSX, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -69,7 +69,7 @@ interface LauncherAppTileComponentProps {
 function LauncherAppTileComponent(props: LauncherAppTileComponentProps): JSX.Element {
     const availability = useAppAvailability(props.app);
     const path = appPath(props.app);
-    const icon = <AppIconComponent app={props.app} size={ICON_SIZE} />;
+    const icon = <AppIconComponent icon={props.app.icon} size={ICON_SIZE} />;
 
     if (!availability.isAvailable) {
         return (
@@ -107,7 +107,7 @@ function LauncherComponent(props: LauncherComponentProps): JSX.Element {
                 <p className='eyebrow'>{t('frame.launcherEyebrow')}</p>
                 <h1 className='mt-1 text-[34px] font-semibold leading-tight tracking-tight'>{t('frame.apps')}</h1>
                 <nav ref={grid} aria-label={t('frame.apps')} className='mt-8 grid grid-cols-3 gap-x-3 gap-y-4 sm:grid-cols-4 md:grid-cols-6'>
-                    <LauncherTileComponent to='/' name={t('frame.home')} icon={<LogoComponent size={ICON_SIZE} />} isCurrent={pathname === '/'} onPick={props.onClose} />
+                    <LauncherTileComponent to='/' name={t('frame.home')} icon={<AppIconComponent icon={House} size={ICON_SIZE} />} isCurrent={pathname === '/'} onPick={props.onClose} />
                     {APPS.map((app) => (
                         <LauncherAppTileComponent key={app.id} app={app} pathname={pathname} onPick={props.onClose} />
                     ))}
